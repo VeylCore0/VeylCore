@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>veyl_ui</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="notifications"></div>
+
+    <div id="progress" class="hidden">
+        <div class="progress-label" id="progress-label"></div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-hint">[X] cancel</div>
+    </div>
+
+    <div id="modal-backdrop" class="hidden">
+        <div class="panel" id="modal" role="dialog" aria-modal="true">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title" id="modal-title"></div>
+                    <div class="panel-subtitle" id="modal-subtitle"></div>
+                </div>
+                <button class="icon-btn" id="modal-close" aria-label="Close">✕</button>
+            </div>
+            <div class="panel-body" id="modal-body"></div>
+            <div class="panel-footer" id="modal-footer"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Never commit real server configs or secrets
+server.cfg
+*.env
+.env*
+node_modules/
+cache/
+*.log
+.vscode/
+.DS_Store
+Thumbs.db

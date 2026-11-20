@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>veyl_characters</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="hidden">
+    <aside class="side">
+        <div class="brand">
+            <div class="brand-mark" aria-hidden="true">✦</div>
+            <div>
+                <div class="brand-name">VEYL<span>CORE</span></div>
+                <div class="brand-sub">Choose who you'll be today</div>
+            </div>
+        </div>
+
+        <div id="stage" class="stage">Connecting...</div>
+        <div id="error" class="error-box hidden">
+            <div class="error-title">Something went wrong</div>
+            <div id="error-detail" class="error-detail"></div>
+            <button class="btn primary" id="retry">Retry</button>
+        </div>
+
+        <div id="slots" class="slots"></div>
+
+        <div class="side-footer">
+            <button class="btn ghost" id="quit">Disconnect</button>
+        </div>
+    </aside>
+
+    <section id="create" class="create hidden">
+        <div class="card">
+            <div class="card-title">New character</div>
+            <form id="create-form">
+                <div class="row">
+                    <div class="field"><label for="firstname">First name</label><input id="firstname" maxlength="24" required></div>
+                    <div class="field"><label for="lastname">Last name</label><input id="lastname" maxlength="24" required></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="dob">Date of birth</label><input id="dob" type="date" min="1930-01-01" max="2008-12-31" required></div>
+                    <div class="field"><label for="sex">Body type</label>
+                        <select id="sex"><option value="m">Masculine</option><option value="f">Feminine</option></select>
+                    </div>
+                </div>
+                <div id="form-error" class="form-error"></div>
+                <div class="actions">
+                    <button type="button" class="btn ghost" id="create-cancel">Cancel</button>
+                    <button type="submit" class="btn primary" id="create-submit">Create</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section id="confirm-delete" class="create hidden">
+        <div class="card">
+            <div class="card-title">Delete character</div>
+            <p class="muted">This cannot be undone by you. Type <b id="delete-name"></b> to confirm.</p>
+            <div class="field"><input id="delete-input" maxlength="50"></div>
+            <div class="actions">
+                <button class="btn ghost" id="delete-cancel">Cancel</button>
+                <button class="btn danger" id="delete-confirm">Delete</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="toast" class="toast hidden"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
