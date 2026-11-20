@@ -53,6 +53,20 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 
 ## Installation
 
+### With txAdmin (recommended)
+
+1. In txAdmin's setup wizard, choose **Remote URL Template** and paste the raw URL of [`recipe.yaml`](recipe.yaml):
+   `https://raw.githubusercontent.com/VeylCore0/VeylCore/main/recipe.yaml`
+2. Enter your license key and database details. The recipe:
+   - downloads cfx-server-data, oxmysql v2.14.3 and VeylCore (pinned commit);
+   - creates the database;
+   - writes `server.cfg` in the correct start order.
+3. Start the server. Tables are created automatically on first boot, so there is no `.sql` to import.
+
+> txAdmin downloads anonymously, so the GitHub repository must be **public** for the recipe to work.
+
+### Manual
+
 1. Install the pinned dependency listed in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md): **oxmysql** only.
 2. The compiled UIs (`web/dist`) are committed. To change a UI, edit `packages/*`, then run `npm install` and
    `npm run build` at the repo root (Node 18+).
