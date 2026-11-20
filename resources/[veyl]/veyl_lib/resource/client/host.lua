@@ -74,6 +74,9 @@ local function closeHostModal(result)
     if not m then return end
     hostModal = nil
     SendNUIMessage({ action = 'modal:close' })
+    -- Host modals are rendered on veyl_lib's own page, so veyl_lib must drop NUI focus itself
+    -- (the focus record's owner is the requesting resource, not veyl_lib).
+    SetNuiFocus(false, false)
     releaseFocus(m.token, 'closed')
     if m.cb then
         local ok, err = pcall(m.cb, result)
