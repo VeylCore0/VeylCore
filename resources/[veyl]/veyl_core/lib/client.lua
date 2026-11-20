@@ -38,12 +38,17 @@ end
 ---------------------------------------------------------------------------
 -- Player state
 ---------------------------------------------------------------------------
-function Veyl.GetCharacterId()
-    return LocalPlayer.state.veylCharId
+function Veyl.GetCitizenId()
+    return LocalPlayer.state.citizenid
 end
 
 function Veyl.IsLoaded()
-    return LocalPlayer.state.veylCharId ~= nil
+    return LocalPlayer.state.isLoggedIn == true
+end
+
+--- Current PlayerData view for this client (allowlisted by the server). Empty table when logged out.
+function Veyl.GetPlayerData()
+    return exports.veyl_core:GetPlayerData()
 end
 
 ---------------------------------------------------------------------------

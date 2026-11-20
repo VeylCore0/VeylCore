@@ -43,7 +43,7 @@ local function openBank()
             local rows = {}
             for _, h in ipairs(d.history or {}) do
                 rows[#rows + 1] = {
-                    label = h.reason, description = ('%s · %s · balance %s'):format(h.at, h.kind, money(h.balance_after)),
+                    label = h.reason, description = ('%s · %s · balance %s'):format(h.at, h.type, money(h.balance_after)),
                     right = (h.delta >= 0 and '+' or '-') .. money(math.abs(h.delta)), value = 'noop',
                 }
             end
@@ -81,5 +81,5 @@ RegisterCommand('givecash', function(_, args)
 end, false)
 
 RegisterCommand('cash', function()
-    Veyl.Notify(('Cash %s · Bank %s'):format(money(LocalPlayer.state.veylCash), money(LocalPlayer.state.veylBank)), 'info')
+    Veyl.Notify(('Cash %s · Bank %s'):format(money(Veyl.PlayerData.money and Veyl.PlayerData.money.cash), money(Veyl.PlayerData.money and Veyl.PlayerData.money.bank)), 'info')
 end, false)

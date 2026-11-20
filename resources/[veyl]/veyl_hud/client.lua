@@ -24,7 +24,8 @@ CreateThread(function()
         if show then
             local ped = PlayerPedId()
             local pid = PlayerId()
-            local needs = LocalPlayer.state.veylNeeds or {}
+            local pd = Veyl.PlayerData or {}
+            local needs = pd.metadata or {}
             local range = math.max(1, GetEntityMaxHealth(ped) - 100)
             data.health = math.max(0, math.min(100, math.floor((GetEntityHealth(ped) - 100) / range * 100)))
             data.armor = GetPedArmour(ped)
@@ -35,10 +36,13 @@ CreateThread(function()
             if IsPedSwimmingUnderWater(ped) then
                 data.oxygen = math.floor(GetPlayerUnderwaterTimeRemaining(pid) * 10)
             end
-            data.cash = LocalPlayer.state.veylCash
-            data.bank = LocalPlayer.state.veylBank
-            local job = LocalPlayer.state.veylJob
-            if job then data.job = job.label .. (job.onDuty and '' or ' (off duty)') end
+            data.cash = pd.money and pd.money.cash
+            data.bank = pd.money and pd.money.bank
+            local job = pd.job
+            if job and job.name ~= 'unemployed' then
+                data.job = ('%s - %s%s'):format(job.label, job.grade and job.grade.name or '', job.onduty and '' or ' (off duty)')
+            end
+            data.talking = NetworkIsPlayerTalking(pid)
 
             local veh = GetVehiclePedIsIn(ped, false)
             if veh ~= 0 then

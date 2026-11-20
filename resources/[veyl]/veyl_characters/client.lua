@@ -81,13 +81,14 @@ AddEventHandler('veyl:sessionFailed', function(info)
     send('error', { stage = 'Session (' .. tostring(info and info.stage) .. ')', code = info and info.code, message = 'Could not start your session.' })
 end)
 
-RegisterNetEvent('veyl:characterUnloaded', function()
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
     DoScreenFadeOut(300)
     Wait(350)
     openSelector()
 end)
 
-RegisterNetEvent('veyl:characterLoaded', function()
+-- The core authenticated the character; veyl_spawn takes over from here.
+RegisterNetEvent('VeylCore:Client:BeginSpawn', function()
     closeSelector()
 end)
 
@@ -104,20 +105,20 @@ RegisterNUICallback('select', function(data, cb)
     if busy then return end
     busy = true
     send('stage', { stage = 'Loading character...' })
-    local res = Veyl.Callback('veyl_characters', 'select', tonumber(data and data.id))
+    local res = Veyl.CallbackTimeout('veyl_characters', 'select', 25000, tostring(data and data.id or ''))
     busy = false
     if not res.ok then
         send('error', { stage = 'Select character', code = res.code, message = res.message })
     end
-    -- On success veyl:characterLoaded closes the screen and veyl_spawn takes over.
+    -- On success VeylCore:Client:BeginSpawn closes the screen and veyl_spawn takes over.
 end)
 
 RegisterNUICallback('create', function(data, cb)
     cb({})
     if busy then return end
     busy = true
-    local res = Veyl.Callback('veyl_characters', 'create', {
-        firstname = data.firstname, lastname = data.lastname, dob = data.dob, sex = data.sex,
+    local res = Veyl.CallbackTimeout('veyl_characters', 'create', 25000, {
+        firstname = data.firstname, lastname = data.lastname, birthdate = data.dob, gender = data.sex,
     })
     busy = false
     if res.ok then
@@ -132,7 +133,7 @@ RegisterNUICallback('delete', function(data, cb)
     cb({})
     if busy then return end
     busy = true
-    local res = Veyl.Callback('veyl_characters', 'delete', tonumber(data and data.id), tostring(data and data.confirmName or ''))
+    local res = Veyl.CallbackTimeout('veyl_characters', 'delete', 25000, tostring(data and data.id or ''), tostring(data and data.confirmName or ''))
     busy = false
     if res.ok then
         send('characters', { characters = res.data.characters })

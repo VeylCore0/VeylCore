@@ -3,14 +3,14 @@
 Veyl.Startup({ 'veyl_core' }, function()
     return Veyl.Migrate({
         {
-            id = '001_appearance',
+            id = '001_appearance_citizenid',
             sql = {
                 [[CREATE TABLE IF NOT EXISTS veyl_appearance (
-                    character_id INT UNSIGNED NOT NULL,
+                    citizenid VARCHAR(16) NOT NULL,
                     model VARCHAR(32) NOT NULL,
                     data LONGTEXT NOT NULL,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    PRIMARY KEY (character_id)
+                    PRIMARY KEY (citizenid)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
@@ -20,8 +20,8 @@ end)
 local allowedModels = {}
 for _, m in pairs(AppearanceConfig.Models) do allowedModels[m] = true end
 
-Veyl.RegisterCallback('get', function(src, charId)
-    local row = MySQL.single.await('SELECT model, data FROM veyl_appearance WHERE character_id = ?', { charId })
+Veyl.RegisterCallback('get', function(src, citizenid)
+    local row = MySQL.single.await('SELECT model, data FROM veyl_appearance WHERE citizenid = ?', { citizenid })
     if not row then return Veyl.Ok(nil) end
     local ok, data = pcall(json.decode, row.data)
     if not ok or type(data) ~= 'table' then return Veyl.Ok(nil) end
@@ -63,12 +63,12 @@ local function cleanAppearance(input)
     }
 end
 
-Veyl.RegisterCallback('save', function(src, charId, input)
+Veyl.RegisterCallback('save', function(src, citizenid, input)
     local data = cleanAppearance(input)
     if not data then return Veyl.Err('INVALID_INPUT', 'Invalid appearance data') end
     local model = data.model
     data.model = nil
-    MySQL.query.await([[INSERT INTO veyl_appearance (character_id, model, data) VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE model = VALUES(model), data = VALUES(data)]], { charId, model, json.encode(data) })
+    MySQL.query.await([[INSERT INTO veyl_appearance (citizenid, model, data) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE model = VALUES(model), data = VALUES(data)]], { citizenid, model, json.encode(data) })
     return Veyl.Ok(nil, 'Appearance saved')
 end, { cooldown = 2000 })

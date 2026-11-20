@@ -3,12 +3,11 @@
 Veyl.Startup({ 'veyl_core' }, function()
     return Veyl.Migrate({
         {
-            id = '001_reports',
+            id = '001_reports_v2',
             sql = {
                 [[CREATE TABLE IF NOT EXISTS veyl_reports (
                     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-                    account_id INT UNSIGNED NULL,
-                    character_id INT UNSIGNED NULL,
+                    citizenid VARCHAR(16) NULL,
                     player_name VARCHAR(64) NOT NULL,
                     message VARCHAR(500) NOT NULL,
                     status ENUM('open','closed') NOT NULL DEFAULT 'open',
@@ -52,16 +51,22 @@ local function targetOf(src, arg)
 end
 
 local function staffNotify(msg)
-    for _, p in ipairs(exports.veyl_core:GetPlayers()) do
-        if Veyl.HasPermission(p.source, 'admin') then Veyl.Notify(p.source, msg, 'warning', 10000) end
+    for _, s in ipairs(exports.veyl_core:GetSessions()) do
+        if Veyl.HasPermission(s.source, 'admin') then Veyl.Notify(s.source, msg, 'warning', 10000) end
     end
 end
 
+local function citizenOf(src, t)
+    local cid = Veyl.GetCitizenId(t)
+    if not cid then reply(src, 'That player has no character loaded.', 'error') end
+    return cid
+end
+
 staffCommand('vplayers', function(src)
-    local list = exports.veyl_core:GetPlayers()
+    local list = exports.veyl_core:GetSessions()
     local lines = {}
-    for _, p in ipairs(list) do
-        lines[#lines + 1] = ('[%d] %s - %s'):format(p.source, p.name, p.characterName or 'selecting')
+    for _, s in ipairs(list) do
+        lines[#lines + 1] = ('[%d] %s - %s %s'):format(s.source, s.name, s.characterName or 'selecting', s.citizenid and ('(' .. s.citizenid .. ')') or '')
     end
     if src == 0 then
         print(('Players (%d):\n%s'):format(#list, table.concat(lines, '\n')))
@@ -100,6 +105,7 @@ staffCommand('vrevive', function(src, args)
     local t = args[1] and targetOf(src, args[1]) or src
     if not t or t == 0 then return end
     TriggerClientEvent('veyl_admin:revive', t)
+    exports.veyl_core:SetMetadataMany(t, { isdead = false, inlaststand = false })
     Veyl.Audit(src, 'admin_revive', { target = t })
     reply(src, 'Revived ' .. GetPlayerName(t), 'success')
 end)
@@ -112,19 +118,17 @@ staffCommand('vkick', function(src, args)
     DropPlayer(t, 'Kicked by staff: ' .. reason)
 end)
 
--- Economy tools: always require a reason; all movements go through veyl_banking's ledger.
+-- Economy tools: always require a reason; durable, operation-keyed core money (never a silent legacy write).
 local function moneyCommand(src, args, sign)
     local t = targetOf(src, args[1]); if not t then return end
     local kind, amount, reason = args[2], tonumber(args[3]), table.concat(args, ' ', 4)
-    if (kind ~= 'cash' and kind ~= 'bank') or not amount or amount < 1 or amount % 1 ~= 0 or reason == '' then
-        return reply(src, ('Usage: /%s [id] [cash|bank] [amount] [reason]'):format(sign > 0 and 'vgivemoney' or 'vtakemoney'), 'error')
+    if (kind ~= 'cash' and kind ~= 'bank' and kind ~= 'crypto') or not amount or amount < 1 or amount % 1 ~= 0 or reason == '' then
+        return reply(src, ('Usage: /%s [id] [cash|bank|crypto] [amount] [reason]'):format(sign > 0 and 'vgivemoney' or 'vtakemoney'), 'error')
     end
-    local charId = Veyl.GetCharacterId(t)
-    if not charId then return reply(src, 'That player has no character loaded.', 'error') end
-    local opId = Veyl.NewId('admin')
-    local res = Veyl.Await('veyl_banking', sign > 0 and 'Credit' or 'TryDebit', 15000, charId, kind, amount,
-        'Staff adjustment: ' .. reason:sub(1, 100), opId)
-    Veyl.Audit(src, 'admin_money', { target = charId, kind = kind, amount = sign * amount, reason = reason, ok = res.ok, code = res.code })
+    local cid = citizenOf(src, t); if not cid then return end
+    local res = Veyl.Await('veyl_core', sign > 0 and 'CreditOnce' or 'DebitOnce', 15000, cid, kind, amount,
+        'Staff adjustment: ' .. reason:sub(1, 100), Veyl.NewId('admin'))
+    Veyl.Audit(src, 'admin_money', { target = cid, kind = kind, amount = sign * amount, reason = reason, ok = res.ok, code = res.code })
     reply(src, res.ok and ('Done. New %s balance: $%d'):format(kind, res.data.balance) or ('Failed: ' .. tostring(res.message or res.code)),
         res.ok and 'success' or 'error')
 end
@@ -132,23 +136,46 @@ end
 staffCommand('vgivemoney', function(src, args) moneyCommand(src, args, 1) end)
 staffCommand('vtakemoney', function(src, args) moneyCommand(src, args, -1) end)
 
+-- /vsetjob [id] [job] [grade]  (QB SetJob semantics: replaces the previous primary job)
 staffCommand('vsetjob', function(src, args)
     local t = targetOf(src, args[1]); if not t then return end
-    local charId = Veyl.GetCharacterId(t)
-    if not charId then return reply(src, 'That player has no character loaded.', 'error') end
-    local res = Veyl.Await('veyl_jobs', 'SetJob', 10000, charId, tostring(args[2]), tonumber(args[3]) or 0, 'staff')
-    Veyl.Audit(src, 'admin_setjob', { target = charId, job = args[2], grade = args[3], ok = res.ok })
-    reply(src, res.ok and ('Job set to %s (%s)'):format(res.data.label, res.data.gradeLabel) or ('Failed: ' .. tostring(res.message)),
-        res.ok and 'success' or 'error')
+    if not citizenOf(src, t) then return end
+    local ok = exports.veyl_core:SetJob(t, tostring(args[2]), tonumber(args[3]) or 0)
+    Veyl.Audit(src, 'admin_setjob', { target = t, job = args[2], grade = args[3], ok = ok })
+    reply(src, ok and 'Job set' or 'Unknown job or grade', ok and 'success' or 'error')
+end)
+
+-- /vaddjob [id] [job] [grade]  (adds a membership without changing the primary job)
+staffCommand('vaddjob', function(src, args)
+    local t = targetOf(src, args[1]); if not t then return end
+    local cid = citizenOf(src, t); if not cid then return end
+    local ok = exports.veyl_core:AddPlayerToJob(cid, tostring(args[2]), tonumber(args[3]) or 0)
+    Veyl.Audit(src, 'admin_addjob', { target = cid, job = args[2], grade = args[3], ok = ok })
+    reply(src, ok and 'Membership added' or 'Unknown job or grade', ok and 'success' or 'error')
+end)
+
+staffCommand('vremovejob', function(src, args)
+    local t = targetOf(src, args[1]); if not t then return end
+    local cid = citizenOf(src, t); if not cid then return end
+    local ok = exports.veyl_core:RemovePlayerFromJob(cid, tostring(args[2]))
+    Veyl.Audit(src, 'admin_removejob', { target = cid, job = args[2], ok = ok })
+    reply(src, ok and 'Membership removed' or 'Not a member', ok and 'success' or 'error')
+end)
+
+staffCommand('vsetgang', function(src, args)
+    local t = targetOf(src, args[1]); if not t then return end
+    if not citizenOf(src, t) then return end
+    local ok = exports.veyl_core:SetGang(t, tostring(args[2]), tonumber(args[3]) or 0)
+    Veyl.Audit(src, 'admin_setgang', { target = t, gang = args[2], grade = args[3], ok = ok })
+    reply(src, ok and 'Gang set' or 'Unknown gang or grade', ok and 'success' or 'error')
 end)
 
 staffCommand('vgiveitem', function(src, args)
     local t = targetOf(src, args[1]); if not t then return end
-    local charId = Veyl.GetCharacterId(t)
-    if not charId then return reply(src, 'That player has no character loaded.', 'error') end
+    local cid = citizenOf(src, t); if not cid then return end
     local count = tonumber(args[3]) or 1
-    local res = Veyl.Await('veyl_inventory', 'GiveItem', 10000, charId, tostring(args[2]), count, nil, Veyl.NewId('admin:item'))
-    Veyl.Audit(src, 'admin_giveitem', { target = charId, item = args[2], count = count, ok = res.ok })
+    local res = Veyl.Await('veyl_inventory', 'GiveItem', 10000, cid, tostring(args[2]), count, nil, Veyl.NewId('admin:item'))
+    Veyl.Audit(src, 'admin_giveitem', { target = cid, item = args[2], count = count, ok = res.ok })
     reply(src, res.ok and 'Item given' or ('Failed: ' .. tostring(res.message or res.code)), res.ok and 'success' or 'error')
 end)
 
@@ -163,10 +190,10 @@ RegisterCommand('report', function(src, args)
     if #msg < 5 then return reply(src, 'Usage: /report [what happened]', 'error') end
     if lastReport[src] and os.time() - lastReport[src] < 60 then return reply(src, 'Please wait before sending another report.', 'error') end
     lastReport[src] = os.time()
-    local p = Veyl.GetPlayer(src)
+    local cid = Veyl.GetCitizenId(src)
     CreateThread(function()
-        local id = MySQL.insert.await('INSERT INTO veyl_reports (account_id, character_id, player_name, message) VALUES (?, ?, ?, ?)',
-            { p and p.accountId, p and p.characterId, GetPlayerName(src) or '?', msg:sub(1, 500) })
+        local id = MySQL.insert.await('INSERT INTO veyl_reports (citizenid, player_name, message) VALUES (?, ?, ?)',
+            { cid, GetPlayerName(src) or '?', msg:sub(1, 500) })
         reply(src, ('Report #%s sent. Staff have been notified.'):format(tostring(id)), 'success')
         staffNotify(('Report #%s from [%d] %s: %s'):format(tostring(id), src, GetPlayerName(src) or '?', msg:sub(1, 140)))
     end)

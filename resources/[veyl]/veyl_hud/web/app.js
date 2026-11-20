@@ -36,7 +36,7 @@ function render(d) {
     });
     $('cash').textContent = money(d.cash);
     $('bank').textContent = money(d.bank);
-    $('job').textContent = d.job || '';
+    $('job').textContent = `${d.talking ? '🎙 ' : ''}${d.job || ''}`;
 
     const inVeh = d.speed !== undefined && d.speed !== null;
     $('vehicle').classList.toggle('hidden', !inVeh);

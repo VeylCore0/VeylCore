@@ -1,7 +1,5 @@
 BankingConfig = {
-    -- Whole-dollar integer units. Never use floats for money.
-    StartingCash = 500,
-    StartingBank = 2500,
+    -- Whole-dollar integer units. Starting balances live in veyl_core/config/server.lua.
 
     MaxSingleTransaction = 1000000,
     GiveCashDistance = 3.0,

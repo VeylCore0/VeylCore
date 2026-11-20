@@ -1,14 +1,14 @@
--- veyl_core client: announces the client to the server and exposes session state.
+-- Session handshake: announce the client until the server confirms, with an observable failure state.
 
 local session = nil
 local failed = nil
 
 local function announce()
     local attempts = 0
-    while not session and attempts < VeylConfig.ClientReadyMaxAttempts do
+    while not session and attempts < VeylClientConfig.ClientReadyMaxAttempts do
         attempts = attempts + 1
         TriggerServerEvent('veyl_core:clientReady')
-        local deadline = GetGameTimer() + VeylConfig.ClientReadyRetryMs
+        local deadline = GetGameTimer() + VeylClientConfig.ClientReadyRetryMs
         while not session and GetGameTimer() < deadline do Wait(100) end
     end
     if not session then
@@ -33,16 +33,10 @@ RegisterNetEvent('veyl_core:sessionFailed', function(info)
     TriggerEvent('veyl:sessionFailed', info)
 end)
 
-RegisterNetEvent('veyl_core:coreStopped', function()
-    session = nil
-end)
-
-exports('GetSession', function() return session end)
-exports('GetSessionFailure', function() return failed end)
-
---- Lets a UI offer "retry" after a failed stage.
-exports('RetrySession', function()
+function GetSession() return session end
+function GetSessionFailure() return failed end
+function RetrySession()
     if session then return end
     failed = nil
     CreateThread(announce)
-end)
+end

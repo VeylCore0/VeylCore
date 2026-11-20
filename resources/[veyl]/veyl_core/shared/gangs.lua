@@ -1,0 +1,18 @@
+-- Gang definitions. Same shape as jobs; gangs have no paychecks.
+return {
+    none = {
+        label = 'No Gang',
+        grades = {
+            ['0'] = { name = 'Unaffiliated' },
+        },
+    },
+    lostmc = {
+        label = 'The Lost MC',
+        grades = {
+            ['0'] = { name = 'Recruit' },
+            ['1'] = { name = 'Enforcer' },
+            ['2'] = { name = 'Shot Caller' },
+            ['3'] = { name = 'Boss', isboss = true },
+        },
+    },
+}

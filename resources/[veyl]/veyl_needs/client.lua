@@ -1,18 +1,21 @@
 -- veyl_needs client: effects of empty needs and high stress (display is veyl_hud's job).
 
+RegisterNetEvent('veyl_needs:heal', function(amount)
+    local ped = PlayerPedId()
+    SetEntityHealth(ped, math.min(GetEntityMaxHealth(ped), GetEntityHealth(ped) + math.min(tonumber(amount) or 0, 100)))
+end)
+
 CreateThread(function()
     while true do
         Wait(10000)
-        local needs = LocalPlayer.state.veylNeeds
-        if needs and Veyl.IsLoaded() then
+        local m = Veyl.IsLoaded() and (exports.veyl_core:GetPlayerData().metadata) or nil
+        if m then
             local ped = PlayerPedId()
-            if (needs.hunger <= 0 or needs.thirst <= 0) and not IsEntityDead(ped) then
+            if ((m.hunger or 100) <= 0 or (m.thirst or 100) <= 0) and not IsEntityDead(ped) then
                 SetEntityHealth(ped, math.max(0, GetEntityHealth(ped) - NeedsConfig.StarvingDamage))
-                Veyl.Notify(needs.hunger <= 0 and 'You are starving.' or 'You are dehydrated.', 'warning', 3000)
+                Veyl.Notify((m.hunger or 100) <= 0 and 'You are starving.' or 'You are dehydrated.', 'warning', 3000)
             end
-            if needs.stress >= 80 then
-                ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.04)
-            end
+            if (m.stress or 0) >= 80 then ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.04) end
         end
     end
 end)

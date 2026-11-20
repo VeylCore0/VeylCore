@@ -3,11 +3,11 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_spawn'
-description 'VeylCore spawn pipeline: first spawn, last-location recovery, fallbacks and basic respawn'
-version '0.1.0'
+description 'VeylCore spawn pipeline: bounded stages, last-location recovery, fallbacks and basic death/respawn'
+version '0.2.0'
 
-dependencies { 'oxmysql', 'veyl_core', 'veyl_ui', 'veyl_appearance' }
+dependencies { 'veyl_core', 'veyl_ui', 'veyl_appearance' }
 
 shared_scripts { '@veyl_core/lib/shared.lua', 'config.lua' }
-server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
+server_scripts { '@veyl_core/lib/server.lua', 'server.lua' }
 client_scripts { '@veyl_core/lib/client.lua', 'client.lua' }

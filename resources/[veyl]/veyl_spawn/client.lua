@@ -34,12 +34,13 @@ local function finishSpawn()
     DoScreenFadeIn(600)
 end
 
-local function runSpawn(character)
+local function runSpawn(playerData)
     if spawning then return end
     spawning = true
     isDead = false
     DoScreenFadeOut(300)
     Wait(350)
+    local sex = (playerData and playerData.charinfo and playerData.charinfo.gender == 1) and 'f' or 'm'
 
     stage('appearance')
     local ok = false
@@ -49,7 +50,7 @@ local function runSpawn(character)
         ok = Veyl.Await('veyl_appearance', 'Apply', 15000, res.data) == true
     end
     if not ok then
-        ok = Veyl.Await('veyl_appearance', 'ApplyDefault', 15000, character and character.sex) == true
+        ok = Veyl.Await('veyl_appearance', 'ApplyDefault', 15000, sex) == true
         if not ok then Veyl.Notify('Could not load your appearance; using a default model.', 'warning') end
     end
 
@@ -63,34 +64,37 @@ local function runSpawn(character)
     stage('finish')
     finishSpawn()
     spawning = false
-    TriggerServerEvent('veyl_spawn:spawned')
-    TriggerEvent('veyl:playerSpawned')
+    -- The core emits VeylCore:Client:OnPlayerLoaded (and the QB equivalent via the shim) exactly once.
+    TriggerServerEvent('veyl_core:server:spawnComplete')
 
     if not hasAppearance then
         Wait(800)
-        exports.veyl_appearance:OpenEditor(character and character.sex, false, function() end)
+        exports.veyl_appearance:OpenEditor(sex, false, function() end)
+    end
+    if pos.reason == 'hospital' then
+        Veyl.Notify('You were treated at Pillbox Hill Medical Center.', 'info', 6000)
     end
     if pos.isNew then
         Veyl.Notify('Welcome to VeylCore! Head to the GoPostal depot (map marker) to earn your first paycheck.', 'info', 10000)
     end
 end
 
-RegisterNetEvent('veyl:characterLoaded', function(character)
+RegisterNetEvent('VeylCore:Client:BeginSpawn', function(playerData)
     CreateThread(function()
-        local ok, err = pcall(runSpawn, character)
+        local ok, err = pcall(runSpawn, playerData)
         if not ok then
             print(('^1[veyl_spawn] spawn failed: %s^7'):format(tostring(err)))
             spawning = false
             local dft = SpawnConfig.DefaultSpawn
             pcall(placePlayer, dft.x, dft.y, dft.z, dft.w)
             finishSpawn()
-            TriggerServerEvent('veyl_spawn:spawned')
+            TriggerServerEvent('veyl_core:server:spawnComplete')
             Veyl.Notify('Spawn hit an error; placed you at the default spawn.', 'error')
         end
     end)
 end)
 
-RegisterNetEvent('veyl:characterUnloaded', function()
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
     isDead = false
 end)
 
@@ -104,6 +108,7 @@ CreateThread(function()
             local ped = PlayerPedId()
             if IsEntityDead(ped) and not isDead then
                 isDead = true
+                TriggerServerEvent('veyl_spawn:died')
                 local respawnAt = GetGameTimer() + SpawnConfig.RespawnDelaySeconds * 1000
                 CreateThread(function()
                     while isDead do

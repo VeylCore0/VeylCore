@@ -40,7 +40,7 @@ function render() {
         name.textContent = `${c.firstname} ${c.lastname}`;
         const meta = document.createElement('div');
         meta.className = 'slot-meta';
-        meta.textContent = `Born ${c.dob}${c.lastPlayed ? ` · Last played ${c.lastPlayed}` : ' · New'}`;
+        meta.textContent = `${c.citizenid} · ${c.job || 'Civilian'} · Born ${c.birthdate}${c.lastPlayed ? ` · Last played ${c.lastPlayed}` : ' · New'}`;
         info.append(name, meta);
 
         const actions = document.createElement('div');
@@ -51,7 +51,7 @@ function render() {
         play.onclick = () => {
             if (state.pending) return;
             setPending(true, 'Loading character...');
-            post('select', { id: c.id });
+            post('select', { id: c.citizenid });
         };
         const del = document.createElement('button');
         del.className = 'btn ghost small';
@@ -90,7 +90,7 @@ $('delete-cancel').onclick = () => showPanel(null);
 $('delete-confirm').onclick = () => {
     if (state.pending || !state.deleteTarget) return;
     setPending(true, 'Deleting character...');
-    post('delete', { id: state.deleteTarget.id, confirmName: $('delete-input').value.trim() });
+    post('delete', { id: state.deleteTarget.citizenid, confirmName: $('delete-input').value.trim() });
 };
 $('retry').onclick = () => {
     $('error').classList.add('hidden');

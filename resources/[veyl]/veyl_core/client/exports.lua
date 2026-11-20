@@ -1,0 +1,15 @@
+-- veyl_core client exports.
+
+exports('GetPlayerData', function() return PlayerData end)
+exports('IsLoggedIn', function() return LocalPlayer.state.isLoggedIn == true end)
+exports('GetSession', function() return GetSession() end)
+exports('GetSessionFailure', function() return GetSessionFailure() end)
+exports('RetrySession', function() RetrySession() end)
+exports('GetJobs', function() return VeylShared.Jobs end)
+exports('GetGangs', function() return VeylShared.Gangs end)
+exports('GetVehicles', function() return VeylShared.Vehicles end)
+exports('GetWeapons', function() return VeylShared.Weapons end)
+exports('GetLocations', function() return VeylShared.Locations end)
+exports('Notify', function(message, kind, duration)
+    TriggerEvent('veyl_ui:notify', { message = tostring(message), type = kind or 'info', duration = duration })
+end)

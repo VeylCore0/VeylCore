@@ -3,11 +3,11 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_jobs'
-description 'VeylCore jobs: definitions, grades, assignment, duty and server-approved paychecks'
-version '0.1.0'
+description 'VeylCore job UI: duty toggle, multijob primary selection and quitting open jobs (core owns the data)'
+version '0.2.0'
 
-dependencies { 'oxmysql', 'veyl_core', 'veyl_banking' }
+dependencies { 'veyl_core', 'veyl_ui' }
 
-shared_scripts { '@veyl_core/lib/shared.lua', 'config.lua' }
-server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
-client_scripts { '@veyl_core/lib/client.lua', 'client.lua' }
+shared_script '@veyl_core/lib/shared.lua'
+server_scripts { '@veyl_core/lib/server.lua', 'server.lua' }
+client_scripts { '@veyl_core/lib/client.lua', '@veyl_core/modules/playerdata.lua', 'client.lua' }

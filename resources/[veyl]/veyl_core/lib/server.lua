@@ -6,16 +6,23 @@ local RES = GetCurrentResourceName()
 ---------------------------------------------------------------------------
 -- Player/session helpers (veyl_core is the only owner of session state)
 ---------------------------------------------------------------------------
-function Veyl.GetPlayer(src)
-    return exports.veyl_core:GetPlayer(src)
+--- Plain PlayerData snapshot (no functions) or nil. Use exports.veyl_core:GetPlayer(src) for the player object.
+function Veyl.GetPlayerData(src)
+    return exports.veyl_core:GetPlayerData(src)
 end
 
-function Veyl.GetCharacterId(src)
-    return exports.veyl_core:GetCharacterId(src)
+--- The active character's citizenid for an online source, or nil.
+function Veyl.GetCitizenId(src)
+    return exports.veyl_core:GetCitizenId(src)
 end
 
-function Veyl.GetSourceByCharacter(charId)
-    return exports.veyl_core:GetSourceByCharacter(charId)
+function Veyl.GetSourceByCitizenId(citizenid)
+    return exports.veyl_core:GetSourceByCitizenId(citizenid)
+end
+
+--- Session generation: changes every login/logout, so long-running work can detect a character switch.
+function Veyl.GetSessionGeneration(src)
+    return exports.veyl_core:GetSessionGeneration(src)
 end
 
 function Veyl.HasPermission(src, permission)
@@ -42,7 +49,7 @@ end
 local lastCall, inflight = {}, {}
 
 --- Register a callback the client can invoke with Veyl.Callback('<this resource>', name, ...).
---- handler(src, charId, ...) must return a Veyl.Ok/Veyl.Err table.
+--- handler(src, citizenid, ...) must return a Veyl.Ok/Veyl.Err table.
 --- opts.cooldown (ms, default 250), opts.requireCharacter (default true), opts.permission (string)
 function Veyl.RegisterCallback(name, handler, opts)
     opts = opts or {}
@@ -64,10 +71,10 @@ function Veyl.RegisterCallback(name, handler, opts)
         end
         lastCall[key] = now
 
-        local charId = nil
+        local citizenid = nil
         if requireCharacter then
-            charId = Veyl.GetCharacterId(src)
-            if not charId then return reply(Veyl.Err('NO_CHARACTER', 'No character loaded')) end
+            citizenid = Veyl.GetCitizenId(src)
+            if not citizenid then return reply(Veyl.Err('NO_CHARACTER', 'No character loaded')) end
         end
         if opts.permission and not Veyl.HasPermission(src, opts.permission) then
             Veyl.Audit(src, 'denied_callback', { callback = name, permission = opts.permission })
@@ -75,7 +82,7 @@ function Veyl.RegisterCallback(name, handler, opts)
         end
 
         inflight[key] = true
-        local ok, res = pcall(handler, src, charId, ...)
+        local ok, res = pcall(handler, src, citizenid, ...)
         inflight[key] = nil
         if not ok then
             print(('^1[%s] callback %s error: %s^7'):format(RES, name, tostring(res)))

@@ -9,7 +9,7 @@ local function openShop(shopId)
     while true do
         local items = {}
         for i, entry in ipairs(shop.catalog) do
-            local def = exports.veyl_inventory:GetItemDefinition(entry.item)
+            local def = exports.ox_inventory:Items(entry.item)
             items[i] = { label = def and def.label or entry.item, right = '$' .. entry.price, value = i }
         end
         local index = Veyl.UI.Menu({ title = shop.label, subtitle = 'Prices include tax', items = items })
@@ -35,7 +35,7 @@ AddEventHandler('veyl_shops:open', function(args) if args then openShop(args.id)
 CreateThread(function()
     while GetResourceState('veyl_interact') ~= 'started' do Wait(200) end
     for _, s in ipairs(ShopsConfig.Shops) do
-        exports.veyl_interact:AddPed({
+        exports.veyl_interact:AddPed({ icon = 'fa-solid fa-basket-shopping',
             id = 'shop_' .. s.id, model = s.ped.model, coords = s.ped.coords, radius = ShopsConfig.UseDistance,
             label = 'Shop at ' .. s.label, event = 'veyl_shops:open', args = { id = s.id },
         })

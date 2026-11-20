@@ -129,7 +129,7 @@ RegisterNetEvent('veyl_delivery:ended', function(status, reason)
 end)
 
 -- Character switch / reconnect: ask the server for the authoritative state.
-RegisterNetEvent('veyl:characterLoaded', function()
+RegisterNetEvent('VeylCore:Client:OnPlayerLoaded', function()
     clearRun()
     CreateThread(function()
         Wait(2000)
@@ -137,7 +137,7 @@ RegisterNetEvent('veyl:characterLoaded', function()
         if res.ok and res.data then setRun(res.data) end
     end)
 end)
-RegisterNetEvent('veyl:characterUnloaded', clearRun)
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', clearRun)
 
 -- Setup -------------------------------------------------------------------
 CreateThread(function()
@@ -145,7 +145,7 @@ CreateThread(function()
     local p = cfg.Depot.ped
     exports.veyl_interact:AddPed({
         id = 'delivery_depot', model = p.model, coords = p.coords, radius = cfg.Depot.radius,
-        label = 'GoPostal depot', scenario = 'WORLD_HUMAN_CLIPBOARD',
+        label = 'GoPostal depot', scenario = 'WORLD_HUMAN_CLIPBOARD', icon = 'fa-solid fa-box',
         options = {
             { label = 'Start a delivery shift', event = 'veyl_delivery:start', canInteract = function() return run == nil end },
             { label = 'Finish shift and get paid', event = 'veyl_delivery:finish', canInteract = function() return run ~= nil end },

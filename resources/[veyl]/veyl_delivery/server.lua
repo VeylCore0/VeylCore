@@ -1,20 +1,21 @@
--- veyl_delivery server: the server owns the route, the package state and the reward.
--- A run's payout operation id is 'delivery:<runId>', so repeated finish requests can never pay twice.
+-- veyl_delivery server: the server owns the route, package state and reward.
+-- Runs are bound to the character (citizenid) and its session generation, not just the player source.
+-- The payout is a core CreditOnce with operation id 'delivery:<runId>', so repeated finish requests pay once.
 
-local runs = {}         -- [charId] = run
-local runByVehicle = {} -- [vehicleId] = charId
+local runs = {}         -- [citizenid] = run
+local runByVehicle = {} -- [vehicleId] = citizenid
 
 local cfg = DeliveryConfig
 local depotPos = vector3(cfg.Depot.ped.coords.x, cfg.Depot.ped.coords.y, cfg.Depot.ped.coords.z)
 
-Veyl.Startup({ 'veyl_core', 'veyl_banking', 'veyl_jobs', 'veyl_vehicles' }, function()
+Veyl.Startup({ 'veyl_core', 'veyl_vehicles' }, function()
     local ok = Veyl.Migrate({
         {
-            id = '001_runs',
+            id = '001_runs_v2',
             sql = {
                 [[CREATE TABLE IF NOT EXISTS veyl_delivery_runs (
                     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-                    character_id INT UNSIGNED NOT NULL,
+                    citizenid VARCHAR(16) NOT NULL,
                     status ENUM('active','completed','cancelled','abandoned') NOT NULL DEFAULT 'active',
                     stops LONGTEXT NOT NULL,
                     stops_total TINYINT UNSIGNED NOT NULL,
@@ -24,13 +25,13 @@ Veyl.Startup({ 'veyl_core', 'veyl_banking', 'veyl_jobs', 'veyl_vehicles' }, func
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     ended_at TIMESTAMP NULL DEFAULT NULL,
                     PRIMARY KEY (id),
-                    KEY idx_char_status (character_id, status)
+                    KEY idx_citizen_status (citizenid, status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
     })
     if not ok then return false end
-    -- Runs that were active when the server stopped can never become payable later.
+    -- Runs left active by a restart can never become payable later.
     local n = MySQL.update.await([[UPDATE veyl_delivery_runs SET status = 'abandoned', end_reason = 'server_restart',
         ended_at = CURRENT_TIMESTAMP WHERE status = 'active']])
     if n and n > 0 then print(('^5[veyl_delivery] closed %d run(s) left active by a restart^7'):format(n)) end
@@ -60,23 +61,28 @@ end
 local function publicRun(run)
     local coords = {}
     for i, idx in ipairs(run.stops) do coords[i] = cfg.Stops[idx] end
-    return {
-        id = run.id, stops = coords, current = run.current, delivered = run.delivered, carrying = run.carrying,
-        netId = run.netId, plate = run.plate, total = #run.stops,
-    }
+    return { id = run.id, stops = coords, current = run.current, delivered = run.delivered, carrying = run.carrying,
+        netId = run.netId, plate = run.plate, total = #run.stops }
 end
 
-local function endRun(charId, status, reason, payout)
-    local run = runs[charId]
+--- The run is only usable by the same character in the same session it was started in.
+local function activeRun(src, citizenid)
+    local run = runs[citizenid]
+    if not run or run.src ~= src or Veyl.GetSessionGeneration(src) ~= run.generation then return nil end
+    return run
+end
+
+local function endRun(citizenid, status, reason, payout)
+    local run = runs[citizenid]
     if not run then return end
-    runs[charId] = nil
+    runs[citizenid] = nil
     if run.vehicleId then
         runByVehicle[run.vehicleId] = nil
-        exports.veyl_vehicles:DeleteVehicle(run.vehicleId) -- also revokes the temporary key
+        exports.veyl_vehicles:DeleteVehicle(run.vehicleId) -- keys are dropped with the vehicle
     end
     MySQL.update([[UPDATE veyl_delivery_runs SET status = ?, end_reason = ?, delivered = ?, payout = ?, ended_at = CURRENT_TIMESTAMP
         WHERE id = ? AND status = 'active']], { status, reason, run.delivered, payout or 0, run.id })
-    if run.src and GetPlayerName(run.src) and Veyl.GetCharacterId(run.src) == charId then
+    if GetPlayerName(run.src) and Veyl.GetCitizenId(run.src) == citizenid then
         TriggerClientEvent('veyl_delivery:ended', run.src, status, reason)
     end
 end
@@ -98,57 +104,60 @@ end
 ---------------------------------------------------------------------------
 -- Callbacks
 ---------------------------------------------------------------------------
-Veyl.RegisterCallback('status', function(_, charId)
-    local run = runs[charId]
+Veyl.RegisterCallback('status', function(src, citizenid)
+    local run = activeRun(src, citizenid)
     return Veyl.Ok(run and publicRun(run) or nil)
 end, { cooldown = 500 })
 
-Veyl.RegisterCallback('start', function(src, charId)
-    if runs[charId] then return Veyl.Err('INVALID_STATE', 'You already have an active route') end
+Veyl.RegisterCallback('start', function(src, citizenid)
+    if runs[citizenid] then return Veyl.Err('INVALID_STATE', 'You already have an active route') end
     if not nearDepot(src, cfg.Depot.radius + 2.0) then return Veyl.Err('TOO_FAR', 'Talk to the depot manager') end
 
-    local job = exports.veyl_jobs:GetJob(charId)
-    if not job then return Veyl.Err('NOT_READY', 'Job data not loaded yet') end
-    if job.name ~= cfg.Job then
-        if job.name ~= 'unemployed' then
-            return Veyl.Err('INVALID_STATE', ('You already work for %s. Use /quitjob first.'):format(job.label))
+    -- Eligibility through the core job APIs.
+    local pd = Veyl.GetPlayerData(src)
+    if pd.job.name ~= cfg.Job then
+        if pd.jobs[cfg.Job] ~= nil then
+            exports.veyl_core:SetPlayerPrimaryJob(citizenid, cfg.Job)         -- already a member: select it
+        elseif pd.job.name == 'unemployed' then
+            if not exports.veyl_core:SetJob(src, cfg.Job, 0) then return Veyl.Err('INTERNAL', 'Could not sign you on') end
+            Veyl.Notify(src, 'You are now employed by GoPostal.', 'success')
+        else
+            return Veyl.Err('INVALID_STATE', ('You work for %s. Switch jobs with /jobs or /quitjob first.'):format(pd.job.label))
         end
-        local hired = Veyl.Await('veyl_jobs', 'SetJob', 10000, charId, cfg.Job, 0, 'Signed on at delivery depot')
-        if not hired.ok then return hired end
-        Veyl.Notify(src, 'You are now employed by GoPostal.', 'success')
-    elseif not exports.veyl_jobs:IsOnDuty(charId, cfg.Job) then
-        return Veyl.Err('INVALID_STATE', 'Go on duty first (/duty)')
+        pd = Veyl.GetPlayerData(src)
     end
-
+    if not pd.job.onduty then return Veyl.Err('INVALID_STATE', 'Go on duty first (/duty)') end
     if spawnBlocked() then return Veyl.Err('BUSY', 'The loading bay is blocked. Move the vehicle out of the way.') end
 
+    local generation = Veyl.GetSessionGeneration(src)
     local stops = pickStops(cfg.StopsPerRun)
-    local runId = MySQL.insert.await('INSERT INTO veyl_delivery_runs (character_id, stops, stops_total) VALUES (?, ?, ?)',
-        { charId, json.encode(stops), #stops })
+    local runId = MySQL.insert.await('INSERT INTO veyl_delivery_runs (citizenid, stops, stops_total) VALUES (?, ?, ?)',
+        { citizenid, json.encode(stops), #stops })
     if not runId then return Veyl.Err('DATABASE_ERROR', 'Could not create route') end
 
     local van = Veyl.Await('veyl_vehicles', 'SpawnAuthorizedVehicle', 10000, {
-        model = cfg.VanModel, coords = cfg.Depot.vanSpawn, characterId = charId, temporary = true, platePrefix = 'POST',
+        model = cfg.VanModel, coords = cfg.Depot.vanSpawn, citizenid = citizenid, temporary = true, platePrefix = 'POST', fuel = 100,
     })
-    if not van.ok then
-        MySQL.update('UPDATE veyl_delivery_runs SET status = ?, end_reason = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?',
-            { 'cancelled', 'van_spawn_failed', runId })
-        return Veyl.Err(van.code, 'Could not prepare a van: ' .. tostring(van.message))
+    if not van.ok or Veyl.GetSessionGeneration(src) ~= generation then
+        if van.ok then exports.veyl_vehicles:DeleteVehicle(van.data.vehicleId) end
+        MySQL.update("UPDATE veyl_delivery_runs SET status = 'cancelled', end_reason = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?",
+            { van.ok and 'session_changed' or 'van_spawn_failed', runId })
+        return Veyl.Err(van.ok and 'INVALID_STATE' or van.code, 'Could not prepare a van')
     end
 
     local run = {
-        id = runId, src = src, charId = charId, stops = stops, current = 1, delivered = 0, carrying = false,
-        vehicleId = van.data.vehicleId, netId = van.data.netId, plate = van.data.plate,
+        id = runId, src = src, generation = generation, citizenid = citizenid, stops = stops, current = 1, delivered = 0,
+        carrying = false, vehicleId = van.data.vehicleId, netId = van.data.netId, plate = van.data.plate,
         lastActionAt = os.time(), paying = false,
     }
-    runs[charId] = run
-    runByVehicle[run.vehicleId] = charId
+    runs[citizenid] = run
+    runByVehicle[run.vehicleId] = citizenid
     Veyl.Audit(src, 'delivery_started', { runId = runId, stops = #stops })
     return Veyl.Ok(publicRun(run), ('Route assigned: %d stops. Your van is %s.'):format(#stops, run.plate))
 end, { cooldown = 3000 })
 
-Veyl.RegisterCallback('takePackage', function(src, charId)
-    local run = runs[charId]
+Veyl.RegisterCallback('takePackage', function(src, citizenid)
+    local run = activeRun(src, citizenid)
     if not run or run.paying then return Veyl.Err('INVALID_STATE', 'No active route') end
     if run.carrying then return Veyl.Err('INVALID_STATE', 'You are already carrying a package') end
     if run.current > #run.stops then return Veyl.Err('INVALID_STATE', 'All packages delivered - return to the depot') end
@@ -161,8 +170,8 @@ Veyl.RegisterCallback('takePackage', function(src, charId)
     return Veyl.Ok(publicRun(run), 'Package collected')
 end, { cooldown = 1000 })
 
-Veyl.RegisterCallback('deliver', function(src, charId)
-    local run = runs[charId]
+Veyl.RegisterCallback('deliver', function(src, citizenid)
+    local run = activeRun(src, citizenid)
     if not run or run.paying then return Veyl.Err('INVALID_STATE', 'No active route') end
     if not run.carrying then return Veyl.Err('INVALID_STATE', 'Grab the package from your van first') end
     local stop = cfg.Stops[run.stops[run.current]]
@@ -184,8 +193,8 @@ Veyl.RegisterCallback('deliver', function(src, charId)
         or ('Delivered (%d/%d)'):format(run.delivered, #run.stops))
 end, { cooldown = 1000 })
 
-Veyl.RegisterCallback('finish', function(src, charId)
-    local run = runs[charId]
+Veyl.RegisterCallback('finish', function(src, citizenid)
+    local run = activeRun(src, citizenid)
     if not run then return Veyl.Err('INVALID_STATE', 'No active route') end
     if run.paying then return Veyl.Err('BUSY', 'Payment already in progress') end
     if not nearDepot(src, cfg.Depot.radius + 2.0) then return Veyl.Err('TOO_FAR', 'Talk to the depot manager') end
@@ -197,53 +206,56 @@ Veyl.RegisterCallback('finish', function(src, charId)
 
     run.paying = true
     if payout > 0 then
-        local res = Veyl.Await('veyl_banking', 'Credit', 15000, charId, 'bank', payout,
+        local res = Veyl.Await('veyl_core', 'CreditOnce', 15000, citizenid, 'bank', payout,
             ('GoPostal route #%d (%d stops)'):format(run.id, run.delivered), ('delivery:%d'):format(run.id))
         if not res.ok and res.code ~= 'DUPLICATE_OPERATION' then
-            run.paying = false -- safe to retry: the op id prevents a second payout
+            run.paying = false -- safe to retry: the operation id prevents a second payout
             return Veyl.Err(res.code, 'Payment failed, please try again in a moment')
         end
     end
-    endRun(charId, 'completed', complete and 'completed' or 'ended_early', payout)
+    endRun(citizenid, 'completed', complete and 'completed' or 'ended_early', payout)
     Veyl.Audit(src, 'delivery_completed', { runId = run.id, delivered = run.delivered, payout = payout })
     local msg = payout > 0 and ('Shift complete! $%d paid to your bank.'):format(payout) or 'Shift ended with no deliveries.'
     if complete and not vanReturned then msg = msg .. ' (No bonus: the van was not returned.)' end
     return Veyl.Ok({ payout = payout }, msg)
 end, { cooldown = 2000 })
 
-Veyl.RegisterCallback('cancel', function(src, charId)
-    if not runs[charId] then return Veyl.Err('INVALID_STATE', 'No active route') end
-    if runs[charId].paying then return Veyl.Err('BUSY', 'Payment in progress') end
-    endRun(charId, 'cancelled', 'player_cancelled', 0)
+Veyl.RegisterCallback('cancel', function(src, citizenid)
+    local run = activeRun(src, citizenid)
+    if not run then return Veyl.Err('INVALID_STATE', 'No active route') end
+    if run.paying then return Veyl.Err('BUSY', 'Payment in progress') end
+    endRun(citizenid, 'cancelled', 'player_cancelled', 0)
     return Veyl.Ok(nil, 'Route cancelled. Unpaid packages were returned to the depot.')
 end, { cooldown = 2000 })
 
 ---------------------------------------------------------------------------
--- Interruptions
+-- Interruptions: none of these ever pay.
 ---------------------------------------------------------------------------
-AddEventHandler('veyl:characterUnloading', function(_, charId)
-    if runs[charId] and not runs[charId].paying then endRun(charId, 'abandoned', 'player_left', 0) end
+AddEventHandler('VeylCore:Server:OnPlayerUnload', function(_, citizenid)
+    if runs[citizenid] and not runs[citizenid].paying then endRun(citizenid, 'abandoned', 'player_left', 0) end
 end)
 
 AddEventHandler('veyl_vehicles:destroyed', function(vehicleId)
-    local charId = runByVehicle[vehicleId]
-    if charId and runs[charId] and not runs[charId].paying then endRun(charId, 'cancelled', 'van_destroyed', 0) end
+    local cid = runByVehicle[vehicleId]
+    if cid and runs[cid] and not runs[cid].paying then endRun(cid, 'cancelled', 'van_destroyed', 0) end
 end)
 
 AddEventHandler('veyl_vehicles:removed', function(vehicleId, reason)
-    local charId = runByVehicle[vehicleId]
-    if charId and reason == 'missing' and runs[charId] and not runs[charId].paying then
-        endRun(charId, 'cancelled', 'van_missing', 0)
-    end
+    local cid = runByVehicle[vehicleId]
+    if cid and reason == 'missing' and runs[cid] and not runs[cid].paying then endRun(cid, 'cancelled', 'van_missing', 0) end
 end)
 
-AddEventHandler('veyl_jobs:updated', function(_, charId, job)
-    if runs[charId] and (job.name ~= cfg.Job or not job.onDuty) and not runs[charId].paying then
-        endRun(charId, 'cancelled', 'left_job_or_duty', 0)
-    end
+AddEventHandler('VeylCore:Server:OnJobUpdate', function(src, job)
+    local cid = Veyl.GetCitizenId(src)
+    if cid and runs[cid] and job.name ~= cfg.Job and not runs[cid].paying then endRun(cid, 'cancelled', 'left_job', 0) end
+end)
+
+AddEventHandler('VeylCore:Server:SetDuty', function(src, onDuty)
+    local cid = Veyl.GetCitizenId(src)
+    if cid and runs[cid] and not onDuty and not runs[cid].paying then endRun(cid, 'cancelled', 'went_off_duty', 0) end
 end)
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
-    for charId in pairs(runs) do endRun(charId, 'abandoned', 'resource_stop', 0) end
+    for cid in pairs(runs) do endRun(cid, 'abandoned', 'resource_stop', 0) end
 end)

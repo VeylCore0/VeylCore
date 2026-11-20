@@ -1,198 +1,163 @@
 # VeylCore
 
-A modular FiveM roleplay framework with a small core and separate gameplay resources (`veyl_` prefix).
-This release implements **milestones 0–2** of the [development plan](docs/VeylCore-Framework-Development-Plan.md):
-the first complete persistent loop.
+A FiveM roleplay framework that should feel familiar to QBCore and QBox developers. It keeps its own core
+(`veyl_core`), the `veyl_` resource prefix and its violet branding. This release follows **plan v2**
+([docs/VeylCore-Framework-Development-Plan.md](docs/VeylCore-Framework-Development-Plan.md)):
 
-> Connect → create/select a character → customise appearance → spawn → start a GoPostal delivery shift →
-> drive the assigned van → deliver packages → get paid once (server-calculated) → buy food at a 24/7 → eat it →
-> disconnect and reconnect with the same character, money, inventory and position.
+- **QB-style PlayerData:** `citizenid`, `cid`, `charinfo`, `money`, `job`/`jobs`, `gang`/`gangs`, `metadata` and `position`.
+- **One core owns player state:** characters, personal cash/bank/crypto, metadata, multijob/multigang membership, permissions and lifecycle.
+- **Two access styles, one backend:** direct exports (`exports.veyl_core:GetPlayer(source)`) and a QB-style
+  `GetCoreObject()` facade. An optional `qb-core` shim lets supported QBCore scripts run unmodified.
+- **ox stack:** `oxmysql`, `ox_lib`, `ox_target`, and `ox_inventory` with a real VeylCore framework bridge.
+- **Separate gameplay resources:** banking UI, jobs UI, keys, fuel, shops, delivery and so on, each replaceable.
 
 ## Status
 
 | Check | Result |
 | --- | --- |
-| Server boot (FXServer build 3751 + OneSync, MariaDB 10.4.32, oxmysql 2.14.3) | ✅ All 16 resources start and report ready, no script errors |
-| Database migrations | ✅ Applied once, recorded in `veyl_migrations` |
-| Lua / JS syntax (68 files) | ✅ Parsed cleanly |
-| In-game client testing | ❌ **Not yet run.** The acceptance scenarios below still need two real players |
+| Lua / JS syntax (all files) | ✅ Parsed cleanly |
+| v1 boot (FXServer, game build 3751, oxmysql 2.14.3, MariaDB 10.4.32) | ✅ Clean, all services ready |
+| **v2 boot with the ox stack** | ⏳ Needs a server restart through txAdmin (see the commit/PR notes) |
+| In-game acceptance scenarios | ❌ Not run yet (needs real players; checklist below) |
 
 ## Resources
 
-| Resource | What it does |
+| Resource | Role |
 | --- | --- |
-| `veyl_core` | Accounts (Rockstar license), sessions, active-character ownership, ACE permissions, audit log, shared `Veyl` library (callbacks, migrations, readiness, locks) |
-| `veyl_ui` | Notifications, progress bars, confirm dialogs, input forms, menus. The single owner of modal NUI focus |
-| `veyl_world` | Server-synced clock and weather, ambient population/dispatch settings |
-| `veyl_interact` | One interaction API: zones, NPCs and entities with an E-key prompt and per-resource cleanup |
-| `veyl_characters` | Character slots, creation, ownership-checked selection, soft delete with name confirmation |
-| `veyl_appearance` | Freemode ped editor (heritage, hair, clothing, props) with live preview; saved per character |
-| `veyl_spawn` | Bounded spawn pipeline with fallbacks, last-location persistence, basic death → hospital respawn |
-| `veyl_banking` | Cash/bank accounts, ledger with unique operation IDs, repeat-safe debit/credit/transfer, Fleeca bank counters, `/givecash` |
-| `veyl_inventory` | Built-in item provider: use/give, personal stashes, weight limits, repeat-safe grants |
-| `veyl_needs` | Persisted hunger/thirst/stress, consumable effects, starvation damage |
-| `veyl_jobs` | Job definitions/grades, assignments, duty, repeat-safe paychecks |
-| `veyl_hud` | Health, armor, needs, stamina, oxygen, cash/bank, job, vehicle speed/fuel/lock |
-| `veyl_vehicles` | Authorized server-side spawns, key grants, locks (`L`), server-side fuel and fuel stations, cleanup ownership |
-| `veyl_shops` | 24/7 stores with server-owned prices; purchase records with refund and restart reconciliation |
-| `veyl_delivery` | GoPostal depot NPC, assigned van, randomized stops, server-validated package state, one-time payout |
-| `veyl_admin` | Staff commands with server-side permission checks and audit records, `/report` system |
+| `veyl_core` | Accounts, characters, PlayerData, personal money and ledger, metadata, jobs/gangs, permissions, paychecks, lifecycle events, native exports and the core-object facade |
+| `[compat]/qb-core` | Optional QBCore shim: `GetCoreObject`, QBCore events, `QBCore:Notify`, `@qb-core/shared/locale.lua` |
+| `veyl_ui` | One UI route for notify, progress, confirm, input and menu. Uses ox_lib by default (violet theme), or VeylCore's own NUI |
+| `veyl_interact` | One interaction API: zones, NPCs and entities through ox_target, with an E-key fallback |
+| `veyl_characters` | Character select/create/delete screen. The core validates everything |
+| `veyl_appearance` | Freemode ped editor, saved per `citizenid` |
+| `veyl_spawn` | Bounded spawn stages, last position, hospital respawn, death state in core metadata |
+| `veyl_inventory` | ox_inventory adapter: repeat-safe give/remove, usable-item pipeline, stashes |
+| `veyl_needs` | Hunger/thirst/stress decay and food effects on core metadata (server-side) |
+| `veyl_hud` | Health, armor, needs, stamina, oxygen, voice, money, job, speed/fuel/lock |
+| `veyl_banking` | Bank counters: deposit, withdraw, transfer, history, `/givecash` (all through core money) |
+| `veyl_jobs` | `/duty`, `/job`, `/jobs` (choose primary among memberships), `/quitjob` |
+| `veyl_vehicles` | Authorized server spawns, vehicle ids, cleanup ownership, `veyl_player_vehicles` table |
+| `veyl_vehiclekeys` | Key grants, `L` to lock/unlock, key-required driving |
+| `veyl_fuel` | Server-side consumption, fuel stations, refuelling paid through core money |
+| `veyl_shops` | 24/7 stores: server prices, durable debit, item grant, refund/review reconciliation |
+| `veyl_delivery` | GoPostal route: depot NPC, assigned van and key, server-validated stops, one-time payout |
+| `veyl_world` | Synced clock and weather, population settings |
+| `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
+| `[examples]/veyl_qbexample` | A QBCore-style resource running on VeylCore through the shim |
 
 ## Installation
 
-1. **Requirements:** FXServer with OneSync enabled, MariaDB/MySQL, and [oxmysql](https://github.com/overextended/oxmysql/releases) (tested with v2.14.3).
-2. Copy `resources/[veyl]` into your server's `resources` folder, or create a junction or symlink to it.
-3. Create a database such as `veylcore`. Tables are created automatically by each resource's migrations on first start.
-4. Merge [`server.cfg.example`](server.cfg.example) into your `server.cfg`:
-   - set `mysql_connection_string`
-   - `ensure oxmysql` and the `veyl_*` resources in the listed order
-   - **remove** `spawnmanager` and `basic-gamemode` (VeylCore owns spawning)
-   - grant staff `add_ace group.admin veyl.admin allow`
-5. Start the server and look for `[veyl_*] ready` lines. If a service prints `NOT READY`, the line names the failed stage.
+1. Install the pinned dependencies listed in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md): oxmysql, ox_lib, ox_target and ox_inventory.
+2. Install the ox_inventory integration. It copies the bridge into `ox_inventory/modules/bridge/veyl`, adds the
+   VeylCore items, and turns off ox's money-item shops (a backup is kept):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File integrations\install-ox-integration.ps1 -OxInventoryPath "C:\path\to\resources\[ox]\ox_inventory"
+   ```
+3. Copy `resources/[veyl]` into your server's resources folder, or link it.
+4. Create an empty database. Every resource creates and migrates its own tables on first start.
+5. Merge [server.cfg.example](server.cfg.example) into your config. Keep the `inventory:*` convars and the start order.
+   Don't run upstream `qb-core`, `spawnmanager` or `basic-gamemode` alongside it.
+6. Start the server. Each service prints `[veyl_*] ready`. Anything that can't start prints `NOT READY` and the stage that failed.
 
-## Player controls & commands
+## Scripting against VeylCore
 
-| Input | Action |
-| --- | --- |
-| `E` | Interact (NPCs, banks, stashes, fuel pumps, delivery stops, van) |
-| `F2` / `/inventory` | Inventory (rebindable in Settings → Key Bindings → FiveM) |
-| `L` / `/vehlock` | Lock or unlock a VeylCore vehicle you have keys for |
-| `X` | Cancel the current progress action |
-| `/logout` | Return to character selection |
-| `/appearance` | Open the appearance editor (`AppearanceConfig.AllowCommand`) |
-| `/cash`, `/givecash [id] [amount]` | Show balances, hand cash to a nearby player |
-| `/job`, `/duty`, `/quitjob` | Job info, toggle duty, leave an open job |
-| `/hud` | Toggle the HUD |
-| `/report [message]` | Send a report to staff |
-
-## Staff commands (require `veyl.admin`)
-
-`/vplayers` `/vtp [id]` `/vbring [id]` `/vtpm` `/vcoords` `/vrevive [id]` `/vkick [id] [reason]`
-`/vgivemoney [id] [cash|bank] [amount] [reason]` `/vtakemoney …` `/vsetjob [id] [job] [grade]`
-`/vgiveitem [id] [item] [count]` `/vreports` `/vclosereport [id]` `/vtime [h] [m]` `/vweather [type]` `/vfreezetime` `/veyl_sessions`
-
-Unauthorized attempts are rejected server-side and written to `veyl_audit`.
-
-## Architecture
-
-### Ownership
-
-Each resource owns its tables and migrates them itself. Other resources change that data only through the
-owner's exports:
-
-- `veyl_core` owns sessions (`source` → account → active character). It never treats `source` as a permanent ID.
-- `veyl_banking` is the only code that changes balances (`server/ledger.lua`).
-- `veyl_inventory` with the configured provider is the only inventory authority.
-- `veyl_vehicles` is the only resource that spawns VeylCore vehicles. Each vehicle records the resource that owns
-  its cleanup.
-
-### Lifecycle events
-
-| Server event | Args | When |
-| --- | --- | --- |
-| `veyl:sessionStarted` | `src, accountId` | Client announced and account loaded |
-| `veyl:characterLoaded` | `src, charId, charInfo` | Character activated (also sent to the client) |
-| `veyl:characterUnloading` | `src, charId, reason` | Before unload. Save from cached state synchronously |
-| `veyl:characterUnloaded` | `src, charId, reason` | After unload (`logout`, `switch`, `dropped`) |
-| `veyl:playerSpawned` / `veyl:playerRespawned` | `src, charId` | Spawn pipeline finished / hospital respawn |
-| `veyl_inventory:itemUsed` | `src, charId, item, def` | After the item was removed |
-| `veyl_jobs:updated` | `src, charId, job` | Job or duty changed |
-| `veyl_vehicles:destroyed` / `veyl_vehicles:removed` | `vehicleId[, reason]` | Vehicle lifecycle |
-
-### Requests and responses
-
-Every client → server request uses `Veyl.Callback(resource, name, ...)`. Handlers are registered with
-`Veyl.RegisterCallback(name, handler, { cooldown, requireCharacter, permission })` and include:
-
-- readiness checks (`NOT_READY`)
-- one in-flight request per player and callback (`BUSY`)
-- rate limiting (`RATE_LIMITED`)
-- a client timeout (`TIMEOUT`)
-
-All responses use one shape: `{ ok, code, message, data }`. The codes are in `veyl_core/lib/shared.lua`.
-
-### Async exports
-
-Exports that touch the database or UI take a callback as their last argument. Call them with
-`Veyl.Await(resource, export, timeoutMs, ...)`, so cross-resource calls never yield inside another resource's stack.
+**Native (preferred for new resources)**
 
 ```lua
--- fxmanifest.lua of your resource
-shared_script '@veyl_core/lib/shared.lua'
-server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
-client_scripts { '@veyl_core/lib/client.lua', 'client.lua' }
+local player = exports.veyl_core:GetPlayer(source)            -- { PlayerData, Functions } or nil
+if not player then return end
+local job = player.PlayerData.job.name
+
+-- Repeat-safe reward: the same operation id can never pay twice.
+local res = Veyl.Await('veyl_core', 'CreditOnce', 15000, player.PlayerData.citizenid, 'bank', 250,
+    'Mission reward', ('mission:%d'):format(runId))
 ```
 
-| Resource | Export (server) | Notes |
+**Familiar core object**
+
+```lua
+local VeylCore = exports.veyl_core:GetCoreObject({ 'Functions', 'Shared' })   -- or exports['qb-core']:GetCoreObject()
+local Player = VeylCore.Functions.GetPlayer(source)
+Player.Functions.AddMoney('cash', 100, 'tip')   -- legacy boolean contract
+```
+
+Both styles read and change the same live player. There's no second registry, balance cache or save thread.
+
+### Core server exports
+
+| Area | Exports |
+| --- | --- |
+| Players | `GetPlayer(src)`, `GetPlayerByCitizenId(cid)`, `GetPlayerData(src)`, `GetPlayersData()`, `GetPlayers()`, `GetCitizenId(src)`, `GetSourceByCitizenId(cid)`, `GetSessionGeneration(src)`, `IsSpawned(src)`, `Save(src)`, `Logout(src)` |
+| Money (legacy, boolean) | `GetMoney(src, type)`, `AddMoney(src, type, amount, reason)`, `RemoveMoney(...)`, `SetMoney(...)` |
+| Money (durable, async) | `CreditOnce(cid, type, amount, reason, opId)`, `DebitOnce(...)`, `TransferMoney(fromCid, fromType, toCid, toType, amount, reason, opId)`, `GetMoneyOperation(opId)`, `GetMoneyHistory(cid, limit)` |
+| Metadata | `GetMetadata(src, key)`, `SetMetadata(src, key, value)`, `SetMetadataMany(src, values)` |
+| Jobs/gangs | `SetJob(src, name, grade)`, `SetGang(...)`, `SetJobDuty(src, bool)`, `AddPlayerToJob(cid, name, grade)`, `RemovePlayerFromJob(cid, name)`, `SetPlayerPrimaryJob(cid, name)`, gang equivalents, `GetGroups(src)`, `HasGroup(src, filter)`, `HasPrimaryGroup(src, filter)`, `IsGradeBoss(name, grade)` |
+| Catalogs | `GetJobs()`, `GetJob(name)`, `GetGangs()`, `GetVehicles()`, `GetWeapons()`, `GetLocations()` |
+| Other | `HasPermission(src, perm)` (ACE `veyl.<perm>`), `Notify(src, msg, type, ms)`, `Audit(src, resource, action, data)`, `GetCoreObject(filter)` |
+
+"Async" exports take a trailing callback. Call them with `Veyl.Await(resource, export, timeoutMs, ...)` from
+`@veyl_core/lib/shared.lua`.
+
+`SetJob` replaces the previous primary membership. `SetPlayerPrimaryJob` only selects among existing memberships.
+Only the primary job earns a paycheck.
+
+### Events (one per namespace per transition)
+
+| VeylCore | QBCore (via the shim) | When |
 | --- | --- | --- |
-| `veyl_core` | `GetPlayer(src)`, `GetCharacterId(src)`, `GetSourceByCharacter(id)`, `GetPlayers()`, `HasPermission(src, perm)`, `Audit(src, res, action, data)` | sync |
-| `veyl_banking` | `TryDebit(charId, 'cash'\|'bank', amount, reason, opId)`, `Credit(...)`, `Transfer(route, amount, reason, opId)`, `GetBalances(charId)`, `GetOperation(opId)` | async; same `opId` never applies twice |
-| `veyl_inventory` | `CanCarry(charId, item, count)`, `GiveItem(charId, item, count, metadata, opId)`, `RemoveItem(charId, item, count, opId)`, `GetItemCount`, `GetItems`, `GetOperation` | async |
-| `veyl_jobs` | `GetJob(charId)`, `IsOnDuty(charId, job)`, `SetDuty(src, bool)` (sync), `SetJob(charId, job, grade, reason)` (async) | |
-| `veyl_vehicles` | `SpawnAuthorizedVehicle(req)` (async), `DeleteVehicle`, `GiveKey`, `RevokeKey`, `HasKey`, `GetVehicle` | caller owns cleanup |
-| `veyl_needs` | `GetNeeds(charId)`, `AddStress(charId, amount)` | sync |
+| server `VeylCore:Server:PlayerLoaded (src, cid)` | `QBCore:Server:PlayerLoaded (Player)` | Character authenticated and loaded |
+| client `VeylCore:Client:OnPlayerLoaded` | `QBCore:Client:OnPlayerLoaded` | After the first spawn completes |
+| server/client `…OnPlayerUnload` | `QBCore:Server:OnPlayerUnload` / `QBCore:Client:OnPlayerUnload` | Logout, character switch or drop |
+| client `VeylCore:Player:SetPlayerData (data)` | `QBCore:Player:SetPlayerData` | Allowlisted view after any change |
+| `VeylCore:*:OnJobUpdate`, `OnGangUpdate`, `SetDuty`, `OnMoneyChange` | QBCore equivalents | After the server commits |
+| server `VeylCore:Server:OnGroupUpdate (src, name, grade?)` | n/a | Membership added, changed or removed |
 
-### Money and inventory consistency
+## Money and inventory consistency
 
-Each balance change is one DB transaction: a balance update plus a ledger row with a `UNIQUE` `op_id`. It runs
-under a per-account lock, and a `CHECK (balance >= 0)` constraint backs it up.
+- **One ledger:** every personal money change is one database transaction. It's a conditional `UPDATE … balance + delta >= 0`
+  plus a ledger row with a `UNIQUE op_id`, applied in order through a per-character queue.
+- **Repeat-safe rewards:** `CreditOnce`/`DebitOnce`/`TransferMoney` return only after the commit, and the same `op_id`
+  can never apply twice. Legacy `AddMoney` keeps QB's boolean contract and writes through, with retries.
+- **No money items:** `inventory:accounts "[]"` keeps ox_inventory from creating money items, and the bridge never syncs balances.
+- **Shop purchases are recorded operations:**
+  - `pending → paid → delivered`
+  - `paid → refunded` when the item grant fails
+  - `pending → failed` when the debit is refused
+  - `paid → review` when the grant's outcome is unknown after an interruption. Staff decide; it's never auto-refunded, so it can't double-pay.
 
-Shop purchases are recorded operations that move through these states:
+## Player commands
 
-- `pending` → `paid` → `delivered`
-- `paid` → `refunded`, when the grant fails
-- `pending` → `failed`, when the debit is refused
+`F2`/`TAB` inventory (ox), `L` lock, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
+`/duty`, `/quitjob`, `/hud`, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
 
-Reconciliation checks banking and inventory op records at startup and every 10 minutes. It resolves anything left
-in `pending` or `paid`.
+Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive` `/vkick` `/vgivemoney` `/vtakemoney`
+`/vsetjob` `/vaddjob` `/vremovejob` `/vsetgang` `/vgiveitem` `/vreports` `/vclosereport` `/vtime` `/vweather`
+`/vfreezetime` `/veyl_sessions`
 
-The delivery payout's op id is `delivery:<runId>`, so repeated finish requests cannot pay twice. Runs left `active`
-by a restart are closed as `abandoned` and can never pay later.
+## Known gaps and deviations
 
-## Delivery job
+- **ox_target groups:** ox_target has no VeylCore framework module, so its own `groups` option isn't enforced.
+  `veyl_interact` applies group filters against VeylCore PlayerData instead, and servers validate every action anyway.
+- **Callbacks:** VeylCore resources use VeylCore's bounded callbacks (timeouts, rate limits, in-flight limits)
+  rather than `lib.callback`, because the plan requires a timeout on every wait. The QB shim implements
+  QB-style callbacks with request ids.
+- **Item metadata:** handled by ox_inventory. An interrupted grant leaves its operation `pending`, meaning
+  "unknown", and exactly-once item delivery across a crash is not claimed.
+- **Locations:** delivery coordinates are starting values. Check them in-game with `/vcoords`.
+- **Not built yet:** later milestones (management/boss menu, gangs UI, garages, dealership, city hall, police/EMS/dispatch,
+  housing and so on), plus the offline QB/QBox data import tool.
 
-The depot is the GoPostal blip. The flow:
-
-1. Talk to the manager. The first time, you are signed on as a Courier.
-2. Take a package from the back of your van.
-3. Drive to the marked address and deliver it.
-4. Repeat until the route is done.
-5. Return the van to the depot and finish for `$85/stop`, plus a `$150` bonus if all stops are done and the van is back.
-
-The server validates distance to the van and the door, the current stop, package state, and the minimum time between
-stops.
-
-If you cancel, disconnect, switch character, leave the job, or the van is destroyed, the run ends unpaid.
-
-> ⚠️ The depot, van spawn and stop **coordinates are starting values and have not been checked in-game**. Stand at
-> each spot, run `/vcoords`, and update `veyl_delivery/config.lua`.
-
-## Deviations from the plan (on purpose)
-
-- **Inventory:** ships a built-in provider instead of ox_inventory. ox_inventory has no VeylCore bridge. It would
-  need a custom framework bridge and its own testing, and running two inventory authorities breaks the plan's own rule.
-  `server/provider_builtin.lua` defines the provider contract a future ox bridge must implement. Item metadata is
-  accepted but not stored yet.
-- **NUI** is plain HTML/CSS/JS with no build step, instead of TypeScript.
-- **Medical:** death handling is a basic timer and hospital respawn in `veyl_spawn` until `veyl_medical` (milestone 3) exists.
-- **Mascot:** the character screen uses a placeholder emblem. Drop the mascot art into `veyl_characters/web` when it's ready.
-
-## Not yet built (later milestones)
-
-- Garages, dealership and owned vehicles
-- City hall, police, EMS, dispatch, MDT, prison and doorlocks
-- Housing and businesses
-- Crafting
-- Criminal activities
-- Phone, voice integration and the QB/ESX bridge
-
-## Acceptance scenarios (to run in-game)
+## Acceptance checklist (to run in-game)
 
 - [ ] Two accounts create/select characters; neither can load or modify the other's
 - [ ] Rapid `/logout` and reselect: old requests don't affect the new character
-- [ ] Spam "Finish shift": exactly one payout (`SELECT * FROM veyl_bank_ledger WHERE op_id LIKE 'delivery:%'`)
+- [ ] `/qbexample`: the QB and native views show the same balance change
+- [ ] QB and native event subscribers each fire once (`QBCore:Client:OnPlayerLoaded` after spawn)
+- [ ] Multiple jobs: `/vaddjob` then `/jobs` switches primary without losing memberships
+- [ ] Stop `veyl_banking`: `AddMoney` and paychecks still work and balances persist
+- [ ] Spam "Finish shift": exactly one `delivery:<run>` ledger row
 - [ ] Two simultaneous purchases with limited funds: no negative balance, no duplicate items
-- [ ] Full inventory during purchase: refunded, `veyl_shop_purchases.status = 'refunded'`
-- [ ] Stop `veyl_ui` / `veyl_characters` with a menu open: cursor, controls and camera recover
-- [ ] Disconnect mid-route, reconnect: run is `abandoned`, van removed, no payout
-- [ ] Restart the server: money, items, job, needs and position restore
+- [ ] Full inventory during purchase: refunded (`veyl_shop_purchases.status = 'refunded'`)
+- [ ] Disconnect mid-route: run `abandoned`, van removed, no payout
+- [ ] Die and reconnect: respawn at the hospital
+- [ ] Restart the server: money, items, job, metadata and position restore
