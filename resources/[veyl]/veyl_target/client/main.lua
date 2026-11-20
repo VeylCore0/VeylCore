@@ -86,12 +86,14 @@ local function collect(ped)
         end
     end
 
-    if entity ~= 0 and DoesEntityExist(entity) then
-        local kind = entityKind(entity)
+    -- The ray can return handles for map geometry that are not script entities (entity type 0). Entity natives
+    -- such as GetEntityModel crash on those, so only real peds/vehicles/objects are treated as entities.
+    local kind = (entity ~= 0 and DoesEntityExist(entity)) and entityKind(entity) or nil
+    if kind then
         consider(Registry.localEntities[entity], entity)
         if NetworkGetEntityIsNetworked(entity) then consider(Registry.entities[NetworkGetNetworkIdFromEntity(entity)], entity) end
         consider(Registry.models[GetEntityModel(entity)], entity)
-        if kind then consider(Registry.globals[kind], entity) end
+        consider(Registry.globals[kind], entity)
     else
         entity = 0
     end
