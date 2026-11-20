@@ -147,15 +147,6 @@ local function setActive(v)
     if not v then clear() else pushOverlay(true) end
 end
 
-vlib.addKeybind({
-    name = 'veyl_target', description = 'Target / interact', defaultKey = TargetConfig.DefaultKey,
-    onPressed = function()
-        if toggleMode then setActive(not active) else setActive(true) end
-    end,
-    onReleased = function()
-        if not toggleMode then setActive(false) end
-    end,
-})
 
 -- Nearby zone index refresh (cheap, twice a second).
 CreateThread(function()
@@ -251,3 +242,14 @@ RegisterNUICallback('ui:ready', function(_, cb)
     cb({ ok = true })
     pushOverlay(true)
 end)
+
+-- Registered last so an input-setup problem can never prevent the exports above from existing.
+vlib.addKeybind({
+    name = 'veyl_target', description = 'Target / interact', defaultKey = TargetConfig.DefaultKey,
+    onPressed = function()
+        if toggleMode then setActive(not active) else setActive(true) end
+    end,
+    onReleased = function()
+        if not toggleMode then setActive(false) end
+    end,
+})

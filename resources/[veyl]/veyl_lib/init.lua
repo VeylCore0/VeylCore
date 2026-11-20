@@ -47,7 +47,10 @@ local function loadModule(self, key)
                 -- Multi-function module: expose each member on vlib.
                 for name, fn in pairs(result) do rawset(self, name, fn) end
             else
+                -- Single value (table or function): reachable by module name AND by the alias that was requested
+                -- (e.g. module 'keybind' returns the function exposed as vlib.addKeybind).
                 rawset(self, moduleName, result)
+                if key ~= moduleName then rawset(self, key, result) end
             end
             return rawget(self, key)
         end
