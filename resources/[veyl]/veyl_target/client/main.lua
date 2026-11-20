@@ -197,7 +197,6 @@ CreateThread(function()
 
                 if #list > 0 and (IsControlJustPressed(0, 38) or IsDisabledControlJustPressed(0, 24)) then
                     local opt = list[current.selected]
-                    if not toggleMode then active = false end
                     setActive(false) -- close the overlay before any action opens a modal
                     dispatch(opt, entity, coords, distance)
                 end
