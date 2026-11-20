@@ -16,12 +16,20 @@ local function applyDeltas(src, deltas)
     if next(values) then exports.veyl_core:SetMetadataMany(src, values) end
 end
 
-AddEventHandler('veyl_inventory:itemUsed', function(src, _, item)
-    local fx = NeedsConfig.ItemEffects[item]
-    if not fx then return end
-    applyDeltas(src, fx)
-    if fx.heal then TriggerClientEvent('veyl_needs:heal', src, math.min(100, fx.heal)) end
-end)
+-- 'consume' use handler: effects come from the server-side item definition (use.effects), never the client.
+-- veyl_inventory calls it exactly once per committed use operation (ctx.opId).
+local function registerConsume()
+    if GetResourceState('veyl_inventory') ~= 'started' then return end
+    exports.veyl_inventory:RegisterUseHandler('consume', function(ctx)
+        local fx = ctx.def and ctx.def.use and ctx.def.use.effects
+        if type(fx) ~= 'table' then return end
+        applyDeltas(ctx.source, fx)
+        if fx.heal then TriggerClientEvent('veyl_inventory:heal', ctx.source, math.min(100, tonumber(fx.heal) or 0)) end
+    end)
+end
+
+AddEventHandler('onResourceStart', function(res) if res == 'veyl_inventory' then SetTimeout(500, registerConsume) end end)
+CreateThread(registerConsume)
 
 AddEventHandler('veyl:playerRespawned', function(src)
     local pd = Veyl.GetPlayerData(src)

@@ -8,7 +8,7 @@
 -- Selecting an option triggers a LOCAL client event (preferred) or calls onSelect. Servers must still validate
 -- every resulting request; client-side checks (distance, groups) are presentation only.
 
-local useTarget = InteractConfig.Provider == 'ox_target' and GetResourceState('ox_target') == 'started'
+local useTarget = InteractConfig.Provider == 'veyl_target' and GetResourceState('veyl_target') == 'started'
 local useEKey = not useTarget or InteractConfig.EKeyAlongsideTarget
 
 local zones = {}   -- [id] = def
@@ -17,7 +17,7 @@ local busy = false
 
 local function owner() return GetInvokingResource() or GetCurrentResourceName() end
 
--- Group filters checked against VeylCore PlayerData (ox_target's own `groups` is not enforced under VeylCore).
+-- Group filters checked against VeylCore PlayerData (presentation only; servers re-validate).
 local function hasGroup(filter)
     if not filter then return true end
     local pd = exports.veyl_core:GetPlayerData() or {}
@@ -70,8 +70,8 @@ local function targetOptions(def)
         list[i] = {
             name = ('%s:%d'):format(def.id, i),
             label = o.label or 'Interact',
-            icon = o.icon or InteractConfig.DefaultIcon,
-            distance = math.max(1.5, def.radius),
+            icon = o.icon,
+            distance = math.min(25.0, math.max(1.5, def.radius + 0.5)),
             canInteract = function() return Veyl.IsLoaded() and optionAllowed(o) end,
             onSelect = function() fire(o) end,
         }
@@ -93,15 +93,15 @@ local function removeInternal(id)
     zones[id] = nil
     local p = peds[id]
     if p then
-        if useTarget and p.handle then pcall(function() exports.ox_target:removeLocalEntity(p.handle, optionNames(p.def)) end) end
+        if useTarget and p.handle then pcall(function() exports.veyl_target:removeLocalEntity(p.handle, optionNames(p.def)) end) end
         if p.handle and DoesEntityExist(p.handle) then DeleteEntity(p.handle) end
         peds[id] = nil
     end
     if def and useTarget then
         if def.kind == 'zone' and def.targetId then
-            pcall(function() exports.ox_target:removeZone(def.targetId, true) end)
+            pcall(function() exports.veyl_target:removeZone(def.targetId) end)
         elseif def.kind == 'entity' and def.netId then
-            pcall(function() exports.ox_target:removeEntity(def.netId, optionNames(def)) end)
+            pcall(function() exports.veyl_target:removeEntity(def.netId, optionNames(def)) end)
         end
     end
 end
@@ -112,8 +112,8 @@ exports('AddZone', function(def)
     def.kind = 'zone'
     zones[def.id] = def
     if useTarget then
-        def.targetId = exports.ox_target:addSphereZone({
-            coords = vector3(def.coords.x, def.coords.y, def.coords.z), radius = def.radius, debug = false,
+        def.targetId = exports.veyl_target:addSphereZone({
+            name = def.id, coords = vector3(def.coords.x, def.coords.y, def.coords.z), radius = def.radius,
             options = targetOptions(def),
         })
     end
@@ -125,7 +125,7 @@ exports('AddEntity', function(def)
     if zones[def.id] then removeInternal(def.id) end
     def.kind = 'entity'
     zones[def.id] = def
-    if useTarget and def.netId then exports.ox_target:addEntity(def.netId, targetOptions(def)) end
+    if useTarget and def.netId then exports.veyl_target:addEntity(def.netId, targetOptions(def)) end
     return def.id
 end)
 
@@ -161,10 +161,10 @@ CreateThread(function()
                     if p.def.scenario then TaskStartScenarioInPlace(ped, p.def.scenario, 0, true) end
                     SetModelAsNoLongerNeeded(hash)
                     p.handle = ped
-                    if useTarget then exports.ox_target:addLocalEntity(ped, targetOptions(p.def)) end
+                    if useTarget then exports.veyl_target:addLocalEntity(ped, targetOptions(p.def)) end
                 end
             elseif dist > 100.0 and p.handle then
-                if useTarget then pcall(function() exports.ox_target:removeLocalEntity(p.handle, optionNames(p.def)) end) end
+                if useTarget then pcall(function() exports.veyl_target:removeLocalEntity(p.handle, optionNames(p.def)) end) end
                 if DoesEntityExist(p.handle) then DeleteEntity(p.handle) end
                 p.handle = nil
             end
@@ -174,7 +174,7 @@ CreateThread(function()
 end)
 
 ---------------------------------------------------------------------------
--- E-key provider (fallback, or alongside ox_target when configured)
+-- E-key provider (fallback, or alongside veyl_target when configured)
 ---------------------------------------------------------------------------
 local function zonePosition(z)
     if z.kind == 'entity' then

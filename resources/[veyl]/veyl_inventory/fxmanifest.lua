@@ -3,11 +3,38 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_inventory'
-description 'VeylCore inventory adapter over ox_inventory: repeat-safe grants/removals, usable items, stashes'
-version '0.2.0'
+author 'VeylCore'
+description 'VeylCore inventory engine: server-owned items, slots, metadata, transactional transfers, stashes, item use'
+version '0.3.0'
 
-dependencies { 'oxmysql', 'veyl_core', 'veyl_interact', 'ox_inventory' }
+-- Native profile: veyl_lib + SQL driver + the VeylCore adapter. Do NOT run ox_inventory at the same time.
+dependencies { 'veyl_lib', 'oxmysql', 'veyl_core' }
 
-shared_scripts { '@veyl_core/lib/shared.lua', 'config.lua' }
-server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
-client_scripts { '@veyl_core/lib/client.lua', 'client.lua' }
+shared_scripts { '@veyl_lib/init.lua', 'config.lua' }
+
+server_scripts {
+    '@oxmysql/lib/MySQL.lua',
+    'server/items.lua',
+    'server/db.lua',
+    'server/store.lua',
+    'server/operations.lua',
+    'server/use.lua',
+    'server/stashes.lua',
+    'server/sessions.lua',
+    'server/adapter_veylcore.lua',
+    'server/exports.lua',
+}
+
+client_scripts {
+    'client/state.lua',
+    'client/ui.lua',
+    'client/use.lua',
+    'client/stashes.lua',
+}
+
+ui_page 'web/dist/index.html'
+files {
+    'web/dist/index.html',
+    'web/dist/assets/*',
+    'web/images/*.svg',
+}

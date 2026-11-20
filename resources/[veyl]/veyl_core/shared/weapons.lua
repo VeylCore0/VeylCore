@@ -1,4 +1,4 @@
--- Weapon catalog keyed by hash name. Inventory items/metadata remain owned by ox_inventory.
+-- Weapon catalog keyed by hash name. Inventory items/metadata are owned by veyl_inventory.
 return {
     weapon_unarmed = { name = 'weapon_unarmed', label = 'Fists', ammotype = nil, damagereason = 'Melee killed' },
     weapon_flashlight = { name = 'weapon_flashlight', label = 'Flashlight', ammotype = nil, damagereason = 'Melee killed' },

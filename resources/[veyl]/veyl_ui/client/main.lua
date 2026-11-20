@@ -1,7 +1,7 @@
 -- veyl_ui routing: one provider, one open modal at a time, cleanup when the owning resource stops.
 -- Exports take a trailing callback; call them with Veyl.UI.* from @veyl_core/lib/client.lua.
 
-local P = (UIConfig.Provider == 'veyl' or GetResourceState('ox_lib') ~= 'started') and ProviderVeyl or ProviderOx
+local P = UIConfig.Provider == 'veyl' and ProviderVeyl or ProviderVlib
 local modal = nil     -- { owner }
 local progress = nil  -- { owner }
 

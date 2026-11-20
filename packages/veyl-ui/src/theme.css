@@ -1,0 +1,64 @@
+/* VeylCore design tokens (plan: dark surfaces, violet accent, 8 px spacing, 10-12 px corners). */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+
+:root {
+  --v-surface: #11121a;
+  --v-raised: #1b1d2a;
+  --v-raised-2: #232637;
+  --v-border: #343247;
+  --v-accent: #8b5cf6;
+  --v-focus: #c4b5fd;
+  --v-text: #f5f3ff;
+  --v-text-2: #b8b2c8;
+  --v-success: #4ade80;
+  --v-warning: #fbbf24;
+  --v-error: #f87171;
+  --v-radius: 12px;
+  --v-radius-sm: 10px;
+  --v-s1: 8px;
+  --v-s2: 16px;
+  --v-s3: 24px;
+  --v-motion: 150ms;
+  --v-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --v-motion: 0ms; }
+}
+
+* { box-sizing: border-box; }
+html, body, #root {
+  margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+  /* Transparent until an explicit open message: a missing asset can never produce an opaque screen. */
+  background: transparent;
+  font-family: var(--v-font); font-size: 15px; color: var(--v-text);
+  user-select: none;
+}
+
+.v-panel {
+  background: var(--v-surface);
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+.v-btn {
+  font: inherit; color: var(--v-text); cursor: pointer;
+  background: var(--v-raised); border: 1px solid var(--v-border); border-radius: var(--v-radius-sm);
+  padding: 8px 16px; transition: border-color var(--v-motion), background var(--v-motion);
+}
+.v-btn:hover:not(:disabled) { border-color: var(--v-accent); }
+.v-btn:focus-visible { outline: 2px solid var(--v-focus); outline-offset: 2px; }
+.v-btn.primary { background: var(--v-accent); border-color: var(--v-accent); }
+.v-btn.danger { border-color: var(--v-error); color: var(--v-error); }
+.v-btn:disabled { opacity: 0.5; cursor: default; }
+
+.v-key {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px;
+  border-radius: 7px; background: var(--v-raised-2); border: 1px solid var(--v-border); font-weight: 600; font-size: 13px;
+}
+
+.v-muted { color: var(--v-text-2); }
+.v-hidden { display: none !important; }

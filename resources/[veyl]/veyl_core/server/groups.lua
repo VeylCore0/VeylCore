@@ -164,7 +164,7 @@ function Groups.SetDuty(src, onDuty)
     return true
 end
 
---- All memberships as name -> grade (jobs and gangs; default groups excluded). Used by ox_inventory.
+--- All memberships as name -> grade (jobs and gangs; default groups excluded). Used by inventory access rules.
 function Groups.GetGroups(src)
     local p = Core.Players[tonumber(src)]
     if not p then return {} end

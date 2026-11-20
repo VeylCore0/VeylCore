@@ -1,0 +1,10 @@
+.target { position: fixed; inset: 0; pointer-events: none; }
+.reticle {
+  position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  border: 2px solid rgba(245, 243, 255, 0.7); transition: all var(--v-motion);
+}
+.reticle.on { border-color: var(--v-focus); background: var(--v-accent); box-shadow: 0 0 12px rgba(139, 92, 246, 0.8); transform: scale(1.2); }
+.options { position: absolute; left: calc(50% + 24px); top: calc(50% - 12px); min-width: 200px; max-width: 320px; padding: 6px; }
+.opt { padding: 7px 10px; border-radius: 8px; border: 1px solid transparent; font-size: 14px; }
+.opt.sel { background: var(--v-raised-2); border-color: var(--v-focus); }
+.hint { font-size: 12px; padding: 6px 8px 2px; display: flex; gap: 6px; align-items: center; }

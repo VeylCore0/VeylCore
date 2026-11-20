@@ -105,26 +105,27 @@ local function makeFunctions(p)
     end
     F.Save = function() local pl = Core.Players[src]; if pl then Core.SavePlayer(pl) end end
     F.Logout = function() return Core.Logout(src, 'logout') end
-    -- Inventory delegates to ox_inventory (the item authority)
-    F.AddItem = function(item, amount, slot, info)
-        if GetResourceState('ox_inventory') ~= 'started' then return false end
-        return exports.ox_inventory:AddItem(src, item, amount or 1, info, slot) == true
+    -- Inventory delegates to veyl_inventory (the item authority). Legacy contract: synchronous booleans.
+    local function inv() return GetResourceState('veyl_inventory') == 'started' end
+    F.AddItem = function(item, amount, _, info)
+        if not inv() then return false end
+        return exports.veyl_inventory:AddItem(src, item, amount or 1, info) == true
     end
-    F.RemoveItem = function(item, amount, slot)
-        if GetResourceState('ox_inventory') ~= 'started' then return false end
-        return exports.ox_inventory:RemoveItem(src, item, amount or 1, nil, slot) == true
+    F.RemoveItem = function(item, amount)
+        if not inv() then return false end
+        return exports.veyl_inventory:RemoveItem(src, item, amount or 1) == true
     end
     F.GetItemByName = function(item)
-        if GetResourceState('ox_inventory') ~= 'started' then return nil end
-        return exports.ox_inventory:GetSlotWithItem(src, item)
+        if not inv() then return nil end
+        return exports.veyl_inventory:GetSlotWithItem(src, item)
     end
     F.GetItemsByName = function(item)
-        if GetResourceState('ox_inventory') ~= 'started' then return {} end
-        return exports.ox_inventory:GetSlotsWithItem(src, item) or {}
+        if not inv() then return {} end
+        return exports.veyl_inventory:GetSlotsWithItem(src, item) or {}
     end
     F.HasItem = function(item, amount)
-        if GetResourceState('ox_inventory') ~= 'started' then return false end
-        return (exports.ox_inventory:GetItemCount(src, item) or 0) >= (amount or 1)
+        if not inv() then return false end
+        return (exports.veyl_inventory:GetItemCount(src, item) or 0) >= (amount or 1)
     end
     return F
 end

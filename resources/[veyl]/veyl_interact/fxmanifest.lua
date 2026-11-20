@@ -3,8 +3,8 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_interact'
-description 'VeylCore interaction API: zones, NPCs and entities via ox_target, with an E-key fallback and per-resource cleanup'
-version '0.2.0'
+description 'VeylCore interaction API (forwards to veyl_target; E-key fallback) with per-resource cleanup'
+version '0.3.0'
 
 dependencies { 'veyl_core', 'veyl_ui' }
 

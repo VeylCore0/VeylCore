@@ -8,7 +8,9 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 - **One core owns player state:** characters, personal cash/bank/crypto, metadata, multijob/multigang membership, permissions and lifecycle.
 - **Two access styles, one backend:** direct exports (`exports.veyl_core:GetPlayer(source)`) and a QB-style
   `GetCoreObject()` facade. An optional `qb-core` shim lets supported QBCore scripts run unmodified.
-- **ox stack:** `oxmysql`, `ox_lib`, `ox_target`, and `ox_inventory` with a real VeylCore framework bridge.
+- **Native library, targeting and inventory:** `veyl_lib`, `veyl_target` and the `veyl_inventory` engine replace ox_lib, ox_target and ox_inventory
+  ([library/target/inventory plan](docs/VeylCore-Custom-Library-Target-Inventory-Plan.md), first sprint, see [docs/API-STATUS.md](docs/API-STATUS.md)).
+  The only external runtime dependency is `oxmysql`.
 - **Separate gameplay resources:** banking UI, jobs UI, keys, fuel, shops, delivery and so on, each replaceable.
 
 ## Status
@@ -17,7 +19,9 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | --- | --- |
 | Lua / JS syntax (all files) | ✅ Parsed cleanly |
 | v1 boot (FXServer, game build 3751, oxmysql 2.14.3, MariaDB 10.4.32) | ✅ Clean, all services ready |
-| **v2 boot with the ox stack** | ⏳ Needs a server restart through txAdmin (see the commit/PR notes) |
+| v2 boot with the ox stack (txAdmin, `start_38435_dev_server.bat`) | ✅ Clean: all services ready, QB facade OK, ox_inventory bridge loaded |
+| **Native profile boot** (veyl_lib, veyl_target, veyl_inventory; ox stopped) | ✅ Clean: all services ready, inventory engine migrated, no script errors |
+| UI builds (React + TypeScript, Vite) | ✅ `npm run build` / `npm run typecheck` pass |
 | In-game acceptance scenarios | ❌ Not run yet (needs real players; checklist below) |
 
 ## Resources
@@ -26,12 +30,14 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | --- | --- |
 | `veyl_core` | Accounts, characters, PlayerData, personal money and ledger, metadata, jobs/gangs, permissions, paychecks, lifecycle events, native exports and the core-object facade |
 | `[compat]/qb-core` | Optional QBCore shim: `GetCoreObject`, QBCore events, `QBCore:Notify`, `@qb-core/shared/locale.lua` |
-| `veyl_ui` | One UI route for notify, progress, confirm, input and menu. Uses ox_lib by default (violet theme), or VeylCore's own NUI |
-| `veyl_interact` | One interaction API: zones, NPCs and entities through ox_target, with an E-key fallback |
+| `veyl_lib` | Library (`vlib`/`vcache`): custom React menus, forms, alerts, notifications, progress, text prompts, the single focus broker, bounded callbacks, points/zones, streaming, keybinds, locale |
+| `veyl_target` | Targeting: one raycast loop, sphere/box zones, entity/local/model/global options, a custom overlay, group/item display filters |
+| `veyl_ui` | Compatibility layer: the older `Veyl.UI.*` calls forward to veyl_lib |
+| `veyl_interact` | Older interaction API, forwarding to veyl_target (E-key fallback) |
 | `veyl_characters` | Character select/create/delete screen. The core validates everything |
 | `veyl_appearance` | Freemode ped editor, saved per `citizenid` |
 | `veyl_spawn` | Bounded spawn stages, last position, hospital respawn, death state in core metadata |
-| `veyl_inventory` | ox_inventory adapter: repeat-safe give/remove, usable-item pipeline, stashes |
+| `veyl_inventory` | Inventory engine: server-owned items, slots, metadata and revisions; locked transactional moves with operation ids; stashes; reserved item use; React grid UI |
 | `veyl_needs` | Hunger/thirst/stress decay and food effects on core metadata (server-side) |
 | `veyl_hud` | Health, armor, needs, stamina, oxygen, voice, money, job, speed/fuel/lock |
 | `veyl_banking` | Bank counters: deposit, withdraw, transfer, history, `/givecash` (all through core money) |
@@ -47,16 +53,13 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 
 ## Installation
 
-1. Install the pinned dependencies listed in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md): oxmysql, ox_lib, ox_target and ox_inventory.
-2. Install the ox_inventory integration. It copies the bridge into `ox_inventory/modules/bridge/veyl`, adds the
-   VeylCore items, and turns off ox's money-item shops (a backup is kept):
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File integrations\install-ox-integration.ps1 -OxInventoryPath "C:\path\to\resources\[ox]\ox_inventory"
-   ```
+1. Install the pinned dependency listed in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md): **oxmysql** only.
+2. The compiled UIs (`web/dist`) are committed. To change a UI, edit `packages/*`, then run `npm install` and
+   `npm run build` at the repo root (Node 18+).
 3. Copy `resources/[veyl]` into your server's resources folder, or link it.
 4. Create an empty database. Every resource creates and migrates its own tables on first start.
-5. Merge [server.cfg.example](server.cfg.example) into your config. Keep the `inventory:*` convars and the start order.
-   Don't run upstream `qb-core`, `spawnmanager` or `basic-gamemode` alongside it.
+5. Merge [server.cfg.example](server.cfg.example) into your config and keep its start order. Don't run ox_lib, ox_target,
+   ox_inventory, upstream `qb-core`, `spawnmanager` or `basic-gamemode` alongside it.
 6. Start the server. Each service prints `[veyl_*] ready`. Anything that can't start prints `NOT READY` and the stage that failed.
 
 ## Scripting against VeylCore
@@ -118,16 +121,19 @@ Only the primary job earns a paycheck.
   plus a ledger row with a `UNIQUE op_id`, applied in order through a per-character queue.
 - **Repeat-safe rewards:** `CreditOnce`/`DebitOnce`/`TransferMoney` return only after the commit, and the same `op_id`
   can never apply twice. Legacy `AddMoney` keeps QB's boolean contract and writes through, with retries.
-- **No money items:** `inventory:accounts "[]"` keeps ox_inventory from creating money items, and the bridge never syncs balances.
+- **No money items:** veyl_inventory has no cash item. Money is numeric in veyl_core only.
+- **Inventory:** every move, grant, removal and use is one transaction (slots + revision + operation record), done under
+  sorted per-inventory locks, so a recorded operation happened and a missing one did not. See [docs/API-STATUS.md](docs/API-STATUS.md).
 - **Shop purchases are recorded operations:**
   - `pending → paid → delivered`
   - `paid → refunded` when the item grant fails
   - `pending → failed` when the debit is refused
-  - `paid → review` when the grant's outcome is unknown after an interruption. Staff decide; it's never auto-refunded, so it can't double-pay.
+  - Because the grant is atomic with its operation record, reconciliation refunds exactly the purchases that were not delivered.
+    The `review` state is only a safety net.
 
 ## Player commands
 
-`F2`/`TAB` inventory (ox), `L` lock, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
+`F2` inventory, hold `Left Alt` to target (E/click to select), `L` lock, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
 `/duty`, `/quitjob`, `/hud`, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
 
 Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive` `/vkick` `/vgivemoney` `/vtakemoney`
@@ -136,13 +142,11 @@ Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive`
 
 ## Known gaps and deviations
 
-- **ox_target groups:** ox_target has no VeylCore framework module, so its own `groups` option isn't enforced.
-  `veyl_interact` applies group filters against VeylCore PlayerData instead, and servers validate every action anyway.
-- **Callbacks:** VeylCore resources use VeylCore's bounded callbacks (timeouts, rate limits, in-flight limits)
-  rather than `lib.callback`, because the plan requires a timeout on every wait. The QB shim implements
-  QB-style callbacks with request ids.
-- **Item metadata:** handled by ox_inventory. An interrupted grant leaves its operation `pending`, meaning
-  "unknown", and exactly-once item delivery across a crash is not claimed.
+- **First sprint only** for veyl_lib, veyl_target and veyl_inventory. Hotbar, give/drop, vehicle storage, weapons,
+  crafting, hooks and the ox → native data converter are later phases ([docs/API-STATUS.md](docs/API-STATUS.md)).
+- **Callbacks:** older VeylCore resources still use `Veyl.Callback`. New code uses `vlib.callback`. Both are bounded
+  (timeouts, rate limits, in-flight limits).
+- **Shops** still use `DebitOnce` → `GiveItem` → refund. The plan's `ReserveFunds`/`CommitFunds` protocol comes in phase 5.
 - **Locations:** delivery coordinates are starting values. Check them in-game with `/vcoords`.
 - **Not built yet:** later milestones (management/boss menu, gangs UI, garages, dealership, city hall, police/EMS/dispatch,
   housing and so on), plus the offline QB/QBox data import tool.

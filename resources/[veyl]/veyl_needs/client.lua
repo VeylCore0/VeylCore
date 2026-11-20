@@ -1,10 +1,5 @@
 -- veyl_needs client: effects of empty needs and high stress (display is veyl_hud's job).
 
-RegisterNetEvent('veyl_needs:heal', function(amount)
-    local ped = PlayerPedId()
-    SetEntityHealth(ped, math.min(GetEntityMaxHealth(ped), GetEntityHealth(ped) + math.min(tonumber(amount) or 0, 100)))
-end)
-
 CreateThread(function()
     while true do
         Wait(10000)

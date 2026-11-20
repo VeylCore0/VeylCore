@@ -37,12 +37,12 @@ local function buildFunctions()
         end)
     end
     F.HasItem = function(items, amount)
-        if GetResourceState('ox_inventory') ~= 'started' then return false end
+        if GetResourceState('veyl_inventory') ~= 'started' then return false end
         if type(items) ~= 'table' then items = { items } end
         for k, v in pairs(items) do
             local name = type(k) == 'string' and k or v
             local need = type(k) == 'string' and v or (amount or 1)
-            if (exports.ox_inventory:Search('count', name) or 0) < need then return false end
+            if (exports.veyl_inventory:GetItemCount(name) or 0) < need then return false end
         end
         return true
     end
@@ -91,11 +91,11 @@ end
 
 local function buildShared()
     local items = {}
-    if GetResourceState('ox_inventory') == 'started' then
-        local ok, list = pcall(function() return exports.ox_inventory:Items() end)
+    if GetResourceState('veyl_inventory') == 'started' then
+        local ok, list = pcall(function() return exports.veyl_inventory:Items() end)
         if ok and type(list) == 'table' then
             for name, it in pairs(list) do
-                items[name] = { name = name, label = it.label, weight = it.weight or 0, image = name .. '.png', unique = it.stack == false }
+                items[name] = { name = name, label = it.label, weight = it.weight or 0, image = it.image or (name .. '.svg'), unique = it.stack == false }
             end
         end
     end

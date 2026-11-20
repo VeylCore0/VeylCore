@@ -1,4 +1,4 @@
-# VeylCore example server.cfg (plan v2). Merge into your own config. Never commit your real license key.
+# VeylCore example server.cfg (native profile). Merge into your own config. Never commit your real license key.
 endpoint_add_tcp "0.0.0.0:30120"
 endpoint_add_udp "0.0.0.0:30120"
 sv_licenseKey "changeme"
@@ -13,25 +13,17 @@ ensure chat
 
 set mysql_connection_string "mysql://user:password@localhost/veylcore?charset=utf8mb4"
 
-# ox_lib theme + ox_inventory integration (run integrations/install-ox-integration.ps1 first)
-setr ox:primaryColor violet
-setr ox:primaryShade 6
-setr inventory:framework "veyl"
-set inventory:accounts "[]"
-setr inventory:target true
-setr inventory:police "[\"police\"]"
-
+# Native profile: no ox_lib / ox_target / ox_inventory. (Transitional ox profile: see docs/DEPENDENCIES.md.)
 ensure oxmysql
-ensure ox_lib
+ensure veyl_lib
 ensure veyl_core
 ensure qb-core              # optional QBCore compatibility shim
 ensure veyl_vehicles
-ensure ox_target
-ensure ox_inventory
+ensure veyl_inventory
+ensure veyl_target
 ensure veyl_ui
 ensure veyl_world
 ensure veyl_interact
-ensure veyl_inventory
 ensure veyl_appearance
 ensure veyl_spawn
 ensure veyl_characters

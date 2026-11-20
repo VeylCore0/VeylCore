@@ -9,7 +9,7 @@ local function openShop(shopId)
     while true do
         local items = {}
         for i, entry in ipairs(shop.catalog) do
-            local def = exports.ox_inventory:Items(entry.item)
+            local def = exports.veyl_inventory:Items(entry.item)
             items[i] = { label = def and def.label or entry.item, right = '$' .. entry.price, value = i }
         end
         local index = Veyl.UI.Menu({ title = shop.label, subtitle = 'Prices include tax', items = items })

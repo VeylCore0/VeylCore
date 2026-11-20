@@ -1,0 +1,13 @@
+{
+  "name": "@veyl/inventory-ui",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@veyl/ui": "0.3.0"
+  }
+}

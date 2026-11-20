@@ -1,7 +1,5 @@
 UIConfig = {
-    -- 'ox_lib' (default): route notifications, progress, dialogs and menus through ox_lib so VeylCore,
-    -- ox_inventory and ox_target share ONE notification/progress system. Theme it violet with
-    -- `setr ox:primaryColor violet` in server.cfg.
-    -- 'veyl': use VeylCore's own branded NUI (web/) instead.
-    Provider = 'ox_lib',
+    -- 'veyl_lib' (default): forward to veyl_lib, the single focus broker and shared VeylCore visual system.
+    -- 'veyl': legacy built-in NUI (web/). Kept for rollback only; do not mix with veyl_lib modals.
+    Provider = 'veyl_lib',
 }

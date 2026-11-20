@@ -13,15 +13,15 @@ Legend:
 | API | Status | Notes |
 | --- | --- | --- |
 | `GetCoreObject(filter)` | 🟡 | Sections: `Functions`, `Shared`, `Commands`, `Config` (server); `Functions`, `Shared` (client) |
-| `Functions.GetPlayer(src)` | 🟡 | Returns `{ PlayerData, Functions }`. `PlayerData.items` is a read-only view built from ox_inventory |
+| `Functions.GetPlayer(src)` | 🟡 | Returns `{ PlayerData, Functions }`. `PlayerData.items` is a read-only view derived from veyl_inventory |
 | `Functions.GetPlayerByCitizenId`, `GetPlayerByPhone`, `GetPlayers`, `GetQBPlayers`, `GetIdentifier`, `GetSource` | 🟡 | |
 | `Functions.Notify` (server/client) and `QBCore:Notify` event | 🟡 | `primary` is mapped to `info` |
 | `Functions.HasPermission`, `Kick`, `GetDutyCount`, `HasItem` | 🟡 | Permissions are ACE `veyl.<perm>`. `IsPlayerBanned` always returns false (use txAdmin bans) |
 | `Functions.CreateCallback` / client `TriggerCallback` | 🟡 | Request ids, a 30 s client timeout, and pending requests cleared on unload |
-| `Functions.CreateUseableItem`, `CanUseItem` | 🟡 | Routed into veyl_inventory's single use pipeline. The item must exist in ox_inventory's `data/items.lua` |
-| Client `GetPlayerData`, `GetPlate`, `GetClosestPlayer`, `GetClosestVehicle`, `Progressbar` | 🟡 | `Progressbar` maps onto veyl_ui progress; props aren't supported |
+| `Functions.CreateUseableItem`, `CanUseItem` | 🟡 | Routed into veyl_inventory's single use pipeline (used only when the item has no `use.handler`). The item must exist in `veyl_inventory/data/items.lua` |
+| Client `GetPlayerData`, `GetPlate`, `GetClosestPlayer`, `GetClosestVehicle`, `Progressbar` | 🟡 | `Progressbar` maps onto veyl_lib progress (via veyl_ui); props aren't supported |
 | `Commands.Add(name, help, args, required, cb, permission)` | 🟡 | ACE-backed |
-| `Shared.Jobs/Gangs/Vehicles/Weapons/Items` + helpers (`RandomStr`, `RandomInt`, `SplitStr`, `Trim`, `FirstToUpper`, `Round`) | 🟡 | `Items` is a view of ox_inventory definitions taken when `GetCoreObject` is called. Weapons are keyed by hash |
+| `Shared.Jobs/Gangs/Vehicles/Weapons/Items` + helpers (`RandomStr`, `RandomInt`, `SplitStr`, `Trim`, `FirstToUpper`, `Round`) | 🟡 | `Items` is a view of veyl_inventory definitions taken when `GetCoreObject` is called. Weapons are keyed by hash |
 | Client callbacks from the server (`CreateClientCallback`), `SpawnVehicle`, `DrawText3D`, and similar | ❌ | Use native VeylCore or ox_lib equivalents |
 
 ## Player.Functions
@@ -31,7 +31,7 @@ Legend:
 | `AddMoney`, `RemoveMoney`, `SetMoney`, `GetMoney` | 🟡 | Boolean contract, through the core ledger |
 | `SetJob`, `SetGang`, `SetJobDuty` | 🟡 | `SetJob` replaces the previous primary membership (QBox semantics) |
 | `SetMetaData`, `GetMetaData` | 🟡 | Checked against the metadata schema |
-| `AddItem`, `RemoveItem`, `GetItemByName`, `GetItemsByName`, `HasItem` | 🟡 | Delegated to ox_inventory |
+| `AddItem`, `RemoveItem`, `GetItemByName`, `GetItemsByName`, `HasItem` | 🟡 | Delegated to veyl_inventory (legacy synchronous contract) |
 | `UpdatePlayerData`, `Save`, `Logout` | 🟡 | |
 | `SetPlayerData(key, value)` | 🟡 partial | Only `metadata` is accepted; other keys are rejected with a warning |
 
@@ -53,14 +53,13 @@ Legend:
 | --- | --- | --- |
 | `@qb-core/shared/locale.lua` | 🟡 | Minimal `Locale` class |
 | `exports.qbx_core:*`, `@qbx_core/modules/*` | ❌ | Port explicitly against the VeylCore API map |
-| `qb-inventory`, `qb-target`, `qb-menu`, `qb-input` | ❌ | Use ox_inventory, ox_target or veyl_interact, and veyl_ui/ox_lib |
+| `qb-inventory`, `qb-target`, `qb-menu`, `qb-input` | ❌ | Port to veyl_inventory, veyl_target and veyl_lib |
+| `@ox_lib/init.lua`, `exports.ox_target:*`, `exports.ox_inventory:*` | ❌ | No ox compatibility shim yet (plan phase 7). Port to `vlib.*` and `exports.veyl_target/veyl_inventory` |
 | Direct SQL against QB `players` tables | ❌ | VeylCore uses `veyl_players` and related tables; use the exports |
 
 ## Third-party resources
 
 | Resource | Version | Status | Notes |
 | --- | --- | --- | --- |
-| ox_inventory | 2.48.1 | 🟡 | VeylCore bridge in `integrations/ox_inventory`; money items and default shops are disabled |
-| ox_target | 1.18.1 | 🟡 | Through veyl_interact; the native `groups` option isn't enforced (no VeylCore framework module) |
-| ox_lib | 3.42.2 | 🟡 | veyl_ui provider (notify, progress, alert, input, context) |
-| `[examples]/veyl_qbexample` | 0.2.0 | 🟡 | Reference QB-style resource |
+| ox_lib / ox_target / ox_inventory | 3.42.2 / 1.18.1 / 2.48.1 | transitional only | Booted in profile v0.2; not part of the native profile |
+| `[examples]/veyl_qbexample` | 0.2.0 | 🟡 | Boot self-check passes in both profiles |
