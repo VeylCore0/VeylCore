@@ -56,4 +56,6 @@ export const PERM_LABEL: Record<string, string> = {
   enter: 'Enter', storage: 'Shared storage', wardrobe: 'Wardrobe', furniture: 'Furniture', guests: 'Guests & visitors', roommates: 'Roommates', lease: 'Lease & rent',
 };
 export const ROLE_LABEL: Record<string, string> = { leaseholder: 'Leaseholder', roommate: 'Roommate', guest: 'Guest' };
+/** Hides the page right away for actions that hand control back to the game (tour, placement, storage). */
+export const handOff = (action: string, payload: Record<string, unknown>) => { window.dispatchEvent(new Event('apt-hide')); return nui(action, payload); };
 export const newOp = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

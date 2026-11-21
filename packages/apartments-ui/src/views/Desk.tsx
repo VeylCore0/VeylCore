@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon, SearchBox, StateView, Tabs, nui } from '@veyl/ui';
-import { api, fmtDate, fmtDateTime } from '../types';
+import { api, fmtDate, fmtDateTime, handOff } from '../types';
 
 type Say = (k: 'ok' | 'error', t: string) => void;
 type DeskTab = 'directory' | 'parcels' | 'notices';
@@ -96,7 +96,7 @@ function Parcels({ toast }: { toast: Say }) {
         {recovery?.map((r) => (
           <div key={r.id} className="apt-person"><strong>{r.label}</strong>
             <span className="v-muted">{r.open ? `until ${fmtDate(r.until_at)}` : 'collection window closed: ask staff'}</span>
-            <button className="v-btn primary" disabled={!r.open} onClick={() => void nui('openStash', { id: r.id })}>Open</button></div>
+            <button className="v-btn primary" disabled={!r.open} onClick={() => void handOff('openStash', { id: r.id })}>Open</button></div>
         ))}
       </div>
     </div>

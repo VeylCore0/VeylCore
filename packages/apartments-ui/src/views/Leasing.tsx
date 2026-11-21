@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon, RadioCard, money, nui } from '@veyl/ui';
 import { FloorPlan } from './FloorPlan';
-import { api, newOp, type Catalog, type LeaseView, type UnitView } from '../types';
+import { api, handOff, newOp, type Catalog, type LeaseView, type UnitView } from '../types';
 
 export function Leasing({ data, toast, onLeased, onClose }: { data: Catalog; toast: (k: 'ok' | 'error', t: string) => void; onLeased: (l: LeaseView) => void; onClose: () => void }) {
   const type = data.types[0];
@@ -100,7 +100,7 @@ export function Leasing({ data, toast, onLeased, onClose }: { data: Catalog; toa
           </div>
         ))}
         {data.tour && unit && (
-          <button className="v-btn apt-tour" onClick={() => void nui('tour', { unitId: unit.id })}><Icon name="eye" size="1rem" /> Tour Room {unit.number}</button>
+          <button className="v-btn apt-tour" onClick={() => void handOff('tour', { unitId: unit.id })}><Icon name="eye" size="1rem" /> Tour Room {unit.number}</button>
         )}
       </section>
 

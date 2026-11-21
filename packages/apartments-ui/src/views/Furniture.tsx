@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon, SearchBox, StateView, money, nui } from '@veyl/ui';
 import { FloorPlan } from './FloorPlan';
-import { api, type FurnitureCatalog, type Piece } from '../types';
+import { api, handOff, type FurnitureCatalog, type Piece } from '../types';
 
 type Say = (k: 'ok' | 'error', t: string) => void;
 
@@ -46,7 +46,7 @@ export function FurnitureView({ initial, toast }: { initial: FurnitureCatalog; t
           {data.stored.map((p) => (
             <div key={p.id} className="apt-piece">
               <span>{p.label}</span>
-              <button className="v-btn" disabled={busy || full} onClick={() => void nui('startPlacement', { id: p.id, model: p.model })}>Place</button>
+              <button className="v-btn" disabled={busy || full} onClick={() => void handOff('startPlacement', { id: p.id, model: p.model })}>Place</button>
               {p.mine && <button className="v-btn" disabled={busy} onClick={() => void run('furnitureSell', p)}>Sell {money(Math.floor(p.price * data.sellRate))}</button>}
             </div>
           ))}
@@ -57,7 +57,7 @@ export function FurnitureView({ initial, toast }: { initial: FurnitureCatalog; t
           {data.placedList.map((p) => (
             <div key={p.id} className="apt-piece">
               <span>{p.label}</span>
-              <button className="v-btn" disabled={busy} onClick={() => void nui('startPlacement', { move: p.id })}>Move</button>
+              <button className="v-btn" disabled={busy} onClick={() => void handOff('startPlacement', { move: p.id })}>Move</button>
               <button className="v-btn" disabled={busy} onClick={() => void run('furnitureStore', p)}>Store</button>
             </div>
           ))}
@@ -83,7 +83,7 @@ export function FurnitureView({ initial, toast }: { initial: FurnitureCatalog; t
                 <div className="apt-item-price">{money(i.price)}</div>
                 <button className="v-btn primary" disabled={unavailable || full || tooExpensive}
                   title={unavailable ? 'Not available on this game version' : full ? 'Furniture limit reached' : tooExpensive ? 'Not enough money in your bank' : 'Preview and place; you pay only when you confirm'}
-                  onClick={() => void nui('startPlacement', { item: i.key })}>{unavailable ? 'Unavailable' : full ? 'Limit reached' : 'Preview & place'}</button>
+                  onClick={() => void handOff('startPlacement', { item: i.key })}>{unavailable ? 'Unavailable' : full ? 'Limit reached' : 'Preview & place'}</button>
               </div>
             );
           })}

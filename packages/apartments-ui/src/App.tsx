@@ -44,6 +44,7 @@ export function App() {
   // vlib.createScreen sends '<screen name>:close' (apartments:close) whenever Lua closes the screen.
   useNuiMessage('apartments:close', () => { setScreen(null); setVisit(null); });
   useNuiMessage('apt:close', () => { setScreen(null); setVisit(null); });
+  useEffect(() => { const h = () => { setScreen(null); setVisit(null); }; window.addEventListener('apt-hide', h); return () => window.removeEventListener('apt-hide', h); }, []);
   useNuiMessage<Visit>('apt:doorbell', (v) => setVisit({ ...v, until: Date.now() + v.expires * 1000 }));
   useNuiMessage<Placement>('apt:placement', (p) => setPlacement(p ?? { visible: false }));
   useNuiMessage<{ seconds: number; label: string } | null>('apt:tour', (t) => setTour(t ? { until: Date.now() + t.seconds * 1000, label: t.label } : null));
