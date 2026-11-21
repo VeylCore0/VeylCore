@@ -279,8 +279,14 @@ function SelectedStrip({ item, def, imagePath }: { item?: SlotItem; def?: ItemDe
     <div className="inv-strip">
       <img src={`${imagePath}/${def.image ?? item.name + '.png'}`} alt="" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
       <div className="strip-text">
-        <div className="strip-name">{def.label}</div>
+        <div className="strip-name">{def.label}{typeof item.metadata?.grade === 'string' && <span className={`strip-grade ${String(item.metadata.grade).toLowerCase()}`}>{String(item.metadata.grade)}</span>}</div>
         {def.description && <div className="v-muted strip-desc">{def.description}</div>}
+        {item.metadata && (item.metadata.varietyLabel || item.metadata.batch) ? (
+          <div className="v-muted strip-desc">
+            {[item.metadata.varietyLabel && `Variety: ${String(item.metadata.varietyLabel)}`, typeof item.metadata.quality === 'number' && `Quality ${item.metadata.quality}`,
+              item.metadata.batch && `Batch ${String(item.metadata.batch)}`].filter(Boolean).join(' · ')}
+          </div>
+        ) : null}
       </div>
       <div className="v-muted strip-weight">{t('inv.each', { w: (def.weight / 1000).toFixed(1) })}</div>
     </div>

@@ -186,3 +186,27 @@ export function dealerOpen(empty: boolean): DealerOpen {
     balances: { cash: 420, bank: 152840 }, methods: ['cash', 'bank'],
   };
 }
+
+// ---------------------------------------------------------------------------
+// veyl_drugs: grow journal, plant card, placement hint
+// ---------------------------------------------------------------------------
+import type { JournalData, PlantView } from '../../drugs-ui/src/types';
+
+const plant = (id: number, type: string, typeLabel: string, varietyLabel: string, growth: number, water: number, care: number, health: number, grade: string, gradeId: string, area: string, extra: Partial<PlantView> = {}): PlantView => ({
+  id, type, typeLabel, variety: varietyLabel.toLowerCase(), varietyLabel, stage: growth >= 100 ? 4 : growth >= 60 ? 3 : growth >= 25 ? 2 : 1,
+  ready: growth >= 100, own: true, isOwner: true, container: type === 'mushroom' ? 'tub' : 'ground', growth, water, care, health,
+  quality: gradeId === 'exotic' ? 91 : gradeId === 'premium' ? 72 : 48, grade, gradeId, expectedYield: 6, etaMinutes: Math.round((100 - growth) * 1.8),
+  trait: 'Balanced all-rounder', area, street: 'Joshua Rd', coords: { x: 0, y: 0, z: 0 }, ...extra,
+});
+
+export function journal(empty: boolean): JournalData {
+  const plants = empty ? [] : [
+    plant(1, 'weed', 'Cannabis', 'Violet Haze', 72, 64, 81, 96, 'Premium', 'premium', 'Grapeseed'),
+    plant(2, 'weed', 'Cannabis', 'Silverleaf', 100, 55, 70, 92, 'Standard', 'standard', 'Grapeseed', { trait: 'Low maintenance, slower, lower quality ceiling' }),
+    plant(3, 'mushroom', 'Mushrooms', 'Mooncap', 56, 12, 66, 74, 'Exotic', 'exotic', 'Mount Chiliad', { trait: 'Rare, thirsty, high ceiling' }),
+    plant(4, 'coca', 'Coca', 'Andes Mist', 31, 38, 90, 100, 'Premium', 'premium', 'Sandy Shores', { trait: 'High ceiling, average yield' }),
+  ];
+  return { plants, stats: { plants: plants.length, ready: plants.filter((p) => p.ready).length, locations: empty ? 0 : 3, limit: 30 } };
+}
+
+export const plantCard = plant(1, 'weed', 'Cannabis', 'Violet Haze', 72, 64, 81, 96, 'Premium', 'premium', 'Grapeseed');

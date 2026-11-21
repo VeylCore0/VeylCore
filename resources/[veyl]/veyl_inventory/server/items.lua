@@ -41,6 +41,9 @@ end
 -- Metadata schemas: allowed keys and types. Keys starting with '_' are private (never sent to clients).
 MetadataSchemas = {
     identity_card = { firstname = 'string', lastname = 'string', citizenid = 'string', birthdate = 'string' },
+    -- veyl_drugs
+    drug_seed = { variety = 'string', varietyLabel = 'string' },
+    drug_batch = { product = 'string', variety = 'string', varietyLabel = 'string', grade = 'string', quality = 'number', batch = 'string' },
 }
 
 --- Validates and normalises metadata for an item. Returns clean table or nil, error.

@@ -53,6 +53,22 @@ return {
     body_panels = { label = 'Body Panels', description = 'Used by mechanics to repair bodywork.', image = 'body_panels.png', weight = 1500, stack = true, maxStack = 10 },
     tyre_kit = { label = 'Tyre Kit', description = 'Used by mechanics to replace burst tyres.', image = 'tyre_kit.png', weight = 1200, stack = true, maxStack = 10 },
     cleaning_kit = { label = 'Cleaning Kit', description = 'Used by mechanics to wash a vehicle.', image = 'cleaning_kit.png', weight = 300, stack = true, maxStack = 20 },
+    -- veyl_drugs (fictional game items). Seeds carry their variety; harvests carry variety, quality grade and batch id
+    -- in metadata, so different batches never stack together.
+    weed_seed = { label = 'Cannabis Seed', description = 'Plant on suitable ground or in a pot.', image = 'weed_seed.png', weight = 5,
+        stack = true, maxStack = 50, metadataSchema = 'drug_seed', use = { handler = 'drug_place', durationMs = 0, consumeCount = 0 } },
+    coca_seed = { label = 'Coca Seedling', description = 'Plant on suitable ground or in a pot.', image = 'coca_seed.png', weight = 20,
+        stack = true, maxStack = 25, metadataSchema = 'drug_seed', use = { handler = 'drug_place', durationMs = 0, consumeCount = 0 } },
+    mushroom_spores = { label = 'Mushroom Culture', description = 'Starts a grow tub (needs an empty Grow Tub).', image = 'mushroom_spores.png',
+        weight = 10, stack = true, maxStack = 25, metadataSchema = 'drug_seed', use = { handler = 'drug_place', durationMs = 0, consumeCount = 0 } },
+    plant_pot = { label = 'Plant Pot', description = 'Lets you plant on hard surfaces. Used up when planted.', image = 'plant_pot.png', weight = 1500, stack = true, maxStack = 5 },
+    grow_tub = { label = 'Grow Tub', description = 'A tub for mushroom cultures. Used up when started.', image = 'grow_tub.png', weight = 2500, stack = true, maxStack = 5 },
+    plant_food = { label = 'Grow Nutrients', description = 'Keeps a plant cared for.', image = 'plant_food.png', weight = 400, stack = true, maxStack = 20 },
+    grow_journal = { label = 'Grow Journal', description = 'A tablet that tracks your plants.', image = 'grow_journal.png', weight = 300, stack = false,
+        use = { handler = 'drug_journal', durationMs = 0, consumeCount = 0 } },
+    weed_bud = { label = 'Cannabis Bud', description = 'Freshly harvested.', image = 'weed_bud.png', weight = 50, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
+    coca_leaf = { label = 'Coca Leaves', description = 'Freshly harvested.', image = 'coca_leaf.png', weight = 40, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
+    mushroom_cap = { label = 'Mushrooms', description = 'Freshly harvested.', image = 'mushroom_cap.png', weight = 30, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
     qbexample_token = {
         label = 'QB Example Token', description = 'Demonstrates QB CreateUseableItem on VeylCore.', image = 'token.png',
         weight = 10, stack = true, maxStack = 50, usable = true, -- no use.handler: dispatched to the legacy usable-item registry

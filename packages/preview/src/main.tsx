@@ -10,6 +10,7 @@ import { App as HudApp } from '../../hud-ui/src/App';
 import { App as TargetApp } from '../../target-ui/src/App';
 import { App as AppearanceApp } from '../../appearance-ui/src/App';
 import { App as VehicleApp } from '../../vehicle-ui/src/App';
+import { App as DrugsApp } from '../../drugs-ui/src/App';
 import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
 import '../../inventory-ui/src/inventory.css';
 import '../../shop-ui/src/shop.css';
@@ -18,13 +19,14 @@ import '../../hud-ui/src/hud.css';
 import '../../target-ui/src/target.css';
 import '../../appearance-ui/src/appearance.css';
 import '../../vehicle-ui/src/vehicles.css';
+import '../../drugs-ui/src/drugs.css';
 import './preview.css';
 import * as F from './fixtures';
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
-const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer';
+const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer' || s === 'journal' || s === 'grow';
 const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
@@ -34,6 +36,7 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'bank', label: 'Bank', app: BankApp }, { id: 'hud', label: 'HUD', app: HudApp }, { id: 'target', label: 'Target', app: TargetApp },
   { id: 'creator', label: 'Creator', app: AppearanceApp }, { id: 'clothing', label: 'Clothing', app: AppearanceApp }, { id: 'barber', label: 'Barber', app: AppearanceApp },
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
+  { id: 'journal', label: 'Journal', app: DrugsApp }, { id: 'grow', label: 'Grow HUD', app: DrugsApp },
 ];
 const MODES: Mode[] = ['normal', 'loading', 'empty', 'error', 'restricted', 'pending'];
 
@@ -43,7 +46,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
     if (action === 'ui:ready') return { ok: true };
-    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : `${screen}:close`); return { ok: true }; }
+    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : screen === 'journal' ? 'drugs:close' : `${screen}:close`); return { ok: true }; }
     if (isAppearance(screen) && (action === 'camera' || action === 'rotate')) return { ok: true };
     if (isAppearance(screen) && action === 'change') {
       const p = payload as { key: string; value: Slot };
@@ -129,6 +132,8 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         apState!.store!.outfits = list;
         return { ok: true, message: 'Outfit deleted (demo)', data: list };
       }
+      case 'journal:refresh': return { ok: true, data: F.journal(false) };
+      case 'journal:waypoint': return { ok: true, message: 'Waypoint set' };
       case 'garage:takeOut': devEmit('garage:close'); return { ok: true, message: 'Vehicle ready (demo)' };
       case 'impound:takeOut': devEmit('garage:close'); return { ok: true, message: 'Released (demo)' };
       case 'dealer:purchase': {
@@ -159,6 +164,12 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'hud': devEmit('hud:frame', F.hudFrame); break;
     case 'garage': case 'impound': devEmit('garage:open', F.garageOpen(screen, empty)); break;
     case 'dealer': devEmit('dealer:open', F.dealerOpen(empty)); break;
+    case 'journal': devEmit('drugs:journal', F.journal(empty)); break;
+    case 'grow':
+      devEmit('drugs:card', F.plantCard);
+      devEmit('drugs:placement', mode === 'error' ? { visible: true, valid: false, reason: 'Too close to another plant', label: 'Violet Haze', container: 'ground', canToggle: true }
+        : { visible: true, valid: true, label: 'Violet Haze', container: 'ground', canToggle: true });
+      break;
     case 'creator': case 'clothing': case 'barber':
       apState = F.appearanceOpen(AP_MODE[screen], empty);
       devEmit('appearance:open', clone(apState));

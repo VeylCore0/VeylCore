@@ -38,7 +38,10 @@
 .inv-strip { display: grid; grid-template-columns: 2.6rem 1fr auto; gap: 0.8rem; align-items: center; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255, 255, 255, 0.03); min-height: 3.6rem; }
 .inv-strip.v-muted { display: flex; }
 .inv-strip img { width: 2.4rem; height: 2.4rem; object-fit: contain; }
-.strip-name { font-weight: 600; }
+.strip-name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+.strip-grade { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.1rem 0.45rem; border-radius: 99px; border: 1px solid var(--border); color: var(--text-muted); }
+.strip-grade.premium { color: var(--accent); border-color: rgba(184, 146, 244, 0.5); }
+.strip-grade.exotic { color: #f2c66d; border-color: rgba(242, 198, 109, 0.5); }
 .strip-desc, .strip-weight { font-size: 0.85rem; }
 
 .inv-center { align-self: center; width: 6.2rem; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; padding: 1.2rem 0.7rem; }
