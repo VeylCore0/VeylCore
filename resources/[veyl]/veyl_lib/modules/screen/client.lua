@@ -15,8 +15,25 @@ function M.createScreen(opts)
     local name = opts.name or GetCurrentResourceName()
     local self = { visible = false, token = nil, ready = false, sessionId = nil, seq = 0, typing = false }
 
+    local guardUntil = 0
+
     local function release()
-        if opts.keepInput then SetNuiFocusKeepInput(false) end
+        if opts.keepInput then
+            SetNuiFocusKeepInput(false)
+            -- The key that closed the page (Esc / P) also reaches the game while input is kept: keep the pause menu
+            -- blocked briefly so closing the screen never opens it.
+            local running = guardUntil > GetGameTimer()
+            guardUntil = GetGameTimer() + 750
+            if not running then
+                CreateThread(function()
+                    while GetGameTimer() < guardUntil do
+                        DisableControlAction(0, 199, true) DisableControlAction(0, 200, true)
+                        DisableControlAction(0, 202, true) DisableControlAction(0, 322, true)
+                        Wait(0)
+                    end
+                end)
+            end
+        end
         SetNuiFocus(false, false)
         if self.token then
             exports.veyl_lib:ReleaseFocus(self.token)
@@ -74,6 +91,7 @@ function M.createScreen(opts)
                     DisableControlAction(0, 263, true) DisableControlAction(0, 264, true)
                     DisableControlAction(0, 37, true) DisableControlAction(0, 44, true)     -- weapon wheel / cover (Q)
                     DisableControlAction(0, 199, true) DisableControlAction(0, 200, true)   -- pause menu (Esc closes the page)
+                    DisableControlAction(0, 202, true) DisableControlAction(0, 322, true)   -- frontend cancel / Esc
                     DisableControlAction(0, 245, true) DisableControlAction(0, 75, true)    -- chat / exit vehicle
                     DisableControlAction(0, 16, true) DisableControlAction(0, 17, true)     -- weapon scroll
                     DisablePlayerFiring(PlayerId(), true)
