@@ -49,8 +49,9 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_shops` | 24/7 stores: server prices, durable debit, item grant, refund/review reconciliation |
 | `veyl_garages` | 4 garages + impound lot: take out / park owned vehicles, paid impound release ([docs/VEHICLES.md](docs/VEHICLES.md)) |
 | `veyl_dealership` | Premium Deluxe Motorsport: catalog, confirmed purchase, ownership registration and delivery |
-| `veyl_mechanic` | LS Customs: on-duty repairs that use parts, service invoices (`/invoices`) |
+| `veyl_mechanic` | LS Customs: on-duty repairs that use parts, service invoices (`/invoices`, or the phone Invoices app) |
 | `veyl_drugs` | Fictional criminal enterprise, milestones A-B: grow-anywhere weed/coca/mushrooms, quality, harvest, supplier, Grow Journal ([docs/DRUGS.md](docs/DRUGS.md)) |
+| `veyl_phone` | Smartphone, milestones 1-3: per-character numbers, contacts, messages with honest sent/delivered/read, groups, blocking, pma-voice calls, notifications and app API ([docs/PHONE.md](docs/PHONE.md)) |
 | `veyl_delivery` | GoPostal route: depot NPC, assigned van and key, server-validated stops, one-time payout |
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |

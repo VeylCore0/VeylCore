@@ -137,7 +137,7 @@ local function payFlow(inv)
     Veyl.NotifyResult(Veyl.Callback('veyl_mechanic', 'payInvoice', inv.id, values.method))
 end
 
-RegisterCommand('invoices', function()
+local function openInvoices()
     if not Veyl.IsLoaded() then return end
     CreateThread(function()
         local res = Veyl.Callback('veyl_mechanic', 'myInvoices')
@@ -167,7 +167,20 @@ RegisterCommand('invoices', function()
         end)
         vlib.showMenu('veyl_mechanic:invoices')
     end)
-end, false)
+end
+RegisterCommand('invoices', openInvoices, false)
+
+-- Optional veyl_phone integration: an "Invoices" app on the home screen that opens the same menu.
+local function registerPhoneApp()
+    if GetResourceState('veyl_phone') ~= 'started' then return end
+    pcall(function()
+        exports.veyl_phone:RegisterApp({ id = 'invoices', label = 'Invoices', icon = 'receipt', color = '#d08b4f', event = 'veyl_mechanic:openInvoices' })
+    end)
+end
+AddEventHandler('veyl_mechanic:openInvoices', openInvoices)
+AddEventHandler('onClientResourceStart', function(res)
+    if res == 'veyl_phone' or res == GetCurrentResourceName() then registerPhoneApp() end
+end)
 
 ---------------------------------------------------------------------------
 -- Registration: blip, desk zone, vehicle options

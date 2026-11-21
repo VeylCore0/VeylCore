@@ -158,6 +158,18 @@ Veyl.RegisterCallback('nearbyCustomers', function(src)
     return Veyl.Ok(out)
 end, { cooldown = 500 })
 
+-- Optional veyl_phone integration: a notification per invoice and a badge with the unpaid count.
+local function phoneStarted() return GetResourceState('veyl_phone') == 'started' end
+local function syncPhoneBadge(citizenid)
+    if not phoneStarted() then return end
+    local n = MySQL.scalar.await("SELECT COUNT(*) FROM veyl_invoices WHERE recipient_cid = ? AND status = 'pending'", { citizenid }) or 0
+    pcall(function() exports.veyl_phone:SetBadge(citizenid, 'invoices', n) end)
+end
+
+AddEventHandler('veyl_phone:sessionStarted', function(_, session)
+    if type(session) == 'table' and type(session.cid) == 'string' then syncPhoneBadge(session.cid) end
+end)
+
 Veyl.RegisterCallback('sendInvoice', function(src, citizenid, target, amount, reason)
     if not onDuty(src) then return Veyl.Err('NO_PERMISSION', 'Only on-duty mechanics can send invoices') end
     if not Veyl.Validate.int(amount, 1, MechanicConfig.Invoice.Max) then
@@ -174,6 +186,13 @@ Veyl.RegisterCallback('sendInvoice', function(src, citizenid, target, amount, re
         { MechanicConfig.Job, citizenid, nameOf(src), customer.citizenid, amount, reason })
     if not id then return Veyl.Err('DATABASE_ERROR', 'Could not create the invoice') end
     TriggerClientEvent('veyl_mechanic:invoiceReceived', customer.id, { id = id, from = 'Mechanic', amount = amount, reason = reason })
+    if phoneStarted() then
+        pcall(function()
+            exports.veyl_phone:Notify(customer.citizenid, { app = 'invoices', title = 'Mechanic invoice',
+                body = ('#%d · $%d · %s'):format(id, amount, reason), route = 'invoices', dedupe = 'invoice:' .. id })
+        end)
+        syncPhoneBadge(customer.citizenid)
+    end
     Veyl.Audit(src, 'invoice_sent', { id = id, to = customer.citizenid, amount = amount })
     return Veyl.Ok({ id = id }, ('Invoice #%d sent to %s ($%d)'):format(id, customer.name, amount))
 end, { cooldown = 5000 })
@@ -197,6 +216,7 @@ Veyl.RegisterCallback('payInvoice', function(src, citizenid, id, method)
     MySQL.update.await("UPDATE veyl_invoices SET status = 'paid', settled_at = NOW() WHERE id = ? AND status = 'pending'", { id })
     local senderSrc = exports.veyl_core:GetSourceByCitizenId(row.sender_cid)
     if senderSrc then Veyl.Notify(senderSrc, ('Invoice #%d paid ($%d)'):format(id, row.amount), 'success') end
+    syncPhoneBadge(citizenid)
     return Veyl.Ok(nil, ('Paid invoice #%d ($%d)'):format(id, row.amount))
 end, { cooldown = 2000 })
 
@@ -205,5 +225,6 @@ Veyl.RegisterCallback('declineInvoice', function(_, citizenid, id)
     local n = MySQL.update.await("UPDATE veyl_invoices SET status = 'declined', settled_at = NOW() WHERE id = ? AND recipient_cid = ? AND status = 'pending'",
         { id, citizenid })
     if n ~= 1 then return Veyl.Err('NOT_FOUND', 'Invoice not found') end
+    syncPhoneBadge(citizenid)
     return Veyl.Ok(nil, ('Declined invoice #%d'):format(id))
 end, { cooldown = 1000 })

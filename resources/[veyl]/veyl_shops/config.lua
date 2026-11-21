@@ -19,6 +19,7 @@ ShopsConfig = {
                 { item = 'bandage', price = 15, category = 'tools' },
                 { item = 'flashlight', price = 80, category = 'tools' },
                 { item = 'radio', price = 250, category = 'tools' },
+                { item = 'phone', price = 400, category = 'tools' },
                 { item = 'repair_kit', price = 450, category = 'tools' },
             },
         },
