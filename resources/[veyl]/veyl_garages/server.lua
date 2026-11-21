@@ -103,3 +103,12 @@ Veyl.RegisterCallback('park', function(src, citizenid, placeId, netId, props)
     if not res.ok then return res end
     return Veyl.Ok(nil, ('Parked at %s'):format(place.label))
 end, { cooldown = 1500 })
+
+--- GetPlaces() -> { { id, label, kind = 'garage'|'impound', x, y, z } } (used by the phone's Garage app for waypoints).
+exports('GetPlaces', function()
+    local out = {}
+    for _, g in ipairs(GaragesConfig.Garages) do out[#out + 1] = { id = g.id, label = g.label, kind = 'garage', x = g.coords.x, y = g.coords.y, z = g.coords.z } end
+    local i = GaragesConfig.Impound
+    out[#out + 1] = { id = i.id, label = i.label, kind = 'impound', x = i.coords.x, y = i.coords.y, z = i.coords.z }
+    return out
+end)

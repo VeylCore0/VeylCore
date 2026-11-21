@@ -1,6 +1,6 @@
 # veyl_phone
 
-An original smartphone for VeylCore. It sits bottom-right, scales from 0.75x to 1.3x, and lets the player keep walking while it is open. This release covers **milestones 1–3**: device and identity, home screen and settings, contacts, messages, calls, notifications, and the developer API. Apps from later milestones (camera, banking, services, social and the rest) are **not listed at all** until they are built; there are no placeholder icons.
+An original smartphone for VeylCore. It sits bottom-right, scales from 0.75x to 1.3x, and lets the player keep walking while it is open. It includes device and identity, the home screen and settings, contacts, messages, calls, notifications, the developer API, and an **App Store** with Flock (social), Bank, Garage, Marketplace, Notes and Calculator. Apps that aren't built yet are **not listed at all**; there are no placeholder icons.
 
 ## Install
 
@@ -57,6 +57,53 @@ Each character's settings are stored server-side and validated, so unknown value
 
 **Weather and time** come from `veyl_world` (`GlobalState.veylWorld`). **Bank balance** comes from the core ledger.
 
+## Apps and the App Store
+
+Phone, Messages, Contacts, Settings and the **App Store** are built in and can't be removed. Other apps are installed per character from the App Store. A new phone comes with Flock, Bank, Garage and Calculator. Marketplace and Notes are installed from the store. Apps that aren't built yet are not listed. Change the list, labels and what comes preinstalled in `PhoneConfig.Apps`.
+
+| App | What it does | Where the data lives |
+|---|---|---|
+| **App Store** | Browse apps by category, with a detail page; Get / Remove / Open. | `settings.installed` (validated: only real, removable apps). |
+| **Flock** | Original social feed. See below. | `veyl_phone_flock_*` tables. |
+| **Bank** | Balance (with a hide toggle), cash on hand, recent activity and full history. **Send money** to a phone number, a contact or a bank account number. | Core ledger (see below). |
+| **Garage** | Every vehicle you own, with its picture, plate, state, fuel/engine/body, place and impound fee. The pin sets a waypoint. | Read-only from `veyl_vehicles`; garage locations from `veyl_garages`. |
+| **Marketplace** | Classified listings in Vehicles, Items, Services, Property and Other, plus *My listings*. A listing shows the seller's phone number, with **Message** and **Call** buttons. | `veyl_phone_market`. |
+| **Notes** | Private notes with search. The title comes from the first line if you leave it blank. Notes save when you go back. | `veyl_phone_notes`. Up to 100 per character. |
+| **Calculator** | Chained operations, %, ±, keyboard input. Dividing by zero shows Error. | On the phone only. |
+
+**Flock:**
+- **Profile:** one `@handle` per character (3–15 letters, numbers or _), with a display name and bio.
+- **Posts:** 280 characters. Replies (one level deep) and likes.
+- **Feeds:** Everyone and Following. Profiles show post and follower counts.
+- **Notifications:** replying to someone or @mentioning them (existing handles only) sends them a notification that opens the post.
+- **Moderation:** you can delete your own posts; staff with the core `admin` permission can remove any post, and the removal is logged.
+
+**Bank transfers:**
+- They use the same ledger as `veyl_banking`.
+- The recipient is looked up on the server and shown by name before you confirm, and the confirmation expires after 90 s.
+- Each send carries a request id. A retry with the same id can never pay twice, and "Check status" tells you whether a send that timed out went through.
+- Each transfer is capped at `PhoneConfig.Bank.MaxTransfer`.
+- The recipient gets a phone notification.
+- Deposits and withdrawals still need a bank or ATM.
+
+**Garage waypoints:**
+- **Parked:** the waypoint goes to the vehicle's garage.
+- **Impounded:** it goes to the impound lot.
+- **Out on the road:** it goes to the vehicle's live position, which `veyl_vehicles` only reveals to the owner.
+
+**Marketplace rules:**
+- Listings expire after 7 days.
+- Each player can have up to 5 active listings.
+- No money moves through the app.
+- Sellers can remove their own listings; staff can remove any.
+
+### Exports added for the phone
+
+| Resource | Export | Returns |
+|---|---|---|
+| `veyl_garages` | `GetPlaces()` | `{ id, label, kind, x, y, z }` for each garage and the impound lot. |
+| `veyl_vehicles` | `GetOwnedVehicleCoords(citizenid, ownedId)` (async) | The live position, only for that owner's vehicle while it is out. |
+
 ## Developer API
 
 ### Server exports
@@ -106,6 +153,8 @@ Register again in `onClientResourceStart` for `veyl_phone`, so your app survives
 |---|---|
 | Server code against **real MariaDB** (a throwaway database), using the real `server/*.lua` | 59 checks passed |
 | Browser flows in the preview: lock → home → messages → delivered tick, banners, contacts, dialler → connected → hang-up, incoming call, settings, empty and error states, 1280×720 fit | 23 flows passed |
+| App server code (App Store, Notes, Flock, Bank, Garage, Marketplace) against real MariaDB | 61 checks passed |
+| App browser flows: install/remove, Flock post/like/reply/profile/handle setup, Bank send with balance update, Garage pictures and waypoints, Marketplace filter/post/message seller, Notes save, Calculator, error state | 37 flows passed |
 | `veyl_mechanic` server tests after the integration | 19 checks passed |
 | Lua lint and TypeScript typecheck | clean |
 
@@ -128,5 +177,6 @@ The server suite covered:
 
 - **Calls:** off until pma-voice is installed. No speakerphone.
 - **Camera and gallery:** not built. No screenshot resource is installed.
-- **Later milestones (4–7):** banking, business directory, classifieds, social, jobs, services, maps, garage, properties, deliveries, events and criminal contacts are not built, so they are hidden.
+- **Not built yet (hidden):** business directory, jobs, services/dispatch, maps, properties, deliveries, events and criminal contacts.
+- **Flock:** no images. Posts are text only, because there is no screenshot resource.
 - **Badges:** held in memory. Resources should re-send them on `veyl_phone:sessionStarted`.

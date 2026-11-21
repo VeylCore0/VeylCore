@@ -5,11 +5,14 @@ export interface Settings {
   silent: boolean; dnd: boolean; lockPreview: 'full' | 'sender' | 'hidden'; readReceipts: boolean; showBank: boolean;
   widgets: { clock: boolean; recent: boolean; bank: boolean };
   scale: number; position: 'bottom-right' | 'bottom-left' | 'center-right'; reducedMotion: boolean;
-  layout: LayoutEntry[] | null; appPrefs: Record<string, { muted: boolean }>;
+  layout: LayoutEntry[] | null; appPrefs: Record<string, { muted: boolean }>; installed?: string[] | null;
 }
 export type LayoutEntry = string | { folder: string; apps: string[] };
 
-export interface AppDef { id: string; label: string; dock?: boolean; external?: boolean; icon?: string; color?: string }
+export interface AppDef {
+  id: string; label: string; dock?: boolean; external?: boolean; icon?: string; color?: string;
+  core?: boolean; installed?: boolean; category?: string; description?: string;
+}
 
 export interface Session {
   number: string; display: string; name: string; settings: Settings; apps: AppDef[];
@@ -50,7 +53,9 @@ export const WEATHER: Record<string, { label: string; icon: string }> = {
 
 export const APP_STYLE: Record<string, { icon: string; color: string }> = {
   phone: { icon: 'call', color: '#4fbf83' }, messages: { icon: 'chat', color: '#8b63d6' }, contacts: { icon: 'user', color: '#4aa39a' },
-  settings: { icon: 'gear', color: '#5d5a6b' },
+  settings: { icon: 'gear', color: '#5d5a6b' }, store: { icon: 'bag', color: '#5b8bd6' },
+  flock: { icon: 'bird', color: '#3d9be0' }, bank: { icon: 'bank', color: '#3f9c6d' }, garage: { icon: 'car', color: '#d08b4f' },
+  market: { icon: 'tag', color: '#c95d84' }, notes: { icon: 'note', color: '#d4a43c' }, calculator: { icon: 'calc', color: '#4b4a57' },
 };
 
 export const CONTACT_COLORS = ['#8b63d6', '#4aa39a', '#d08b4f', '#5b8bd6', '#c95d84', '#7aa34a', '#a07a5a', '#6a6a7a'];

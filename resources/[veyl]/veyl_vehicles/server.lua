@@ -234,6 +234,18 @@ Veyl.AsyncExport('GetOwnedVehicles', function(citizenid)
     return Veyl.Ok(list)
 end)
 
+--- GetOwnedVehicleCoords(citizenid, ownedId) -> Ok({ x, y, z }) for the owner's vehicle while it is out on the road.
+Veyl.AsyncExport('GetOwnedVehicleCoords', function(citizenid, ownedId)
+    if not Veyl.Validate.int(ownedId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid vehicle') end
+    local owner = MySQL.scalar.await('SELECT citizenid FROM veyl_player_vehicles WHERE id = ?', { ownedId })
+    if owner ~= citizenid then return Veyl.Err('NOT_FOUND', 'Vehicle not found') end
+    local vid = ownedActive[ownedId]
+    local v = vid and vehicles[vid]
+    if not v or not v.entity or not DoesEntityExist(v.entity) then return Veyl.Err('NOT_FOUND', 'That vehicle is not out on the road') end
+    local c = GetEntityCoords(v.entity)
+    return Veyl.Ok({ x = c.x, y = c.y, z = c.z })
+end)
+
 --- SpawnOwnedVehicle(src, citizenid, ownedId, coords(vector4), { from = 'garaged'|'impound', garage? })
 --- Reserves the row first (state -> 'out' only if it is still where the caller says), so two requests can never
 --- produce two copies. Applies saved fuel, condition and properties. -> Ok({ vehicleId, netId, plate })

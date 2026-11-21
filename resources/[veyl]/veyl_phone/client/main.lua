@@ -159,6 +159,11 @@ local ALLOWED = {
     notifications = true, notificationsRead = true, notificationsClear = true, conversations = true, thread = true, send = true, read = true,
     groupCreate = true, groupRename = true, groupAdd = true, groupRemove = true, groupLeave = true, mute = true,
     callStart = true, callAnswer = true, callDecline = true, callEnd = true, callMute = true, recents = true,
+    appInstall = true, notes = true, noteSave = true, noteDelete = true,
+    flockMe = true, flockSetup = true, flockFeed = true, flockThread = true, flockUser = true, flockPost = true, flockLike = true,
+    flockDelete = true, flockFollow = true,
+    bankOverview = true, bankHistory = true, bankResolve = true, bankSend = true, bankStatus = true,
+    garageList = true, garageLocate = true, marketList = true, marketPost = true, marketDelete = true,
 }
 
 RegisterNUICallback('api', function(data, cb)

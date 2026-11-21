@@ -109,6 +109,73 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        {
+            id = '002_apps',
+            sql = {
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_profiles (
+                    citizenid VARCHAR(16) NOT NULL,
+                    handle VARCHAR(16) NOT NULL,
+                    display_name VARCHAR(32) NOT NULL,
+                    bio VARCHAR(120) NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (citizenid),
+                    UNIQUE KEY uq_handle (handle)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_posts (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    body VARCHAR(280) NOT NULL,
+                    reply_to BIGINT UNSIGNED NULL,
+                    likes INT UNSIGNED NOT NULL DEFAULT 0,
+                    replies INT UNSIGNED NOT NULL DEFAULT 0,
+                    client_op VARCHAR(64) NULL,
+                    deleted TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_op (citizenid, client_op),
+                    KEY idx_feed (reply_to, deleted, id),
+                    KEY idx_author (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_likes (
+                    post_id BIGINT UNSIGNED NOT NULL,
+                    citizenid VARCHAR(16) NOT NULL,
+                    PRIMARY KEY (post_id, citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_follows (
+                    follower VARCHAR(16) NOT NULL,
+                    followee VARCHAR(16) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (follower, followee),
+                    KEY idx_followee (followee)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_notes (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    title VARCHAR(48) NOT NULL,
+                    body TEXT NOT NULL,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_owner (citizenid, updated_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_market (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    number VARCHAR(10) NOT NULL,
+                    title VARCHAR(48) NOT NULL,
+                    body VARCHAR(300) NOT NULL,
+                    price INT UNSIGNED NOT NULL,
+                    category VARCHAR(16) NOT NULL,
+                    client_op VARCHAR(64) NULL,
+                    deleted TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME NOT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_op (citizenid, client_op),
+                    KEY idx_active (deleted, expires_at, id),
+                    KEY idx_owner (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            },
+        },
     })
     if not ok then return false end
     -- Calls that were live when the server stopped have ended.
@@ -161,8 +228,32 @@ local function oneOf(v, list, default) for _, x in ipairs(list) do if x == v the
 local function num(v, lo, hi, default) v = tonumber(v) if not v or v ~= v then return default end return math.max(lo, math.min(hi, v)) end
 local function bool(v, default) if type(v) == 'boolean' then return v end return default end
 
-local APP_IDS = {}
-for _, a in ipairs(PhoneConfig.Apps) do APP_IDS[a.id] = true end
+local APP_IDS, OPTIONAL = {}, {}
+for _, a in ipairs(PhoneConfig.Apps) do
+    APP_IDS[a.id] = true
+    if a.enabled and not a.core then OPTIONAL[a.id] = true end
+end
+
+--- Installed optional apps: nil means "never changed" (use the preinstalled set).
+local function cleanInstalled(list)
+    if type(list) ~= 'table' then return nil end
+    local out, seen = {}, {}
+    for _, id in ipairs(list) do
+        if type(id) == 'string' and OPTIONAL[id] and not seen[id] then seen[id] = true out[#out + 1] = id end
+    end
+    return out
+end
+
+function Phone.InstalledSet(settings)
+    local set = {}
+    if settings and settings.installed then
+        for _, id in ipairs(settings.installed) do set[id] = true end
+    else
+        for _, a in ipairs(PhoneConfig.Apps) do if a.enabled and a.preinstalled then set[a.id] = true end end
+    end
+    return set
+end
+Phone.OptionalApps = OPTIONAL
 
 local function cleanLayout(layout)
     if type(layout) ~= 'table' then return nil end
@@ -213,6 +304,7 @@ function Phone.CleanSettings(s)
         reducedMotion = bool(s.reducedMotion, false),
         layout = cleanLayout(s.layout),
         appPrefs = appPrefs,
+        installed = cleanInstalled(s.installed),
     }
 end
 
@@ -312,7 +404,13 @@ Veyl.RegisterCallback('hello', function(src, citizenid)
     Phone.byCid[citizenid] = s
     TriggerEvent('veyl_phone:sessionStarted', src, s)
     local apps = {}
-    for _, a in ipairs(PhoneConfig.Apps) do if a.enabled then apps[#apps + 1] = { id = a.id, label = a.label, dock = a.dock == true } end end
+    local installed = Phone.InstalledSet(settings)
+    for _, a in ipairs(PhoneConfig.Apps) do
+        if a.enabled then
+            apps[#apps + 1] = { id = a.id, label = a.label, dock = a.dock == true, core = a.core == true,
+                installed = a.core == true or installed[a.id] == true, category = a.category, description = a.description }
+        end
+    end
     return Veyl.Ok({
         number = acc.number, display = Phone.FormatNumber(acc.number), name = acc.display_name, settings = settings,
         apps = apps, voice = Calls and Calls.Availability() or { available = false, reason = 'Calls are not loaded' },

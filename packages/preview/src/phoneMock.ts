@@ -1,6 +1,7 @@
 // Preview-only stand-in for the veyl_phone server callbacks. Shapes mirror resources/[veyl]/veyl_phone/server/*.lua.
 import { devEmit, type NuiResponse } from '@veyl/ui';
 import type { Contact, ConversationItem, Message, Session, Settings } from '../../phone-ui/src/types';
+import { appCatalog, appsReset, phoneAppsApi } from './phoneApps';
 
 const ME = '3105422';
 const now = () => Math.floor(Date.now() / 1000);
@@ -26,6 +27,7 @@ export function phoneReset(empty: boolean) {
   ];
   const m = (id: number, convId: number, sender: string, body: string, ago: number, st?: Message['state']): Message =>
     ({ id, convId, sender, kind: 'text', body, at: t - ago, state: st, deliveredCount: st === 'sent' ? 0 : 1, total: 1 });
+  appsReset(empty);
   state = {
     settings: baseSettings(), contacts, blocked: [], recents: [], nextId: 100, ops: {},
     convs: empty ? [] : [
@@ -51,7 +53,7 @@ const unreadOf = (c: Conv) => c.messages.filter((x) => x.sender !== ME && !(x as
 export function phoneSession(empty: boolean): Session {
   return {
     number: ME, display: fmt(ME), name: 'Ann Avery', settings: state.settings,
-    apps: [{ id: 'phone', label: 'Phone', dock: true }, { id: 'messages', label: 'Messages', dock: true }, { id: 'contacts', label: 'Contacts', dock: true }, { id: 'settings', label: 'Settings', dock: true }],
+    apps: appCatalog(),
     external: [{ id: 'mechanic', label: 'Hayes Auto', icon: 'wrench', color: '#d08b4f' }],
     voice: { available: true, provider: 'pma-voice' }, serverTime: now(), unread: empty ? 0 : 1, notificationsUnread: 0,
     presets: { wallpapers: ['aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono'], accents: ['#b892f4', '#7aa7ff', '#5fd3a5', '#f2c66d', '#ef8f96', '#e3e3ea'], ringtones: ['veyl', 'pulse', 'classic', 'chime'], notifySounds: ['tap', 'bell', 'none'] },
@@ -170,6 +172,6 @@ export async function phoneApi(name: string, args: unknown[]): Promise<NuiRespon
     case 'callAnswer': return ok({ id: a[0], state: 'connected', since: now() });
     case 'callDecline': case 'callEnd': liveCall = 0; return ok();
     case 'callMute': return ok({ muted: !!a[1] });
-    default: return err('NOT_IMPLEMENTED', `No demo handler for ${name}`);
+    default: return (await phoneAppsApi(name, a)) ?? err('NOT_IMPLEMENTED', `No demo handler for ${name}`);
   }
 }

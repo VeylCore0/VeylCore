@@ -26,6 +26,9 @@ import '../../phone-ui/src/phone.css';
 import './preview.css';
 import * as F from './fixtures';
 
+// Phone Garage pictures come from the dev server in the preview (nui:// in FiveM).
+(window as unknown as { __veylVehicleImages?: string }).__veylVehicleImages = '/vehicles';
+
 type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;

@@ -6,6 +6,13 @@ import { PhoneApp } from './apps/Phone';
 import { MessagesApp } from './apps/Messages';
 import { ContactsApp } from './apps/Contacts';
 import { SettingsApp } from './apps/Settings';
+import { StoreApp } from './apps/Store';
+import { FlockApp } from './apps/Flock';
+import { BankApp } from './apps/Bank';
+import { GarageApp } from './apps/Garage';
+import { MarketApp } from './apps/Market';
+import { NotesApp } from './apps/Notes';
+import { CalculatorApp } from './apps/Calculator';
 
 // ---------------------------------------------------------------------------
 // Context shared by every app
@@ -15,7 +22,7 @@ interface Ctx {
   go: (app: string | null, route?: string) => void; route: string; toast: (text: string, kind?: 'ok' | 'error') => void;
   world: World | null | undefined; money: { bank: number } | null | undefined;
   call: CallState | null; startCall: (number: string) => Promise<void>; answer: () => void; decline: () => void; hangup: () => void; mute: () => void;
-  unread: number; setUnread: (n: number) => void; badges: Record<string, number>; onMessage: (fn: (m: Message, title: string) => void) => () => void;
+  unread: number; setUnread: (n: number) => void; badges: Record<string, number>; setAppInstalled: (id: string, on: boolean) => void; onMessage: (fn: (m: Message, title: string) => void) => () => void;
   onReceipt: (fn: (r: { convId: number; id: number; state: Message['state']; delivered: number; total: number }) => void) => () => void;
   openThread: string | null; setOpenThread: (k: string | null) => void;
 }
@@ -206,6 +213,7 @@ export function App() {
   const ctx: Ctx = {
     session, settings, saveSettings, go, route: nav.route, toast, world, money, call, startCall, answer, decline, hangup, mute,
     unread, setUnread, badges,
+    setAppInstalled: (id, on) => setSession((s) => (s ? { ...s, apps: s.apps.map((a) => (a.id === id ? { ...a, installed: on } : a)) } : s)),
     onMessage: (fn) => { msgListeners.current.add(fn); return () => { msgListeners.current.delete(fn); }; },
     onReceipt: (fn) => { receiptListeners.current.add(fn); return () => { receiptListeners.current.delete(fn); }; },
     openThread, setOpenThread,
@@ -302,7 +310,7 @@ function LockScreen({ onUnlock, openedAt }: { onUnlock: () => void; openedAt: nu
 // ---------------------------------------------------------------------------
 function allApps(session: Session): AppDef[] {
   const ext = (session.external ?? []).map((e) => ({ id: e.id, label: e.label, external: true, icon: e.icon, color: e.color }));
-  return [...session.apps, ...ext];
+  return [...session.apps.filter((a) => a.installed !== false), ...ext];
 }
 
 function AppIcon({ app, badge, onClick, onPointerDown, editing, size = 'md' }: { app: AppDef; badge?: number; onClick?: () => void; onPointerDown?: (e: React.PointerEvent) => void; editing?: boolean; size?: 'md' | 'sm' }) {
@@ -481,6 +489,13 @@ function AppHost({ app }: { app: string }) {
     case 'messages': return <MessagesApp />;
     case 'contacts': return <ContactsApp />;
     case 'settings': return <SettingsApp />;
+    case 'store': return <StoreApp />;
+    case 'flock': return <FlockApp />;
+    case 'bank': return <BankApp />;
+    case 'garage': return <GarageApp />;
+    case 'market': return <MarketApp />;
+    case 'notes': return <NotesApp />;
+    case 'calculator': return <CalculatorApp />;
     default: return <div className="ph-empty">This app is not available.</div>;
   }
 }
