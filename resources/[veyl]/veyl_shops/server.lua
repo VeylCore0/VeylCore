@@ -25,7 +25,7 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
                     shop VARCHAR(64) NOT NULL,
                     method VARCHAR(8) NOT NULL,
                     total INT UNSIGNED NOT NULL,
-                    lines LONGTEXT NOT NULL,
+                    items_json LONGTEXT NOT NULL,
                     status ENUM('pending','paid','settled','failed') NOT NULL DEFAULT 'pending',
                     result LONGTEXT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -119,7 +119,7 @@ function Reconcile(staleOnly)
             setStatus(row.op_id, 'failed', { reason = 'not_charged' })
         else
             if row.status == 'pending' then setStatus(row.op_id, 'paid') end
-            local okLines, lines = pcall(json.decode, row.lines)
+            local okLines, lines = pcall(json.decode, row.items_json)
             if okLines and type(lines) == 'table' then settle(row, lines) end
         end
     end
@@ -190,7 +190,7 @@ Veyl.RegisterCallback('checkout', function(src, citizenid, req)
         if not carry.ok then return Veyl.Err(carry.code, carry.message or 'Not enough space') end
     end
 
-    local ok = pcall(MySQL.insert.await, 'INSERT INTO veyl_shop_checkouts (op_id, citizenid, shop, method, total, lines) VALUES (?, ?, ?, ?, ?, ?)',
+    local ok = pcall(MySQL.insert.await, 'INSERT INTO veyl_shop_checkouts (op_id, citizenid, shop, method, total, items_json) VALUES (?, ?, ?, ?, ?, ?)',
         { opId, citizenid, shop.id, req.method, total, json.encode(lines) })
     if not ok then
         local row = MySQL.single.await('SELECT * FROM veyl_shop_checkouts WHERE op_id = ?', { opId })
