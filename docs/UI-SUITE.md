@@ -90,8 +90,8 @@ New core exports:
 Providers:
 - **Voice:** pma-voice is auto-detected once and supplies the range. Otherwise the HUD shows native talking only, with range unavailable.
 - **Fuel:** the `veylFuel` state bag, falling back to the game's fuel level.
-- **Seatbelt:** `HudConfig.Seatbelt = 'none'` shows *unavailable* rather than a fake "safe" state. Set it to `'statebag'` and have a
-  seatbelt resource set `LocalPlayer.state.seatbelt`.
+- **Seatbelt:** `veyl_vehicles` provides one (key **B**, rebindable). It publishes `LocalPlayer.state.seatbelt`, which the HUD reads
+  (`HudConfig.Seatbelt = 'statebag'`). Buckled: you can't exit until you unbuckle. Unbuckled: a hard crash above 45 mph ejects you.
 
 ### Target (`veyl_target`)
 
@@ -156,4 +156,4 @@ Browser-preview checks prove only the UI behaviour. They do not prove the server
 - **Shop stock:** stock is unlimited. Finite stock and reservations are planned, and the UI already renders stock and out-of-stock states.
 - **Banking:** personal accounts only; there are no business accounts yet.
 - **Target:** cursor-selection mode is not implemented; selection uses scroll/arrows and E or click.
-- **Seatbelt:** needs a provider resource. Voice range needs pma-voice.
+- **Voice range:** needs pma-voice.
