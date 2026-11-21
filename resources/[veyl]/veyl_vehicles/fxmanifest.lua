@@ -11,3 +11,7 @@ dependencies { '/onesync', 'oxmysql', 'veyl_core' }
 shared_scripts { '@veyl_core/lib/shared.lua', 'config.lua' }
 server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
 client_scripts { '@veyl_core/lib/client.lua', 'client.lua', 'seatbelt.lua' }
+
+-- Vehicle pictures (one <model>.webp per base-game model) used by the garage and dealership UIs:
+-- nui://veyl_vehicles/web/images/<model>.webp
+files { 'web/images/*.webp' }

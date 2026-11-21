@@ -114,7 +114,7 @@ Veyl.RegisterCallback('supplierList', function(src, _, sid)
     local list = {}
     for i, e in ipairs(s.stock) do
         local st = stock[keyOf(sid, e)]
-        list[#list + 1] = { index = i, label = labelOf(e), price = e.price, stock = st and st.stock or 0, max = e.max }
+        list[#list + 1] = { index = i, item = e.item, label = labelOf(e), price = e.price, stock = st and st.stock or 0, max = e.max }
     end
     return Veyl.Ok({ label = s.label, subtitle = s.subtitle, items = list, restockMinutes = s.restockMinutes, methods = s.methods })
 end, { cooldown = 500 })

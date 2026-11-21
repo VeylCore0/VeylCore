@@ -32,6 +32,10 @@ Lifecycle rules:
 - **Wrecked:** a wrecked owned vehicle is impounded and the wreck is cleared after `WreckClearMs`.
 - **Restart:** vehicles that were out when the server stopped go back to their last garage, free.
 
+## Vehicle pictures
+
+`veyl_vehicles/web/images/<model>.webp` holds a picture of every base-game model (all 876 in `veyl_core/shared/vehicles.lua`). The pictures come from the FiveM vehicle-models reference and are resized to 360 px wide, about 9 MB in total. Both the garage list and the dealership cards and detail panel use them. If an add-on model has no picture, the UI falls back to the plain car icon. To add one, drop a `<model>.webp` into that folder.
+
 ## Garages (`veyl_garages`)
 
 There are four public garages (Legion Square, Pink Cage, Sandy Shores, Paleto) and the impound lot, each with a blip.

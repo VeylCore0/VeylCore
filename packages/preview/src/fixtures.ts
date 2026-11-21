@@ -169,7 +169,7 @@ const OWNED: GarageVehicle[] = [
 export function garageOpen(kind: 'garage' | 'impound', empty: boolean): GarageOpen {
   const vehicles = empty ? [] : OWNED.map((v) => ({ ...v, here: kind === 'impound' ? v.state === 'impound' : v.here }));
   return { kind, placeId: kind === 'impound' ? 'impound' : 'legion', title: kind === 'impound' ? 'Impound Lot' : 'Legion Square Parking',
-    vehicles, balances: { cash: 420, bank: 12840 }, methods: ['cash', 'bank'] };
+    vehicles, balances: { cash: 420, bank: 12840 }, methods: ['cash', 'bank'], imagePath: '/vehicles' };
 }
 
 export function dealerOpen(empty: boolean): DealerOpen {
@@ -183,7 +183,7 @@ export function dealerOpen(empty: boolean): DealerOpen {
       v('sultan', 'Sultan', 'Karin', 45000, 'sports'), v('banshee', 'Banshee', 'Bravado', 105000, 'sports'), v('faggio', 'Faggio', 'Pegassi', 2500, 'motorcycles'),
       v('bati', 'Bati 801', 'Pegassi', 24000, 'motorcycles'),
     ],
-    balances: { cash: 420, bank: 152840 }, methods: ['cash', 'bank'],
+    balances: { cash: 420, bank: 152840 }, methods: ['cash', 'bank'], imagePath: '/vehicles',
   };
 }
 

@@ -3,7 +3,7 @@
 
 // ---------------- veyl_lib (menus / dialogs / notify / progress) ----------------
 export interface MenuOption {
-  id: string; label: string; description?: string; icon?: string; right?: string;
+  id: string; label: string; description?: string; icon?: string; image?: string; right?: string;
   disabled?: boolean; disabledReason?: string; hasChildren?: boolean;
 }
 export interface MenuOpen { token: string; id: string; title: string; subtitle?: string; breadcrumb?: string[]; options: MenuOption[]; canGoBack?: boolean }

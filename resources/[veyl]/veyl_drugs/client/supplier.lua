@@ -20,6 +20,14 @@ local function buyFlow(sid, entry, methods)
     Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_drugs', 'supplierBuy', 20000, sid, entry.index, count, values.method or methods[1], op))
 end
 
+-- Item picture shown in the menu (veyl_inventory image, PNG by default).
+local function itemImage(item)
+    local ok, def = pcall(function() return exports.veyl_inventory:GetItemDefinition(item) end)
+    local file = ok and type(def) == 'table' and def.image or (item .. '.png')
+    if not file:find('%.') then file = file .. '.png' end
+    return 'nui://veyl_inventory/web/images/' .. file
+end
+
 local function openSupplier(sid)
     local res = Veyl.Callback('veyl_drugs', 'supplierList', sid)
     if not res.ok then return Veyl.NotifyResult(res) end
@@ -27,7 +35,7 @@ local function openSupplier(sid)
     local options = {}
     for i, e in ipairs(d.items) do
         options[i] = {
-            id = tostring(e.index), label = e.label, right = ('$%d'):format(e.price), icon = 'basket', args = e,
+            id = tostring(e.index), label = e.label, right = ('$%d'):format(e.price), icon = 'basket', image = e.item and itemImage(e.item), args = e,
             description = e.stock > 0 and ('%d in stock'):format(e.stock) or ('Sold out · restocks every %d min'):format(d.restockMinutes),
             disabled = e.stock < 1, disabledReason = 'Sold out',
         }

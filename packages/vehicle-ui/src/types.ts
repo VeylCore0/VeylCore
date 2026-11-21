@@ -16,6 +16,7 @@ export interface GarageOpen {
   vehicles: GarageVehicle[];
   balances: { cash: number; bank: number };
   methods: Method[];
+  imagePath?: string; // default nui://veyl_vehicles/web/images (one <model>.webp per model)
 }
 
 export interface DealerVehicle { model: string; name: string; brand?: string; price: number; category: string }
@@ -26,6 +27,7 @@ export interface DealerOpen {
   vehicles: DealerVehicle[];
   balances: { cash: number; bank: number };
   methods: Method[];
+  imagePath?: string; // default nui://veyl_vehicles/web/images (one <model>.webp per model)
 }
 
 export const REASONS: Record<string, string> = {

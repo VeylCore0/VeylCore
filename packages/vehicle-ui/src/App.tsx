@@ -41,6 +41,21 @@ export function App() {
   return null;
 }
 
+/** Picture of a base-game model (veyl_vehicles/web/images/<model>.webp); falls back to a line icon (add-on vehicles). */
+const IMAGE_BASE = 'nui://veyl_vehicles/web/images';
+function VehicleImage({ model, base, fallback, size, className }: { model: string; base?: string; fallback: string; size: string; className: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [model]);
+  const safe = /^[a-z0-9_]+$/i.test(model);
+  return (
+    <div className={className}>
+      {safe && !failed
+        ? <img src={`${base ?? IMAGE_BASE}/${model.toLowerCase()}.webp`} alt="" loading="lazy" draggable={false} onError={() => setFailed(true)} />
+        : <Icon name={fallback} size={size} strokeWidth={1.2} />}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Garage / impound
 // ---------------------------------------------------------------------------
@@ -119,7 +134,7 @@ function GarageScreen({ data }: { data: GarageOpen }) {
             const short = fee > balance;
             return (
               <div key={v.id} className={`vh-row${v.here ? '' : ' away'}`}>
-                <div className="vh-icon"><Icon name="car" size="1.6rem" /></div>
+                <VehicleImage className="vh-icon" model={v.model} base={data.imagePath} fallback="car" size="1.6rem" />
                 <div className="vh-main">
                   <div className="vh-name">{v.name} {v.brand && <span className="v-muted">{v.brand}</span>}</div>
                   <div className="vh-meta">
@@ -220,7 +235,7 @@ function DealerScreen({ data }: { data: DealerOpen }) {
             {list.length === 0 && <StateView kind="empty" message="No vehicles match." />}
             {list.map((v) => (
               <button key={v.model} className={`vh-card${selected?.model === v.model ? ' on' : ''}`} onClick={() => { setSelected(v); setRetryOp(null); }}>
-                <div className="vh-card-icon"><Icon name={v.category === 'motorcycles' ? 'bolt' : 'car'} size="2.2rem" /></div>
+                <VehicleImage className="vh-card-icon" model={v.model} base={data.imagePath} fallback={v.category === 'motorcycles' ? 'bolt' : 'car'} size="2.2rem" />
                 <div className="vh-card-name">{v.name}</div>
                 <div className="v-muted vh-card-brand">{[v.brand, catLabel(v.category)].filter(Boolean).join(' · ')}</div>
                 <div className="vh-card-price">{money(v.price)}</div>
@@ -235,7 +250,7 @@ function DealerScreen({ data }: { data: DealerOpen }) {
             <>
               <div className="vh-title">{selected.name.toUpperCase()}</div>
               <div className="v-muted">{[selected.brand, catLabel(selected.category)].filter(Boolean).join(' · ')}</div>
-              <div className="vh-detail-hero"><Icon name={selected.category === 'motorcycles' ? 'bolt' : 'car'} size="5rem" strokeWidth={1.1} /></div>
+              <VehicleImage className="vh-detail-hero" model={selected.model} base={data.imagePath} fallback={selected.category === 'motorcycles' ? 'bolt' : 'car'} size="5rem" />
               <ul className="vh-facts">
                 <li><Icon name="check" size="0.95rem" /> Registered to you with its own plate</li>
                 <li><Icon name="check" size="0.95rem" /> Keys included</li>

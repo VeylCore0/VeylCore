@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { MenuOpen } from '@veyl/ui';
+import { Icon, type MenuOpen } from '@veyl/ui';
 import { sendResult } from './App';
 
 export function Menu({ data }: { data: MenuOpen }) {
@@ -70,7 +70,8 @@ export function Menu({ data }: { data: MenuOpen }) {
             onMouseEnter={() => !o.disabled && setIndex(i)}
             onClick={() => select(i)}
           >
-            {o.icon && <span className="menu-icon">{o.icon}</span>}
+            {o.image ? <span className="menu-img"><img src={o.image} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} /></span>
+              : o.icon && <span className="menu-icon"><Icon name={o.icon} size={18} /></span>}
             <span className="menu-text">
               <span className="menu-label">{o.label}</span>
               {(o.description || (o.disabled && o.disabledReason)) && (

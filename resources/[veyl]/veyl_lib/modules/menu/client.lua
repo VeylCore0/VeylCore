@@ -3,7 +3,7 @@
 -- vlib.registerMenu({
 --     id = 'delivery:depot', title = 'Delivery Depot', subtitle?, parent? = 'menu:id',
 --     onClose? = function() end, onBack? = function() end,
---     options = { { id = 'start', label = 'Start shift', description?, icon?, right?, disabled?, disabledReason?,
+--     options = { { id = 'start', label = 'Start shift', description?, icon?, image? (nui:// or https:// png/webp/jpg), right?, disabled?, disabledReason?,
 --                   menu? = 'child:menu:id', onSelect? = function(args) end, args? } },
 -- }, onSelect?(optionId, args))
 -- vlib.showMenu(id) / vlib.hideMenu() / vlib.getOpenMenu()
@@ -11,11 +11,20 @@
 local menus = {}
 local openId = nil
 
+-- Option pictures: only nui:// (a resource's own files) or https:// URLs to an image file.
+local function safeImage(url)
+    if type(url) ~= 'string' or #url > 300 then return nil end
+    if not (url:match('^nui://[%w_%-]+/[%w_%-%./]+$') or url:match('^https://[%w_%-%.]+/[%w_%-%./%%]+$')) then return nil end
+    local ext = url:match('%.(%w+)$')
+    if ext ~= 'png' and ext ~= 'webp' and ext ~= 'jpg' and ext ~= 'jpeg' then return nil end
+    return url
+end
+
 local function displayOptions(def)
     local list = {}
     for i, o in ipairs(def.options or {}) do
         list[i] = {
-            id = o.id, label = tostring(o.label or o.id), description = o.description, icon = o.icon,
+            id = o.id, label = tostring(o.label or o.id), description = o.description, icon = o.icon, image = safeImage(o.image),
             right = o.right ~= nil and tostring(o.right) or nil, disabled = o.disabled == true,
             disabledReason = o.disabledReason, hasChildren = o.menu ~= nil,
         }
