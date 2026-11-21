@@ -76,8 +76,42 @@ local function minimapRect()
     local left = xs * (resX * (0.05 * sz))
     local bottom = ys * (resY * (0.05 * sz))
     if aspect > 2.0 then left = left + width / 3.0 end -- ultrawide
-    return { left = left, bottom = bottom + 0.012, width = width, height = height }
+    -- That rectangle covers the map plus GTA's bar strip; frame only the map, at its raised position.
+    local mm, n = HudConfig.Minimap or {}, (HudConfig.Minimap or {}).frameNudge or {}
+    local strip = mm.barStrip or 0.0
+    return {
+        left = left + (n.x or 0), width = width + (n.w or 0),
+        bottom = bottom + (mm.raise or 0) + strip + (n.y or 0), height = height - strip + (n.h or 0),
+    }
 end
+
+-- GTA default minimap component positions (alignment L/B); the HUD raises each one by HudConfig.Minimap.raise.
+local MINIMAP_DEFAULTS = {
+    { 'minimap',      -0.0045, 0.002, 0.150, 0.188888 },
+    { 'minimap_mask',  0.020,  0.032, 0.111, 0.159 },
+    { 'minimap_blur', -0.03,   0.022, 0.266, 0.237 },
+}
+
+local function placeMinimap(raise)
+    for _, c in ipairs(MINIMAP_DEFAULTS) do
+        SetMinimapComponentPosition(c[1], 'L', 'B', c[2], c[3] - raise, c[4], c[5])
+    end
+    -- Toggling the big map makes GTA re-read the component positions.
+    SetRadarBigmapEnabled(true, false)
+    Wait(0)
+    SetRadarBigmapEnabled(false, false)
+end
+
+CreateThread(function()
+    local raise = (HudConfig.Minimap or {}).raise or 0.0
+    if raise ~= 0.0 then placeMinimap(raise) end
+end)
+
+AddEventHandler('onResourceStop', function(res)
+    if res == GetCurrentResourceName() then
+        for _, c in ipairs(MINIMAP_DEFAULTS) do SetMinimapComponentPosition(c[1], 'L', 'B', c[2], c[3], c[4], c[5]) end
+    end
+end)
 
 ---------------------------------------------------------------------------
 -- Sending (diffed per section)
@@ -171,9 +205,17 @@ end)
 
 -- Hide default GTA components this HUD replaces.
 CreateThread(function()
+    local hideBars = (HudConfig.Minimap or {}).hideHealthArmour
+    local minimapMovie = hideBars and RequestScaleformMovie('minimap') or nil
     while true do
         if LocalPlayer.state.isLoggedIn then
             for _, c in ipairs(HudConfig.HideComponents) do HideHudComponentThisFrame(c) end
+            if minimapMovie then
+                -- 3 = no health/armour bars under the minimap (the HUD status row shows health and armour).
+                BeginScaleformMovieMethod(minimapMovie, 'SETUP_HEALTH_ARMOUR')
+                ScaleformMovieMethodAddParamInt(3)
+                EndScaleformMovieMethod()
+            end
             if HudConfig.DisableWeaponWheel then
                 -- Weapons come from the inventory: no Tab wheel and no scroll-wheel weapon cycling.
                 HideHudComponentThisFrame(19) -- weapon wheel
