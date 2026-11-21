@@ -71,6 +71,24 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         return { ok: true };
       }
       case 'inventory:use': return { ok: true };
+      case 'inventory:drop': {
+        // Demo: the right-hand box becomes the ground and receives the item.
+        const p = payload as { slot: number; count: number };
+        const o = inv.current;
+        const it = o.primary.items.find((i) => i.slot === p.slot);
+        if (!it) return { ok: false, code: 'NOT_FOUND', message: 'Nothing in that slot' };
+        const n = Math.min(p.count, it.count);
+        const rest = o.primary.items.filter((i) => i.slot !== p.slot);
+        if (n < it.count) rest.push({ ...it, count: it.count - n });
+        const ground = o.secondary?.type === 'drop' ? o.secondary : { ref: 'secondary' as const, id: 'drop:demo', label: 'Ground', type: 'drop' as const, slots: 20, maxWeight: 200000, weight: 0, revision: 0, items: [] };
+        const used = new Set(ground.items.map((i) => i.slot));
+        let slot = 1; while (used.has(slot)) slot++;
+        const next = { ...o, primary: { ...o.primary, items: rest, revision: o.primary.revision + 1 }, secondary: { ...ground, id: 'drop:demo', items: [...ground.items, { ...it, slot, count: n }], revision: ground.revision + 1 } };
+        inv.current = next;
+        devEmit('inventory:snapshot', next.primary);
+        devEmit('inventory:snapshot', next.secondary);
+        return { ok: true, message: `Dropped ${n}x (demo)` };
+      }
       case 'inventory:nearby': return { ok: true, data: [{ id: 14, name: 'Jamie Cole', distance: 1.6 }, { id: 22, name: 'Riley Park', distance: 2.4 }] };
       case 'inventory:give': return { ok: true, message: 'Gave items (demo)' };
       case 'shop:checkout': {

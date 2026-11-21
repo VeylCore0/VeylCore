@@ -20,6 +20,7 @@ server_scripts {
     'server/operations.lua',
     'server/use.lua',
     'server/stashes.lua',
+    'server/drops.lua',
     'server/sessions.lua',
     'server/adapter_veylcore.lua',
     'server/exports.lua',
@@ -30,6 +31,7 @@ client_scripts {
     'client/ui.lua',
     'client/use.lua',
     'client/stashes.lua',
+    'client/drops.lua',
 }
 
 ui_page 'web/dist/index.html'

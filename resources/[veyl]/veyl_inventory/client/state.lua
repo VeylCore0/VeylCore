@@ -43,7 +43,8 @@ RegisterNetEvent('veyl_inventory:snapshot', function(view)
     if view.ref == 'primary' then
         InvState.primary = toMap(view)
         pushCounts()
-    elseif InvState.secondary and InvState.secondary.id == view.id then
+    elseif InvState.secondary and (InvState.secondary.id == view.id or (InvState.secondary.type == 'drop' and view.type == 'drop')) then
+        -- A ground box can become a real drop (first item dropped) or fall back to an empty Ground box.
         InvState.secondary = toMap(view)
     end
     UI_Forward('snapshot', view)

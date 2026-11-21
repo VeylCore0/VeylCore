@@ -5,15 +5,18 @@
 --   screen:close(reason) / screen:isOpen() / screen:session()
 -- Registers the page's 'ui:ready' and 'close' NUI callbacks. Focus is ALWAYS released on close, Escape, revoke,
 -- broker reset, death (optional), logout and resource stop.
+-- keepInput = true: the player can still walk while the screen is open (camera look, combat and the pause menu are
+-- blocked; movement is blocked too while the page reports a focused text field through the 'ui:typing' callback).
 
 local M = {}
 
 function M.createScreen(opts)
     opts = opts or {}
     local name = opts.name or GetCurrentResourceName()
-    local self = { visible = false, token = nil, ready = false, sessionId = nil, seq = 0 }
+    local self = { visible = false, token = nil, ready = false, sessionId = nil, seq = 0, typing = false }
 
     local function release()
+        if opts.keepInput then SetNuiFocusKeepInput(false) end
         SetNuiFocus(false, false)
         if self.token then
             exports.veyl_lib:ReleaseFocus(self.token)
@@ -58,13 +61,42 @@ function M.createScreen(opts)
         self.seq = self.seq + 1
         self.sessionId = ('%s:%d:%d'):format(name, GetGameTimer(), self.seq)
         self.visible = true
+        self.typing = false
         SetNuiFocus(true, true)
+        if opts.keepInput then
+            SetNuiFocusKeepInput(true)
+            CreateThread(function()
+                while self.visible do
+                    DisableControlAction(0, 1, true) DisableControlAction(0, 2, true)       -- look
+                    DisableControlAction(0, 24, true) DisableControlAction(0, 25, true)     -- attack / aim
+                    DisableControlAction(0, 140, true) DisableControlAction(0, 141, true)   -- melee
+                    DisableControlAction(0, 142, true) DisableControlAction(0, 257, true)
+                    DisableControlAction(0, 263, true) DisableControlAction(0, 264, true)
+                    DisableControlAction(0, 37, true) DisableControlAction(0, 44, true)     -- weapon wheel / cover (Q)
+                    DisableControlAction(0, 199, true) DisableControlAction(0, 200, true)   -- pause menu (Esc closes the page)
+                    DisableControlAction(0, 245, true) DisableControlAction(0, 75, true)    -- chat / exit vehicle
+                    DisableControlAction(0, 16, true) DisableControlAction(0, 17, true)     -- weapon scroll
+                    DisablePlayerFiring(PlayerId(), true)
+                    if self.typing then
+                        DisableControlAction(0, 30, true) DisableControlAction(0, 31, true) -- move
+                        DisableControlAction(0, 21, true) DisableControlAction(0, 22, true) -- sprint / jump
+                        DisableControlAction(0, 23, true) DisableControlAction(0, 36, true) -- enter vehicle / duck
+                    end
+                    Wait(0)
+                end
+            end)
+        end
         self:send(action, data)
         return true
     end
 
     RegisterNUICallback('ui:ready', function(_, cb)
         self.ready = true
+        cb({ ok = true })
+    end)
+
+    RegisterNUICallback('ui:typing', function(data, cb)
+        self.typing = type(data) == 'table' and data.typing == true
         cb({ ok = true })
     end)
 

@@ -23,6 +23,7 @@ CreateThread(function()
     local okMig, e = pcall(DB.Migrate)
     if not okMig then return print(('^1[veyl_inventory] NOT READY: migration failed: %s^7'):format(tostring(e))) end
     for _, s in ipairs(InventoryConfig.Stashes) do Stashes.Register(s, GetCurrentResourceName()) end
+    pcall(Drops.ClearAll)
     Ready = true
     GlobalState['veyl:ready:veyl_inventory'] = true
     print(('^5[veyl_inventory] ready (%d item definitions)^7'):format(vlib.table.count(ItemDefs)))

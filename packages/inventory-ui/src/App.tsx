@@ -36,6 +36,16 @@ export function App() {
 
   useEffect(() => announceReady(), []);
 
+  // You can walk with the inventory open; while a text field has focus, Lua pauses movement so typing doesn't walk.
+  useEffect(() => {
+    const isField = (el: EventTarget | null) => el instanceof HTMLInputElement && el.type !== 'range';
+    const onIn = (e: FocusEvent) => { if (isField(e.target)) void nui('ui:typing', { typing: true }); };
+    const onOut = (e: FocusEvent) => { if (isField(e.target)) void nui('ui:typing', { typing: false }); };
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    return () => { document.removeEventListener('focusin', onIn); document.removeEventListener('focusout', onOut); };
+  }, []);
+
   useNuiMessage<InventoryOpen>('inventory:open', (d) => {
     setViews({ primary: d.primary, secondary: d.secondary });
     setDefs(d.items);
@@ -120,6 +130,18 @@ export function App() {
     if (res.ok) say('success', res.message ?? 'Given'); else say('error', res.message ?? res.code ?? 'Could not give');
   }, [give, itemAt, amountFor, views, say]);
 
+  const drop = useCallback(async (a: SlotAddress | null) => {
+    const item = itemAt(a);
+    if (!a || !item) return say('error', t('inv.selectFirst'));
+    if (a.ref !== 'primary') return say('error', t('inv.dropUnavailable'));
+    const k = key(a);
+    if (pending.has(k)) return;
+    setPending((p) => new Set([...p, k]));
+    const res = await nui('drop', { opId: newOpId(), slot: a.slot, count: amountFor(item), revision: views.primary?.revision });
+    setPending((p) => { const n = new Set(p); n.delete(k); return n; });
+    if (res.ok) { say('success', res.message ?? 'Dropped'); setQuantity(1); } else say('error', res.message ?? res.code ?? 'Could not drop that');
+  }, [itemAt, pending, amountFor, views, say]);
+
   const close = useCallback(() => { void nui('close'); }, []);
 
   // Pointer drag (works in CEF without HTML5 drag events).
@@ -142,18 +164,19 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (qty || give || menu) { if (e.key === 'Escape') { setQty(null); setGive(null); setMenu(null); } return; }
       if ((e.target as HTMLElement).tagName === 'INPUT') { if (e.key === 'Escape') (e.target as HTMLElement).blur(); return; }
-      if (e.key === 'Escape' || e.key === 'F2') { e.preventDefault(); close(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
       const cur = selected ?? { ref: 'primary' as Ref, slot: 1 };
       const view = views[cur.ref]; if (!view) return;
       const nav: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 5, ArrowUp: -5 };
       if (e.key in nav) { e.preventDefault(); const n = cur.slot + nav[e.key]; if (n >= 1 && n <= view.slots) setSelected({ ...cur, slot: n }); }
       else if (e.key === 'Tab') { e.preventDefault(); const o: Ref = cur.ref === 'primary' ? 'secondary' : 'primary'; if (views[o]) setSelected({ ref: o, slot: 1 }); }
       else if (e.key === 'Enter') use(cur);
+      else if (e.key === 'Delete') void drop(cur);
       else if (e.key.toLowerCase() === 'q') { const it = itemAt(cur); if (it) quickTransfer(cur, amountFor(it)); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, selected, views, qty, give, menu, use, quickTransfer, itemAt, amountFor, close]);
+  }, [open, selected, views, qty, give, menu, use, drop, quickTransfer, itemAt, amountFor, close]);
 
   const panelHandlers = useMemo(() => ({
     onSelect: (a: SlotAddress) => { setSelected(a); setQuantity(1); },
@@ -168,9 +191,13 @@ export function App() {
   const maxQty = selectedItem?.count ?? 1;
   const canUse = !!selectedItem && selected?.ref === 'primary' && !!selectedDef?.usable;
   const canGive = !!selectedItem && selected?.ref === 'primary';
+  const canDrop = canGive;
+  const useReason = !selectedItem ? t('inv.selectFirst') : selected?.ref !== 'primary' ? t('inv.useFromPersonal')
+    : !selectedDef?.usable ? t('inv.cantUse', { item: selectedDef?.label ?? selectedItem.name }) : null;
 
   return (
     <div className="inv-root" onContextMenu={(e) => e.preventDefault()}>
+      <div className="inv-frame">
       <header className="inv-header">
         <BrandStack section={t('inv.section')} />
         <CloseHint onClose={close} />
@@ -191,19 +218,24 @@ export function App() {
             onChange={(e) => setQuantity(Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value) || 1))))}
             aria-label={t('inv.quantity')}
           />
-          <button className="v-btn primary block" disabled={!canUse} title={!canUse ? (selectedItem ? t('inv.notUsable') : t('inv.selectFirst')) : undefined} onClick={() => use(selected)}>{t('inv.use').toUpperCase()}</button>
+          <button className="v-btn primary block" disabled={!canUse} title={useReason ?? undefined} onClick={() => use(selected)}>{t('inv.use').toUpperCase()}</button>
           <button className="v-btn block" disabled={!canGive} title={!canGive ? t('inv.selectFirst') : undefined} onClick={() => void startGive(selected)}>{t('inv.give').toUpperCase()}</button>
-          <button className="v-btn block" disabled title={t('inv.dropUnavailable')}>{t('inv.drop').toUpperCase()}</button>
+          <button className="v-btn block" disabled={!canDrop} title={!canDrop ? t('inv.dropUnavailable') : undefined} onClick={() => void drop(selected)}>{t('inv.drop').toUpperCase()}</button>
+          {selectedItem && useReason && selected?.ref === 'primary' && <div className="inv-reason v-muted">{useReason}</div>}
         </div>
 
         {views.secondary ? (
           <InventoryPanel
             view={views.secondary} defs={defs} imagePath={imagePath} pending={pending} selected={selected}
-            title={views.secondary.label} subtitle={t('inv.storageSub')} searchPlaceholder={t('inv.searchStorage')}
+            title={views.secondary.label}
+            subtitle={views.secondary.type === 'drop' ? t('inv.groundSub') : t('inv.storageSub')}
+            searchPlaceholder={views.secondary.type === 'drop' ? t('inv.searchGround') : t('inv.searchStorage')}
             hotbar={0} {...panelHandlers}
           />
         ) : <div className="inv-panel-spacer" />}
       </main>
+
+      </div>
 
       <footer className="inv-hints v-muted">
         <span><Icon name="mouse" size="1rem" /> {t('inv.hintDrag')}</span>

@@ -44,6 +44,7 @@ function Ops.Transfer(req)
     local result, lockErr = Store.WithLocks({ from.id, to.id }, function()
         local stored = dedupe(req.opId, req.actor, fp)
         if stored then return stored end
+        if from.dead or to.dead then return err('NOT_FOUND', 'Those items are gone') end
         -- Stale client view -> authoritative refresh instead of guessing.
         for _, inv in ipairs({ from, to }) do
             local expected = req.revisions and req.revisions[inv.id]

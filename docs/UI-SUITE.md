@@ -40,6 +40,7 @@ Every NUI request is resolved with `{ ok, code?, message?, data? }`.
 | NUI → Lua | Payload | Server callback |
 | --- | --- | --- |
 | `move` | `{ opId, from{ref,slot}, to{ref,slot}, count?, revisions }` | `veyl_inventory:move` (locked transaction; `STALE` → snapshot) |
+| `drop` | `{ opId, slot, count, revision }` | `veyl_inventory:drop` (open ground box, else nearest drop, else a new one) |
 | `use` | `{ slot }` | `useStart` → progress → `useComplete` (reserved, server-timed) |
 | `nearby` | — | `veyl_inventory:nearby` (≤ 3 m, same routing bucket) |
 | `give` | `{ opId, slot, count, target, revision }` | `veyl_inventory:give` (re-checks recipient, then transfers) |
@@ -181,7 +182,8 @@ Browser-preview checks prove only the UI behaviour. They do not prove the server
 - **Item art:** PNGs from the RAINMAD image gallery (see `veyl_inventory/web/images/CREDITS.md`); `jacket.svg` is still a
   placeholder. To add an item image, put a PNG/WebP in `veyl_inventory/web/images/` (name it `<item>.png` or set `image =` in
   `data/items.lua`). A missing image shows a deliberate fallback tile.
-- **Drop:** shown but disabled with a reason, because ground drops are a later inventory phase. **Open trunk** isn't offered for the same reason (vehicle storage).
+- **Ground drops:** the right-hand box is the ground when no stash is open. Drop (or drag into it) creates a bag at your feet; emptied bags vanish, untouched ones expire after 30 minutes (`DropLifetimeMinutes`) and ground items are cleared on restart. **Open trunk** is not offered yet (vehicle storage is a later phase).
+- **Walking:** the inventory uses `keepInput`: you can walk while it is open; camera look, combat and the pause menu are blocked, and movement pauses while a text field has focus.
 - **Shop stock:** stock is unlimited. Finite stock and reservations are planned, and the UI already renders stock and out-of-stock states.
 - **Banking:** personal accounts only; there are no business accounts yet.
 - **Target:** cursor-selection mode is not implemented; selection uses scroll/arrows and E or click.

@@ -31,7 +31,8 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     .map(([name, count], i) => ({ slot: i + 1, name: name as string, count: count as number }));
   return {
     primary: { ref: 'primary', id: 'player:DEMO', label: 'Pockets', type: 'player', slots: 25, maxWeight: 30000, weight: empty ? 0 : 12400, revision: 1, items: personal },
-    secondary: { ref: 'secondary', id: 'trunk:DEMO', label: 'Vehicle Trunk', type: 'trunk', slots: 25, maxWeight: 60000, weight: empty ? 0 : 7800, revision: 1, items: trunk },
+    secondary: empty ? { ref: 'secondary', id: 'ground', label: 'Ground', type: 'drop', slots: 20, maxWeight: 200000, weight: 0, revision: 0, items: [] }
+      : { ref: 'secondary', id: 'trunk:DEMO', label: 'Vehicle Trunk', type: 'trunk', slots: 25, maxWeight: 60000, weight: 7800, revision: 1, items: trunk },
     items: itemDefs, imagePath: '/items', hotbarSlots: 5,
   };
 }

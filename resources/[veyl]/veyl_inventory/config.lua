@@ -9,6 +9,13 @@ InventoryConfig = {
     HotbarSlots = 5,                  -- keys 1..5 use the item in personal slots 1..5
     GiveDistance = 3.0,
 
+    -- Ground drops (the right-hand box when no stash is open). Cleared on restart.
+    DropSlots = 20,
+    DropMaxWeight = 200000,         -- grams
+    DropDistance = 2.5,             -- how close you must be to use a drop
+    DropLifetimeMinutes = 30,       -- untouched drops disappear after this
+    DropProp = 'prop_paper_bag_small',
+
     -- Server-registered stashes. owner = true: every character has its own copy.
     -- groups = { police = 0 } restricts access (checked on the server for every mutation).
     Stashes = {

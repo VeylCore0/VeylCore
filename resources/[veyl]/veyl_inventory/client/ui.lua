@@ -2,6 +2,7 @@
 
 local screen = vlib.createScreen({
     name = 'inventory',
+    keepInput = true, -- you can keep walking with the inventory open
     onClose = function()
         InvState.secondary = nil
         CreateThread(function() vlib.callback.await('veyl_inventory:close', { timeoutMs = 5000 }) end)
@@ -73,6 +74,28 @@ RegisterNUICallback('use', function(data, cb)
     local slot = tonumber(data and data.slot)
     screen:close('use')
     if slot then CreateThread(function() UseSlot(slot) end) end
+end)
+
+RegisterNUICallback('drop', function(data, cb)
+    if not screen:isOpen() or type(data) ~= 'table' then return cb({ ok = false, code = 'INVALID_INPUT' }) end
+    local res = vlib.callback.await('veyl_inventory:drop', { timeoutMs = 10000 }, {
+        opId = tostring(data.opId or ''), slot = tonumber(data.slot), count = tonumber(data.count), revision = tonumber(data.revision),
+    })
+    if type(res) ~= 'table' then res = { ok = false, code = 'TIMEOUT', message = 'No response from server' } end
+    if res.ok then
+        -- Short put-down animation; the item is already on the ground (server-confirmed).
+        local ped = PlayerPedId()
+        if not IsPedInAnyVehicle(ped, false) then
+            CreateThread(function()
+                local dict = 'pickup_object'
+                RequestAnimDict(dict)
+                local t = GetGameTimer() + 1000
+                while not HasAnimDictLoaded(dict) and GetGameTimer() < t do Wait(10) end
+                if HasAnimDictLoaded(dict) then TaskPlayAnim(ped, dict, 'putdown_low', 8.0, -8.0, 900, 48, 0, false, false, false) end
+            end)
+        end
+    end
+    cb({ ok = res.ok, code = res.code, message = res.message })
 end)
 
 RegisterNUICallback('nearby', function(_, cb)

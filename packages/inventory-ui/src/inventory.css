@@ -1,6 +1,12 @@
-.inv-root { position: fixed; inset: 0; display: flex; flex-direction: column; padding: 2.5vh 3vw 2vh; gap: 0.9rem; background: rgba(6, 6, 10, 0.35); }
-.inv-header { display: flex; justify-content: space-between; align-items: center; }
+/* Light backdrop: you can keep walking with the inventory open. */
+.inv-root { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding: 3vh 2vw 2vh; gap: 0.9rem;
+  background: radial-gradient(ellipse at center, rgba(6, 6, 10, 0.12) 0%, rgba(6, 6, 10, 0.4) 100%); }
+/* Header and panels share one centred frame, so the logo sits right above the left panel and Close above the right. */
+.inv-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.9rem; max-width: 100%; }
+.inv-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0.2rem; }
 .inv-main { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; gap: 1.1rem; }
+.inv-center .v-btn:disabled { background: rgba(255, 255, 255, 0.04); border-color: var(--border-soft); color: var(--text-muted); opacity: 0.6; }
+.inv-reason { font-size: 0.75rem; line-height: 1.3; text-align: center; max-width: 7rem; }
 
 .inv-panel { width: min(42vw, 40rem); max-height: 100%; display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem; }
 .inv-panel-spacer { width: min(42vw, 40rem); }

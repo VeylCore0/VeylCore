@@ -23,12 +23,13 @@ function Inventory_OnCharacterLoaded(src, citizenid, generation, label)
     Players[src] = { citizenid = citizenid, generation = generation, invId = inv.id }
     inv.viewers[src] = 'primary'
     TriggerClientEvent('veyl_inventory:init', src, { primary = Store.View(inv, 'primary'), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
+    Drops.Sync(src)
 end
 
 function Inventory_OnCharacterUnloaded(src)
     Use.CancelFor(src)
     local s = Sessions[src]
-    if s and s.secondary then
+    if s and s.secondary and s.secondary.invId then
         local sec = Store.Get(s.secondary.invId)
         if sec then sec.viewers[src] = nil Store.Unload(sec.id) end
     end
@@ -56,12 +57,39 @@ local function actor(src)
     return p
 end
 
+--- Attaches a drop to the player's open session as the secondary inventory and sends its snapshot.
+local function attachDrop(src, s, d)
+    local sec = Drops.Inv(d)
+    if not sec then return nil end
+    sec.viewers[src] = 'secondary'
+    s.secondary = { invId = d.invId, dropId = d.id }
+    Store.Snapshot(sec, src)
+    return sec
+end
+
 --- Resolves a session ref to an inventory and re-checks access (distance/groups/ownership) every time.
-local function resolveRef(src, p, ref)
+--- `create` (moving INTO the ground box): makes or joins a drop at the player's position. Returns inv, err|'ATTACHED'.
+local function resolveRef(src, p, ref, create)
     if ref == 'primary' then return Store.Get(p.invId) end
     if ref == 'secondary' then
         local s = Sessions[src]
         if not s or not s.secondary then return nil, 'NO_SESSION' end
+        if s.secondary.ground then
+            if not create then return nil, 'NOT_FOUND' end
+            if IsPedInAnyVehicle(GetPlayerPed(src), false) then return nil, 'IN_VEHICLE' end
+            local d = Drops.Nearest(src) or Drops.Create(src)
+            local sec = d and attachDrop(src, s, d)
+            if not sec then return nil, 'NOT_READY' end
+            return sec, 'ATTACHED'
+        end
+        if s.secondary.dropId then
+            if Drops.CanAccess(src, s.secondary.dropId) then return Drops.Inv(Drops.list[s.secondary.dropId]) end
+            local sec = Store.inventories[s.secondary.invId]
+            if sec then sec.viewers[src] = nil end
+            s.secondary = { ground = true }
+            TriggerClientEvent('veyl_inventory:snapshot', src, Drops.PendingView())
+            return nil, 'TOO_FAR'
+        end
         local invId, def = Stashes.Resolve(src, p.citizenid, s.secondary.stashId)
         if not invId then
             local lostId = s.secondary.invId
@@ -97,10 +125,22 @@ vlib.callback.register('veyl_inventory:open', function(src, stashId)
         sec.viewers[src] = 'secondary'
         s.secondary = { invId = invId, stashId = stashId }
         secondaryView = Store.View(sec, 'secondary')
+    else
+        -- No stash: the right-hand box is the ground (the nearest drop, or an empty Ground box).
+        local d = Drops.Nearest(src)
+        local sec = d and Drops.Inv(d)
+        if sec then
+            sec.viewers[src] = 'secondary'
+            s.secondary = { invId = d.invId, dropId = d.id }
+            secondaryView = Store.View(sec, 'secondary')
+        else
+            s.secondary = { ground = true }
+            secondaryView = Drops.PendingView()
+        end
     end
     -- Close any previous secondary.
     local old = Sessions[src]
-    if old and old.secondary and (not s.secondary or old.secondary.invId ~= s.secondary.invId) then
+    if old and old.secondary and old.secondary.invId and (not s.secondary or old.secondary.invId ~= s.secondary.invId) then
         local prev = Store.Get(old.secondary.invId)
         if prev then prev.viewers[src] = nil Store.Unload(prev.id) end
     end
@@ -110,7 +150,7 @@ end, { cooldownMs = 300 })
 
 vlib.callback.register('veyl_inventory:close', function(src)
     local s = Sessions[src]
-    if s and s.secondary then
+    if s and s.secondary and s.secondary.invId then
         local sec = Store.Get(s.secondary.invId)
         if sec then sec.viewers[src] = nil Store.Unload(sec.id) end
     end
@@ -123,13 +163,17 @@ vlib.callback.register('veyl_inventory:move', function(src, req)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
     if type(req) ~= 'table' or type(req.from) ~= 'table' or type(req.to) ~= 'table' then return err('INVALID_INPUT', 'Bad request') end
     local from, e1 = resolveRef(src, p, req.from.ref)
-    if not from then return err(e1 or 'NOT_FOUND', 'Inventory not available') end
-    local to, e2 = resolveRef(src, p, req.to.ref)
-    if not to then return err(e2 or 'NOT_FOUND', 'Inventory not available') end
+    if not from then return err(e1 or 'NOT_FOUND', e1 == 'TOO_FAR' and 'You moved away from it' or 'Inventory not available') end
+    local to, e2 = resolveRef(src, p, req.to.ref, true)
+    if not to then
+        return err(e2 or 'NOT_FOUND', e2 == 'IN_VEHICLE' and 'Get out of the vehicle to drop items'
+            or e2 == 'TOO_FAR' and 'You moved away from it' or 'Inventory not available')
+    end
     local revisions = {}
     if type(req.revisions) == 'table' then
         if req.revisions[req.from.ref] then revisions[from.id] = tonumber(req.revisions[req.from.ref]) end
-        if req.revisions[req.to.ref] then revisions[to.id] = tonumber(req.revisions[req.to.ref]) end
+        -- A ground box attached by this very request has no client revision yet.
+        if req.revisions[req.to.ref] and e2 ~= 'ATTACHED' then revisions[to.id] = tonumber(req.revisions[req.to.ref]) end
     end
     local res = Ops.Transfer({
         opId = req.opId, actor = p.citizenid, from = from, fromSlot = req.from.slot, to = to, toSlot = req.to.slot,
@@ -246,6 +290,45 @@ vlib.callback.register('veyl_inventory:give', function(src, req)
     end
     return res
 end, { cooldownMs = 750 })
+
+---------------------------------------------------------------------------
+-- Drop on the ground (Drop button). Goes into the open ground box, else the nearest drop, else a new one.
+---------------------------------------------------------------------------
+vlib.callback.register('veyl_inventory:drop', function(src, req)
+    local p = actor(src)
+    if not p then return err('NO_CHARACTER', 'No character loaded') end
+    if type(req) ~= 'table' then return err('INVALID_INPUT', 'Bad request') end
+    if IsPedInAnyVehicle(GetPlayerPed(src), false) then return err('IN_VEHICLE', 'Get out of the vehicle to drop items') end
+    local from = Store.Get(p.invId)
+    if not from then return err('NOT_READY', 'Inventory unavailable') end
+    local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
+    if not it then return err('NOT_FOUND', 'Nothing in that slot') end
+    local count = vlib.validate.int(req.count, 1, it.count) and req.count or it.count
+
+    local s = Sessions[src]
+    local to
+    if s and s.secondary and s.secondary.dropId and Drops.CanAccess(src, s.secondary.dropId) then
+        to = Drops.Inv(Drops.list[s.secondary.dropId])
+    else
+        local d = Drops.Nearest(src) or Drops.Create(src)
+        if not d then return err('NOT_READY', 'Could not drop that here') end
+        -- Show it in the open inventory when the right-hand box is the ground (not a stash).
+        if s and s.secondary and (s.secondary.ground or s.secondary.dropId) then to = attachDrop(src, s, d) else to = Drops.Inv(d) end
+    end
+    if not to then return err('NOT_READY', 'Could not drop that here') end
+    local toSlot = destinationSlot(to, it, count)
+    if not toSlot then return err('INVENTORY_FULL', 'There is no room left on the ground here') end
+    local revisions = {}
+    if req.revision then revisions[from.id] = tonumber(req.revision) end
+    local res = Ops.Transfer({ opId = req.opId, actor = p.citizenid, from = from, fromSlot = req.slot, to = to, toSlot = toSlot,
+        count = count, revisions = revisions })
+    if res.ok then
+        res.message = ('Dropped %dx %s'):format(count, ItemDefs[it.name].label)
+    elseif res.code == 'STALE' then
+        Store.Snapshot(from, src)
+    end
+    return res
+end, { cooldownMs = 400 })
 
 AddEventHandler('playerDropped', function()
     local src = source
