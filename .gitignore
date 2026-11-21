@@ -12,3 +12,5 @@ server.cfg
 # Discord changelog: webhook URL (secret) and last posted commit
 .discord-webhook
 .changelog-state
+.discord-roadmap-webhook
+.roadmap-state
