@@ -67,6 +67,7 @@ DrugsConfig = {
             { item = 'weed_seed', variety = 'violet_haze', price = 60, max = 40, restock = 6 },
             { item = 'weed_seed', variety = 'silverleaf', price = 45, max = 40, restock = 6 },
             { item = 'weed_seed', variety = 'nightbloom', price = 110, max = 15, restock = 2 },
+            { item = 'weed_seed', variety = 'sunburst', price = 75, max = 30, restock = 5 },
             { item = 'coca_seed', variety = 'andes_mist', price = 90, max = 25, restock = 4 },
             { item = 'coca_seed', variety = 'red_ridge', price = 70, max = 25, restock = 4 },
             { item = 'mushroom_spores', variety = 'mooncap', price = 120, max = 12, restock = 2 },

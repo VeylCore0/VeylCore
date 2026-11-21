@@ -38,8 +38,11 @@ Nothing from C–F appears in-game yet. The UI has no placeholder buttons for th
    ensure veyl_target
    ensure veyl_interact
    ...
+   ensure veyl_weedprops   # custom weed models (stream resource, kept outside this repo)
    ensure veyl_drugs
    ```
+   `veyl_weedprops` lives in `server/resources/veyl_weedprops` on your server. It is not in the GitHub repo, so a
+   fresh install needs it copied in. Without it, weed falls back to the base-game Biker DLC weed props.
 2. Restart the server. Migration `001_plants` creates three tables:
    - `veyl_drug_plants`
    - `veyl_drug_logs`
@@ -140,8 +143,8 @@ Use the item or `/growjournal` (requires the item) to open the tablet.
 
 | Prop | Status |
 | --- | --- |
-| Cannabis: `bkr_prop_weed_*` (Biker DLC) | Base game |
-| Coca: `prop_plant_01a/b`, `prop_bush_*`, `prop_plant_int_*` | Generic base-game shrubs used as stand-ins (no coca plant prop exists) |
+| Cannabis: `veyl_weedprops` (`an_weed_<colour>_01_small_01a` → `_01_small_01c` → `_med_01b` → `_lrg_01b`) | Custom stream resource. Varieties use purple (Violet Haze), white (Silverleaf), blue (Nightbloom) and yellow (Sunburst). The base-game `bkr_prop_weed_*` set is the product fallback |
+| Coca: `h4_prop_bush_cocaplant_01` (Cayo Perico Heist DLC) | Base game, free, no download. GTA has one coca bush size, so the four stages draw it at 35 / 60 / 85 / 100 % scale (72 % max in a pot). Confirmed in the [GTA V object list dump](https://github.com/DurtyFree/gta-v-data-dumps) |
 | Mushroom tub: `prop_weed_tub_01/01b`; stage cluster `prop_veg_crop_03_cab` | Stand-ins |
 | Watering can `prop_wateringcan`, scissors `prop_cs_scissors` | Base game |
 

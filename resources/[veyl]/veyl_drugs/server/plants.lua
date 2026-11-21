@@ -73,7 +73,7 @@ end
 -- Client streaming
 ---------------------------------------------------------------------------
 local function streamView(p, cid)
-    return { id = p.id, type = p.type, container = p.container, stage = Growth.stage(p), x = p.x, y = p.y, z = p.z, h = p.heading,
+    return { id = p.id, type = p.type, variety = p.variety, container = p.container, stage = Growth.stage(p), x = p.x, y = p.y, z = p.z, h = p.heading,
         ready = p.state == 'growing' and p.growth >= 100, own = cid ~= nil and p.owner == cid }
 end
 

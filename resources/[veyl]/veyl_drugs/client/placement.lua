@@ -53,16 +53,25 @@ local function problem(ped, pos, normal, container, ghost)
     return nil
 end
 
-local function ghostModel(product, container)
-    local prod = DrugsProducts[product]
-    local list = prod.props[container] or prod.props.ground
-    local name = list[1]
+--- Preview model: the variety's stage-2 prop (big enough to see), with its scale.
+local function ghostModel(product, variety, container)
+    local list = DrugsStageProps(product, variety, container)
+    local name, scale = DrugsPropEntry(list[2] or list[1])
     local hash = joaat(name)
-    if not IsModelInCdimage(hash) then hash = joaat(DrugsFallbackProp) end
+    if not IsModelInCdimage(hash) then hash, scale = joaat(DrugsFallbackProp), 1.0 end
     RequestModel(hash)
     local deadline = GetGameTimer() + 3000
     while not HasModelLoaded(hash) and GetGameTimer() < deadline do Wait(10) end
-    return hash
+    return hash, scale
+end
+
+local function makeGhost(hash, scale)
+    local g = CreateObject(hash, 0.0, 0.0, 0.0, false, false, false)
+    SetEntityAlpha(g, 170, false)
+    SetEntityCollision(g, false, false)
+    FreezeEntityPosition(g, true)
+    SetEntityDrawOutline(g, true)
+    return g, scale
 end
 
 local function guardPause()
@@ -95,12 +104,8 @@ local function begin(data)
     local ci = 1
     placing = true
 
-    local hash = ghostModel(data.product, containers[ci])
-    local ghost = CreateObject(hash, 0.0, 0.0, 0.0, false, false, false)
-    SetEntityAlpha(ghost, 170, false)
-    SetEntityCollision(ghost, false, false)
-    FreezeEntityPosition(ghost, true)
-    SetEntityDrawOutline(ghost, true)
+    local hash, scale = ghostModel(data.product, data.variety, containers[ci])
+    local ghost = makeGhost(hash, scale)
     local heading = GetEntityHeading(ped)
     local confirmed, last = nil, nil
 
@@ -111,6 +116,7 @@ local function begin(data)
         if pos then
             SetEntityCoordsNoOffset(ghost, pos.x, pos.y, pos.z, false, false, false)
             SetEntityHeading(ghost, heading)
+            DrugsScaleEntity(ghost, scale) -- heading resets the matrix, so re-apply the stage scale
             SetEntityVisible(ghost, true, false)
         else
             SetEntityVisible(ghost, false, false)
@@ -128,13 +134,10 @@ local function begin(data)
         if IsDisabledControlPressed(0, 45) then heading = (heading + 1.5) % 360 end
         if IsDisabledControlJustPressed(0, 47) and #containers > 1 then
             ci = ci % #containers + 1
-            local newHash = ghostModel(data.product, containers[ci])
             DeleteEntity(ghost)
-            ghost = CreateObject(newHash, 0.0, 0.0, 0.0, false, false, false)
-            SetEntityAlpha(ghost, 170, false)
-            SetEntityCollision(ghost, false, false)
-            FreezeEntityPosition(ghost, true)
-            SetEntityDrawOutline(ghost, true)
+            SetModelAsNoLongerNeeded(hash)
+            hash, scale = ghostModel(data.product, data.variety, containers[ci])
+            ghost = makeGhost(hash, scale)
         end
         if IsDisabledControlJustPressed(0, 200) or IsDisabledControlJustPressed(0, 177) or IsDisabledControlJustPressed(0, 322)
             or IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) then

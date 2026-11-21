@@ -25,12 +25,29 @@ local function load(hash)
     return HasModelLoaded(hash)
 end
 
-local function makeObject(name, x, y, z, h)
+--- Scales a local, frozen prop visually (used for growth stages of single-model plants such as the coca bush).
+--- The matrix is rebuilt from the heading every time (never from the current, possibly already scaled, matrix).
+function DrugsScaleEntity(e, scale)
+    if not scale or math.abs(scale - 1.0) < 0.01 then return end
+    local h = math.rad(GetEntityHeading(e))
+    local pos = GetEntityCoords(e)
+    local s, c = math.sin(h), math.cos(h)
+    SetEntityMatrix(e,
+        -s * scale, c * scale, 0.0,   -- forward
+        c * scale, s * scale, 0.0,    -- right
+        0.0, 0.0, scale,              -- up
+        pos.x, pos.y, pos.z)
+end
+
+--- entry: model name or { model, scale }
+local function makeObject(entry, x, y, z, h)
+    local name, scale = DrugsPropEntry(entry)
     local hash = modelFor(name)
     if not load(hash) then return nil end
     local e = CreateObject(hash, x, y, z, false, false, false)
     SetEntityHeading(e, h or 0.0)
     FreezeEntityPosition(e, true)
+    DrugsScaleEntity(e, scale)
     SetModelAsNoLongerNeeded(hash)
     return e
 end
@@ -70,7 +87,7 @@ end
 local function spawn(p)
     local prod = DrugsProducts[p.type]
     if not prod then return end
-    local stages = prod.props[p.container] or prod.props.ground
+    local stages = DrugsStageProps(p.type, p.variety, p.container)
     local entities, main = {}, nil
     if p.container == 'pot' and prod.potProp then
         entities[#entities + 1] = makeObject(prod.potProp, p.x, p.y, p.z, p.h)
