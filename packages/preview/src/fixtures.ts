@@ -2,7 +2,7 @@
 import type { BankActivity, BankOverview, HudFrame, InventoryOpen, ItemDef, ShopOpen, TargetState } from '@veyl/ui';
 
 const def = (name: string, label: string, weight: number, usable = false, description?: string): ItemDef =>
-  ({ name, label, weight, usable, stack: true, maxStack: 10, image: `${name}.svg`, description });
+  ({ name, label, weight, usable, stack: true, maxStack: 10, image: name === 'jacket' ? `${name}.svg` : `${name}.png`, description });
 
 export const itemDefs: Record<string, ItemDef> = Object.fromEntries([
   def('phone', 'Phone', 200, false, 'Stay connected.'),
@@ -41,14 +41,14 @@ export const shopOpen = (empty: boolean): ShopOpen => ({
   categories: [{ id: 'food', label: 'Food' }, { id: 'drinks', label: 'Drinks' }, { id: 'tools', label: 'Tools' }],
   methods: ['cash', 'bank'], balances: { cash: 420, bank: 12840 },
   products: empty ? [] : [
-    { index: 1, item: 'water_bottle', label: 'Water Bottle', price: 5, category: 'drinks', image: 'water_bottle.svg', stock: null },
-    { index: 2, item: 'sandwich', label: 'Sandwich', price: 12, category: 'food', image: 'sandwich.svg', stock: null },
-    { index: 3, item: 'sprunk', label: 'Soda', price: 6, category: 'drinks', image: 'sprunk.svg', stock: null },
-    { index: 4, item: 'snack_bar', label: 'Snack Bar', price: 4, category: 'food', image: 'snack_bar.svg', stock: 12 },
-    { index: 5, item: 'bandage', label: 'Bandage', price: 15, category: 'tools', image: 'bandage.svg', stock: null },
-    { index: 6, item: 'flashlight', label: 'Flashlight', price: 80, category: 'tools', image: 'flashlight.svg', stock: null },
-    { index: 7, item: 'radio', label: 'Radio', price: 250, category: 'tools', image: 'radio.svg', stock: 0 },
-    { index: 8, item: 'repair_kit', label: 'Repair Kit', price: 450, category: 'tools', image: 'repair_kit.svg', stock: null },
+    { index: 1, item: 'water_bottle', label: 'Water Bottle', price: 5, category: 'drinks', image: 'water_bottle.png', stock: null },
+    { index: 2, item: 'sandwich', label: 'Sandwich', price: 12, category: 'food', image: 'sandwich.png', stock: null },
+    { index: 3, item: 'sprunk', label: 'Soda', price: 6, category: 'drinks', image: 'sprunk.png', stock: null },
+    { index: 4, item: 'snack_bar', label: 'Snack Bar', price: 4, category: 'food', image: 'snack_bar.png', stock: 12 },
+    { index: 5, item: 'bandage', label: 'Bandage', price: 15, category: 'tools', image: 'bandage.png', stock: null },
+    { index: 6, item: 'flashlight', label: 'Flashlight', price: 80, category: 'tools', image: 'flashlight.png', stock: null },
+    { index: 7, item: 'radio', label: 'Radio', price: 250, category: 'tools', image: 'radio.png', stock: 0 },
+    { index: 8, item: 'repair_kit', label: 'Repair Kit', price: 450, category: 'tools', image: 'repair_kit.png', stock: null },
   ],
 });
 /** Concept basket: 2 water ($10) + 1 sandwich ($12) + 1 bandage ($15) = $37. */

@@ -53,7 +53,7 @@ export function InventoryPanel(props: {
               {item && (
                 <>
                   <span className="slot-count">x{item.count}</span>
-                  <ItemImage src={`${imagePath}/${def?.image ?? item.name + '.svg'}`} alt={def?.label ?? item.name} size="58%" />
+                  <ItemImage src={`${imagePath}/${def?.image ?? item.name + '.png'}`} alt={def?.label ?? item.name} size="58%" />
                   <span className="slot-label">{def?.label ?? item.name}</span>
                   {typeof item.durability === 'number' && <span className="slot-dur" style={{ width: `${Math.max(0, Math.min(100, item.durability))}%` }} />}
                 </>

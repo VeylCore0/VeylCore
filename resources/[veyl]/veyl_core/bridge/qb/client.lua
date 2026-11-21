@@ -95,7 +95,7 @@ local function buildShared()
         local ok, list = pcall(function() return exports.veyl_inventory:Items() end)
         if ok and type(list) == 'table' then
             for name, it in pairs(list) do
-                items[name] = { name = name, label = it.label, weight = it.weight or 0, image = it.image or (name .. '.svg'), unique = it.stack == false }
+                items[name] = { name = name, label = it.label, weight = it.weight or 0, image = it.image or (name .. '.png'), unique = it.stack == false }
             end
         end
     end

@@ -31,7 +31,7 @@ function ClientItemDefs()
     local out = {}
     for name, d in pairs(ItemDefs) do
         out[name] = {
-            name = name, label = d.label, description = d.description, image = d.image or (name .. '.svg'),
+            name = name, label = d.label, description = d.description, image = d.image or (name .. '.png'),
             weight = d.weight, stack = d.stack, maxStack = d.maxStack, usable = d.usable,
         }
     end

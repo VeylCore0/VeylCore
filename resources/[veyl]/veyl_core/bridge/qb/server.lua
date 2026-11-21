@@ -42,7 +42,7 @@ function QBItemsView()
     local out = {}
     for name, it in pairs(items) do
         out[name] = {
-            name = name, label = it.label, weight = it.weight or 0, type = 'item', image = it.image or (name .. '.svg'),
+            name = name, label = it.label, weight = it.weight or 0, type = 'item', image = it.image or (name .. '.png'),
             unique = it.stack == false, useable = it.usable == true, shouldClose = true, description = it.description or '',
         }
     end

@@ -216,7 +216,7 @@ export function App() {
       {toast && <div className={`v-toast-inline ${toast.kind}`} role="alert"><Icon name={toast.kind === 'error' ? 'alert' : 'check'} size="1rem" />{toast.text}</div>}
 
       {dragItem && drag && (
-        <img className="drag-ghost" style={{ left: drag.x, top: drag.y }} src={`${imagePath}/${defs[dragItem.name]?.image ?? dragItem.name + '.svg'}`} alt="" />
+        <img className="drag-ghost" style={{ left: drag.x, top: drag.y }} src={`${imagePath}/${defs[dragItem.name]?.image ?? dragItem.name + '.png'}`} alt="" />
       )}
 
       {menu && (
@@ -245,7 +245,7 @@ function SelectedStrip({ item, def, imagePath }: { item?: SlotItem; def?: ItemDe
   if (!item || !def) return <div className="inv-strip v-muted">{t('inv.noSelection')}</div>;
   return (
     <div className="inv-strip">
-      <img src={`${imagePath}/${def.image ?? item.name + '.svg'}`} alt="" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
+      <img src={`${imagePath}/${def.image ?? item.name + '.png'}`} alt="" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
       <div className="strip-text">
         <div className="strip-name">{def.label}</div>
         {def.description && <div className="v-muted strip-desc">{def.description}</div>}

@@ -36,5 +36,6 @@ ui_page 'web/dist/index.html'
 files {
     'web/dist/index.html',
     'web/dist/assets/*',
+    'web/images/*.png',
     'web/images/*.svg',
 }

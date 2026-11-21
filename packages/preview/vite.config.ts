@@ -15,7 +15,8 @@ function itemImages(): Plugin {
       server.middlewares.use('/items', (req, res, next) => {
         const file = path.join(itemDir, path.basename(decodeURIComponent((req.url ?? '').split('?')[0])));
         if (!file.startsWith(itemDir) || !fs.existsSync(file)) return next();
-        res.setHeader('Content-Type', 'image/svg+xml');
+        const types: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp' };
+        res.setHeader('Content-Type', types[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
         fs.createReadStream(file).pipe(res);
       });
     },
