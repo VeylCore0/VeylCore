@@ -174,6 +174,15 @@ CreateThread(function()
     while true do
         if LocalPlayer.state.isLoggedIn then
             for _, c in ipairs(HudConfig.HideComponents) do HideHudComponentThisFrame(c) end
+            if HudConfig.DisableWeaponWheel then
+                -- Weapons come from the inventory: no Tab wheel and no scroll-wheel weapon cycling.
+                HideHudComponentThisFrame(19) -- weapon wheel
+                HideHudComponentThisFrame(20) -- weapon wheel stats
+                DisableControlAction(0, 37, true)                                   -- select weapon (Tab)
+                DisableControlAction(0, 14, true) DisableControlAction(0, 15, true) -- weapon wheel next / prev
+                DisableControlAction(0, 16, true) DisableControlAction(0, 17, true) -- select next / prev weapon
+                DisableControlAction(0, 99, true) DisableControlAction(0, 100, true) -- vehicle select next / prev weapon
+            end
             Wait(0)
         else
             Wait(500)

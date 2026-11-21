@@ -11,4 +11,7 @@ HudConfig = {
 
     -- Hide these default GTA HUD components (cash, MP cash, cash change, vehicle name, area name, street name, class).
     HideComponents = { 3, 4, 6, 7, 8, 9, 13 },
+
+    -- Weapons are equipped from the inventory, so the GTA weapon wheel (Tab) and scroll-wheel weapon cycling are disabled.
+    DisableWeaponWheel = true,
 }
