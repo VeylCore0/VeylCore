@@ -149,8 +149,9 @@ Browser-preview checks prove only the UI behaviour. They do not prove the server
 
 ## Known limitations
 
-- **Item art:** the thumbnails are clean placeholder tiles, not the photoreal renders in the concepts. Drop real PNG/WebP files into
-  `veyl_inventory/web/images/` and set `image =` in `data/items.lua`. A missing image shows a deliberate fallback tile.
+- **Item art:** PNGs from the RAINMAD image gallery (see `veyl_inventory/web/images/CREDITS.md`); `jacket.svg` is still a
+  placeholder. To add an item image, put a PNG/WebP in `veyl_inventory/web/images/` (name it `<item>.png` or set `image =` in
+  `data/items.lua`). A missing image shows a deliberate fallback tile.
 - **Drop:** shown but disabled with a reason, because ground drops are a later inventory phase. **Open trunk** isn't offered for the same reason (vehicle storage).
 - **Shop stock:** stock is unlimited. Finite stock and reservations are planned, and the UI already renders stock and out-of-stock states.
 - **Banking:** personal accounts only; there are no business accounts yet.
