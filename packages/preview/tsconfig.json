@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "../veyl-ui/src", "../inventory-ui/src", "../shop-ui/src", "../bank-ui/src", "../hud-ui/src", "../target-ui/src"]
+}

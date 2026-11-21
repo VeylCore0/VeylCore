@@ -23,6 +23,7 @@ local ALIASES = {
     addKeybind = 'keybind', addCommand = 'command',
     onCache = 'cache',
     locale = 'locale', t = 'locale',
+    createScreen = 'screen',
 }
 -- Table modules accessed by their own name (no aliasing): vlib.callback, vlib.points, vlib.zones,
 -- vlib.print, vlib.validate, vlib.table, vlib.math.

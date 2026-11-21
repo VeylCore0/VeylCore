@@ -34,6 +34,14 @@ return {
         use = { handler = 'consume', durationMs = 4000, consumeCount = 1, effects = { heal = 25 },
                 anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 } },
     },
+    snack_bar = {
+        label = 'Snack Bar', description = 'A quick bite.', image = 'snack_bar.svg', weight = 80, stack = true, maxStack = 20,
+        use = { handler = 'consume', durationMs = 2000, consumeCount = 1, effects = { hunger = 15 },
+                anim = { dict = 'mp_player_inteat@burger', clip = 'mp_player_int_eat_burger', flag = 49 } },
+    },
+    flashlight = { label = 'Flashlight', description = 'Lights up the dark.', image = 'flashlight.svg', weight = 600, stack = false },
+    radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.svg', weight = 400, stack = false },
+    repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.svg', weight = 2500, stack = true, maxStack = 5 },
     phone = { label = 'Phone', image = 'phone.svg', weight = 200, stack = false },
     identity_card = {
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.svg',

@@ -1,26 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  announceReady, nui, useNuiMessage,
-  type InventoryDelta, type InventoryOpen, type InventoryView, type ItemDef, type SlotItem,
+  BrandStack, CloseHint, Icon, announceReady, newOpId, nui, t, useNuiMessage,
+  type InventoryDelta, type InventoryOpen, type InventoryView, type ItemDef, type NearbyPlayer, type SlotItem,
 } from '@veyl/ui';
-import { Grid } from './Grid';
-import { Details } from './Details';
-import { ContextMenu, type ContextState } from './ContextMenu';
-import { SplitDialog, type SplitState } from './SplitDialog';
+import { InventoryPanel } from './InventoryPanel';
+import { ItemMenu, type ItemMenuState } from './ItemMenu';
+import { QuantityDialog, type QuantityDialogState } from './QuantityDialog';
+import { GiveDialog } from './GiveDialog';
 
-type Ref = 'primary' | 'secondary';
+export type Ref = 'primary' | 'secondary';
 export interface SlotAddress { ref: Ref; slot: number }
-interface Views { primary?: InventoryView; secondary?: InventoryView }
-
-const newOpId = () =>
-  (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
-    .replace(/[^\w-]/g, '').slice(0, 64);
+type Views = { primary?: InventoryView; secondary?: InventoryView };
 
 function applyDelta(view: InventoryView, d: InventoryDelta): InventoryView {
   const map = new Map(view.items.map((i) => [i.slot, i] as const));
-  for (const change of d.slots) {
-    if (change.item) map.set(change.slot, change.item); else map.delete(change.slot);
-  }
+  for (const c of d.slots) { if (c.item) map.set(c.slot, c.item); else map.delete(c.slot); }
   return { ...view, revision: d.revision, weight: d.weight, items: [...map.values()] };
 }
 
@@ -29,14 +23,16 @@ export function App() {
   const [views, setViews] = useState<Views>({});
   const [defs, setDefs] = useState<Record<string, ItemDef>>({});
   const [imagePath, setImagePath] = useState('');
-  const [pending, setPending] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [hotbar, setHotbar] = useState(5);
   const [selected, setSelected] = useState<SlotAddress | null>(null);
-  const [hovered, setHovered] = useState<SlotAddress | null>(null);
-  const [drag, setDrag] = useState<{ from: SlotAddress; x: number; y: number } | null>(null);
-  const [context, setContext] = useState<ContextState | null>(null);
-  const [split, setSplit] = useState<SplitState | null>(null);
-  const errorTimer = useRef<number>();
+  const [quantity, setQuantity] = useState(1);
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const [drag, setDrag] = useState<{ from: SlotAddress; x: number; y: number; moved: boolean } | null>(null);
+  const [menu, setMenu] = useState<ItemMenuState | null>(null);
+  const [qty, setQty] = useState<QuantityDialogState | null>(null);
+  const [give, setGive] = useState<{ from: SlotAddress; players: NearbyPlayer[] | null; error?: string } | null>(null);
+  const toastTimer = useRef<number>();
 
   useEffect(() => announceReady(), []);
 
@@ -44,202 +40,217 @@ export function App() {
     setViews({ primary: d.primary, secondary: d.secondary });
     setDefs(d.items);
     setImagePath(d.imagePath);
+    setHotbar(d.hotbarSlots ?? 5);
+    setSelected(null);
+    setQuantity(1);
     setPending(new Set());
-    setSelected({ ref: 'primary', slot: 1 });
-    setContext(null);
-    setSplit(null);
+    setMenu(null); setQty(null); setGive(null);
     setOpen(true);
   });
-  useNuiMessage('inventory:close', () => { setOpen(false); setDrag(null); setContext(null); setSplit(null); });
-  useNuiMessage<InventoryDelta>('inventory:delta', (d) => {
-    setViews((v) => {
-      const view = v[d.ref];
-      if (!view) return v;
-      return { ...v, [d.ref]: applyDelta(view, d) };
-    });
-  });
+  useNuiMessage('inventory:close', () => { setOpen(false); setDrag(null); setMenu(null); setQty(null); setGive(null); });
+  useNuiMessage<InventoryDelta>('inventory:delta', (d) => setViews((v) => (v[d.ref] ? { ...v, [d.ref]: applyDelta(v[d.ref]!, d) } : v)));
   useNuiMessage<InventoryView>('inventory:snapshot', (view) => setViews((v) => ({ ...v, [view.ref]: view })));
 
-  const showError = useCallback((msg: string) => {
-    setError(msg);
-    window.clearTimeout(errorTimer.current);
-    errorTimer.current = window.setTimeout(() => setError(null), 3500);
+  const say = useCallback((kind: 'error' | 'success', text: string) => {
+    setToast({ kind, text });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3200);
   }, []);
 
-  const itemAt = useCallback((a: SlotAddress | null): SlotItem | undefined => {
-    if (!a) return undefined;
-    return views[a.ref]?.items.find((i) => i.slot === a.slot);
-  }, [views]);
+  const itemAt = useCallback((a: SlotAddress | null): SlotItem | undefined =>
+    a ? views[a.ref]?.items.find((i) => i.slot === a.slot) : undefined, [views]);
 
   const key = (a: SlotAddress) => `${a.ref}:${a.slot}`;
+  const selectedItem = itemAt(selected);
+  const selectedDef = selectedItem ? defs[selectedItem.name] : undefined;
+  const amountFor = useCallback((item: SlotItem) => Math.max(1, Math.min(item.count, Math.floor(quantity) || 1)), [quantity]);
 
-  /** Every move is a server request; the grid changes only when the server's delta arrives. */
+  /** Every mutation is a server request; the grid only changes when the server's delta arrives. */
   const move = useCallback(async (from: SlotAddress, to: SlotAddress, count?: number) => {
     if (from.ref === to.ref && from.slot === to.slot) return;
-    const fromView = views[from.ref];
-    const toView = views[to.ref];
-    if (!fromView || !toView) return;
+    const fv = views[from.ref]; const tv = views[to.ref];
+    if (!fv || !tv) return;
     const keys = [key(from), key(to)];
     if (keys.some((k) => pending.has(k))) return;
     setPending((p) => new Set([...p, ...keys]));
-    const revisions: Record<string, number> = { [from.ref]: fromView.revision };
-    revisions[to.ref] = toView.revision;
-    const res = await nui('move', { opId: newOpId(), from, to, count, revisions });
+    const res = await nui('move', { opId: newOpId(), from, to, count, revisions: { [from.ref]: fv.revision, [to.ref]: tv.revision } });
     setPending((p) => { const n = new Set(p); keys.forEach((k) => n.delete(k)); return n; });
-    if (!res.ok) showError(res.message ?? res.code ?? 'Move failed');
-  }, [views, pending, showError]);
+    if (!res.ok) say('error', res.message ?? res.code ?? 'Move failed');
+  }, [views, pending, say]);
 
-  /** Quick transfer: first matching stack or empty slot in the other panel. */
-  const quickTransfer = useCallback((from: SlotAddress) => {
+  const quickTransfer = useCallback((from: SlotAddress, count?: number) => {
     const target: Ref = from.ref === 'primary' ? 'secondary' : 'primary';
-    const dest = views[target];
-    const item = itemAt(from);
+    const dest = views[target]; const item = itemAt(from);
     if (!dest || !item) return;
     const def = defs[item.name];
-    const stack = def?.stack ? dest.items.find((i) => i.name === item.name && JSON.stringify(i.metadata ?? {}) === JSON.stringify(item.metadata ?? {})) : undefined;
-    let slot = stack?.slot;
-    if (!slot) {
-      const used = new Set(dest.items.map((i) => i.slot));
-      for (let s = 1; s <= dest.slots; s++) if (!used.has(s)) { slot = s; break; }
-    }
-    if (!slot) return showError('No free slot');
-    void move(from, { ref: target, slot });
-  }, [views, defs, itemAt, move, showError]);
+    const same = def?.stack ? dest.items.find((i) => i.name === item.name && JSON.stringify(i.metadata ?? {}) === JSON.stringify(item.metadata ?? {})) : undefined;
+    let slot = same?.slot;
+    if (!slot) { const used = new Set(dest.items.map((i) => i.slot)); for (let s = 1; s <= dest.slots; s++) if (!used.has(s)) { slot = s; break; } }
+    if (!slot) return say('error', 'No free slot');
+    void move(from, { ref: target, slot }, count);
+  }, [views, defs, itemAt, move, say]);
 
-  const use = useCallback((a: SlotAddress) => {
+  const use = useCallback((a: SlotAddress | null) => {
     const item = itemAt(a);
-    if (!item || a.ref !== 'primary' || !defs[item.name]?.usable) return;
+    if (!a || !item) return say('error', t('inv.selectFirst'));
+    if (a.ref !== 'primary') return say('error', t('inv.useFromPersonal'));
+    if (!defs[item.name]?.usable) return say('error', t('inv.notUsable'));
     void nui('use', { slot: a.slot });
-  }, [itemAt, defs]);
+  }, [itemAt, defs, say]);
+
+  const startGive = useCallback(async (a: SlotAddress | null) => {
+    const item = itemAt(a);
+    if (!a || !item) return say('error', t('inv.selectFirst'));
+    if (a.ref !== 'primary') return say('error', t('inv.useFromPersonal'));
+    setGive({ from: a, players: null });
+    const res = await nui<NearbyPlayer[]>('nearby');
+    if (!res.ok) setGive({ from: a, players: [], error: res.message ?? res.code });
+    else setGive({ from: a, players: res.data ?? [] });
+  }, [itemAt, say]);
+
+  const confirmGive = useCallback(async (target: number) => {
+    if (!give) return;
+    const item = itemAt(give.from);
+    setGive(null);
+    if (!item) return;
+    const k = key(give.from);
+    setPending((p) => new Set([...p, k]));
+    const res = await nui('give', { opId: newOpId(), slot: give.from.slot, count: amountFor(item), target, revision: views.primary?.revision });
+    setPending((p) => { const n = new Set(p); n.delete(k); return n; });
+    if (res.ok) say('success', res.message ?? 'Given'); else say('error', res.message ?? res.code ?? 'Could not give');
+  }, [give, itemAt, amountFor, views, say]);
 
   const close = useCallback(() => { void nui('close'); }, []);
 
-  // Drag handling (pointer based so it works with keyboard-less mice and in CEF).
+  // Pointer drag (works in CEF without HTML5 drag events).
   useEffect(() => {
     if (!drag) return;
-    const onMove = (e: MouseEvent) => setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d));
+    const onMove = (e: MouseEvent) => setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY, moved: true } : d));
     const onUp = (e: MouseEvent) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-slot]');
-      const from = drag.from;
-      setDrag(null);
-      if (!el) return;
-      const to: SlotAddress = { ref: el.dataset.ref as Ref, slot: Number(el.dataset.slot) };
-      const item = itemAt(from);
-      if (!item) return;
-      if (e.shiftKey && item.count > 1) {
-        setSplit({ from, to, max: item.count, value: Math.floor(item.count / 2) });
-      } else {
-        void move(from, to);
-      }
+      const d = drag; setDrag(null);
+      if (!el || !d.moved) return;
+      void move(d.from, { ref: el.dataset.ref as Ref, slot: Number(el.dataset.slot) });
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [drag, itemAt, move]);
+  }, [drag, move]);
 
   // Keyboard alternatives.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (split || context) { if (e.key === 'Escape') { setSplit(null); setContext(null); } return; }
+      if (qty || give || menu) { if (e.key === 'Escape') { setQty(null); setGive(null); setMenu(null); } return; }
+      if ((e.target as HTMLElement).tagName === 'INPUT') { if (e.key === 'Escape') (e.target as HTMLElement).blur(); return; }
       if (e.key === 'Escape' || e.key === 'F2') { e.preventDefault(); close(); return; }
-      if (!selected) return;
-      const view = views[selected.ref];
-      if (!view) return;
-      const cols = 5;
-      const nav: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols };
-      if (e.key in nav) {
-        e.preventDefault();
-        const next = selected.slot + nav[e.key];
-        if (next >= 1 && next <= view.slots) setSelected({ ...selected, slot: next });
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        const other: Ref = selected.ref === 'primary' ? 'secondary' : 'primary';
-        if (views[other]) setSelected({ ref: other, slot: 1 });
-      } else if (e.key === 'Enter') {
-        use(selected);
-      } else if (e.key.toLowerCase() === 'q') {
-        quickTransfer(selected);
-      } else if (e.key.toLowerCase() === 's') {
-        const item = itemAt(selected);
-        if (item && item.count > 1) {
-          const used = new Set(view.items.map((i) => i.slot));
-          let empty: number | undefined;
-          for (let s = 1; s <= view.slots; s++) if (!used.has(s)) { empty = s; break; }
-          if (empty) setSplit({ from: selected, to: { ref: selected.ref, slot: empty }, max: item.count, value: Math.floor(item.count / 2) });
-        }
-      }
+      const cur = selected ?? { ref: 'primary' as Ref, slot: 1 };
+      const view = views[cur.ref]; if (!view) return;
+      const nav: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 5, ArrowUp: -5 };
+      if (e.key in nav) { e.preventDefault(); const n = cur.slot + nav[e.key]; if (n >= 1 && n <= view.slots) setSelected({ ...cur, slot: n }); }
+      else if (e.key === 'Tab') { e.preventDefault(); const o: Ref = cur.ref === 'primary' ? 'secondary' : 'primary'; if (views[o]) setSelected({ ref: o, slot: 1 }); }
+      else if (e.key === 'Enter') use(cur);
+      else if (e.key.toLowerCase() === 'q') { const it = itemAt(cur); if (it) quickTransfer(cur, amountFor(it)); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, selected, views, split, context, use, quickTransfer, itemAt, close]);
+  }, [open, selected, views, qty, give, menu, use, quickTransfer, itemAt, amountFor, close]);
 
-  const detailsTarget = hovered ?? selected;
-  const detailsItem = itemAt(detailsTarget);
-  const dragItem = drag ? itemAt(drag.from) : undefined;
-
-  const handlers = useMemo(() => ({
-    onDragStart: (from: SlotAddress, x: number, y: number) => { if (itemAt(from)) setDrag({ from, x, y }); },
-    onSelect: (a: SlotAddress) => setSelected(a),
-    onHover: (a: SlotAddress | null) => setHovered(a),
-    onQuick: (a: SlotAddress) => quickTransfer(a),
-    onContext: (a: SlotAddress, x: number, y: number) => { if (itemAt(a)) setContext({ at: a, x, y }); },
+  const panelHandlers = useMemo(() => ({
+    onSelect: (a: SlotAddress) => { setSelected(a); setQuantity(1); },
+    onDragStart: (a: SlotAddress, x: number, y: number) => setDrag({ from: a, x, y, moved: false }),
+    onShiftClick: (a: SlotAddress) => { const it = itemAt(a); if (it) quickTransfer(a, amountFor(it)); },
+    onContext: (a: SlotAddress, x: number, y: number) => { if (itemAt(a)) { setSelected(a); setMenu({ at: a, x, y }); } },
     onUse: (a: SlotAddress) => use(a),
-  }), [itemAt, quickTransfer, use]);
+  }), [itemAt, quickTransfer, amountFor, use]);
 
   if (!open || !views.primary) return null;
+  const dragItem = drag?.moved ? itemAt(drag.from) : undefined;
+  const maxQty = selectedItem?.count ?? 1;
+  const canUse = !!selectedItem && selected?.ref === 'primary' && !!selectedDef?.usable;
+  const canGive = !!selectedItem && selected?.ref === 'primary';
 
   return (
     <div className="inv-root" onContextMenu={(e) => e.preventDefault()}>
-      <div className="inv-layout">
-        <Grid view={views.primary} defs={defs} imagePath={imagePath} pending={pending} selected={selected} {...handlers} />
-        {views.secondary && (
-          <Grid view={views.secondary} defs={defs} imagePath={imagePath} pending={pending} selected={selected} {...handlers} />
-        )}
-        <Details item={detailsItem} def={detailsItem ? defs[detailsItem.name] : undefined} imagePath={imagePath} />
-      </div>
-      <div className="inv-help v-muted">
-        <span><span className="v-key">Drag</span> move</span>
-        <span><span className="v-key">Shift</span>+drop split</span>
-        <span><span className="v-key">Ctrl</span>+click / <span className="v-key">Q</span> quick transfer</span>
-        <span><span className="v-key">Enter</span> use</span>
-        <span><span className="v-key">Esc</span> close</span>
-      </div>
-      {error && <div className="inv-error" role="alert">✕ {error}</div>}
-      {drag && dragItem && (
-        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
-          <img src={`${imagePath}/${defs[dragItem.name]?.image ?? dragItem.name + '.svg'}`} alt="" />
+      <header className="inv-header">
+        <BrandStack section={t('inv.section')} />
+        <CloseHint onClose={close} />
+      </header>
+
+      <main className="inv-main">
+        <InventoryPanel
+          view={views.primary} defs={defs} imagePath={imagePath} pending={pending} selected={selected}
+          title={t('inv.personal')} subtitle={t('inv.personalSub')} searchPlaceholder={t('inv.searchPersonal')}
+          hotbar={hotbar} footer={<SelectedStrip item={selectedItem} def={selectedDef} imagePath={imagePath} />}
+          {...panelHandlers}
+        />
+
+        <div className="inv-center v-panel">
+          <div className="v-label">{t('inv.quantity')}</div>
+          <input
+            className="v-input qty-input" type="number" min={1} max={maxQty} value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value) || 1))))}
+            aria-label={t('inv.quantity')}
+          />
+          <button className="v-btn primary block" disabled={!canUse} title={!canUse ? (selectedItem ? t('inv.notUsable') : t('inv.selectFirst')) : undefined} onClick={() => use(selected)}>{t('inv.use').toUpperCase()}</button>
+          <button className="v-btn block" disabled={!canGive} title={!canGive ? t('inv.selectFirst') : undefined} onClick={() => void startGive(selected)}>{t('inv.give').toUpperCase()}</button>
+          <button className="v-btn block" disabled title={t('inv.dropUnavailable')}>{t('inv.drop').toUpperCase()}</button>
         </div>
+
+        {views.secondary ? (
+          <InventoryPanel
+            view={views.secondary} defs={defs} imagePath={imagePath} pending={pending} selected={selected}
+            title={views.secondary.label} subtitle={t('inv.storageSub')} searchPlaceholder={t('inv.searchStorage')}
+            hotbar={0} {...panelHandlers}
+          />
+        ) : <div className="inv-panel-spacer" />}
+      </main>
+
+      <footer className="inv-hints v-muted">
+        <span><Icon name="mouse" size="1rem" /> {t('inv.hintDrag')}</span>
+        <span className="divider" />
+        <span><span className="v-key">SHIFT</span> {t('inv.hintShift')}</span>
+        <span className="divider" />
+        <span><Icon name="mouse" size="1rem" /> Right-click {t('inv.hintRight')}</span>
+      </footer>
+
+      {toast && <div className={`v-toast-inline ${toast.kind}`} role="alert"><Icon name={toast.kind === 'error' ? 'alert' : 'check'} size="1rem" />{toast.text}</div>}
+
+      {dragItem && drag && (
+        <img className="drag-ghost" style={{ left: drag.x, top: drag.y }} src={`${imagePath}/${defs[dragItem.name]?.image ?? dragItem.name + '.svg'}`} alt="" />
       )}
-      {context && (
-        <ContextMenu
-          state={context}
-          item={itemAt(context.at)}
-          def={itemAt(context.at) ? defs[itemAt(context.at)!.name] : undefined}
-          canTransfer={Boolean(views.secondary)}
-          onClose={() => setContext(null)}
-          onUse={() => { use(context.at); setContext(null); }}
-          onQuick={() => { quickTransfer(context.at); setContext(null); }}
+
+      {menu && (
+        <ItemMenu
+          state={menu} item={itemAt(menu.at)} def={itemAt(menu.at) ? defs[itemAt(menu.at)!.name] : undefined} hasSecondary={!!views.secondary}
+          onClose={() => setMenu(null)}
+          onUse={() => { use(menu.at); setMenu(null); }}
+          onGive={() => { const a = menu.at; setMenu(null); void startGive(a); }}
+          onTransfer={() => { const a = menu.at; const it = itemAt(a); setMenu(null); if (it) quickTransfer(a, amountFor(it)); }}
           onSplit={() => {
-            const item = itemAt(context.at);
-            const view = views[context.at.ref];
-            setContext(null);
-            if (!item || !view || item.count < 2) return;
+            const a = menu.at; const it = itemAt(a); const view = views[a.ref]; setMenu(null);
+            if (!it || !view || it.count < 2) return;
             const used = new Set(view.items.map((i) => i.slot));
-            for (let s = 1; s <= view.slots; s++) {
-              if (!used.has(s)) { setSplit({ from: context.at, to: { ref: context.at.ref, slot: s }, max: item.count, value: Math.floor(item.count / 2) }); return; }
-            }
-            showError('No free slot to split into');
+            for (let s = 1; s <= view.slots; s++) if (!used.has(s)) { setQty({ from: a, to: { ref: a.ref, slot: s }, max: it.count - 1, value: Math.floor(it.count / 2) }); return; }
+            say('error', 'No free slot to split into');
           }}
         />
       )}
-      {split && (
-        <SplitDialog
-          state={split}
-          onCancel={() => setSplit(null)}
-          onConfirm={(n) => { const s = split; setSplit(null); void move(s.from, s.to, n); }}
-        />
-      )}
+      {qty && <QuantityDialog state={qty} onCancel={() => setQty(null)} onConfirm={(n) => { const s = qty; setQty(null); void move(s.from, s.to, n); }} />}
+      {give && <GiveDialog players={give.players} error={give.error} onCancel={() => setGive(null)} onPick={(id) => void confirmGive(id)} />}
+    </div>
+  );
+}
+
+function SelectedStrip({ item, def, imagePath }: { item?: SlotItem; def?: ItemDef; imagePath: string }) {
+  if (!item || !def) return <div className="inv-strip v-muted">{t('inv.noSelection')}</div>;
+  return (
+    <div className="inv-strip">
+      <img src={`${imagePath}/${def.image ?? item.name + '.svg'}`} alt="" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
+      <div className="strip-text">
+        <div className="strip-name">{def.label}</div>
+        {def.description && <div className="v-muted strip-desc">{def.description}</div>}
+      </div>
+      <div className="v-muted strip-weight">{t('inv.each', { w: (def.weight / 1000).toFixed(1) })}</div>
     </div>
   );
 }

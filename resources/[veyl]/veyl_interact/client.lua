@@ -113,7 +113,7 @@ exports('AddZone', function(def)
     zones[def.id] = def
     if useTarget then
         def.targetId = exports.veyl_target:addSphereZone({
-            name = def.id, coords = vector3(def.coords.x, def.coords.y, def.coords.z), radius = def.radius,
+            name = def.id, title = def.title, coords = vector3(def.coords.x, def.coords.y, def.coords.z), radius = def.radius,
             options = targetOptions(def),
         })
     end

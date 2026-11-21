@@ -9,14 +9,34 @@ local toggleMode = GetConvar('veyl_target:toggle', 'false') == 'true'
 ---------------------------------------------------------------------------
 -- Overlay (passive NUI: never takes focus)
 ---------------------------------------------------------------------------
+local KIND_TITLES = { vehicle = 'Vehicle', ped = 'Person', player = 'Player', object = 'Object' }
+
+--- Context heading/state for the overlay (presentation only).
+local function context()
+    local title, state, stateIcon = current.zoneTitle, nil, nil
+    local e = current.entity
+    if e and e ~= 0 and DoesEntityExist(e) then
+        title = title or KIND_TITLES[current.kind or ''] or nil
+        if current.kind == 'vehicle' then
+            state = GetVehicleDoorLockStatus(e) >= 2 and 'Locked' or 'Unlocked'
+            stateIcon = 'car'
+        end
+    end
+    return title or (current.zoneTitle and current.zoneTitle) or (#current.options > 0 and 'Area' or nil), state, stateIcon
+end
+
 local function pushOverlay(force)
     local list = {}
     for i, o in ipairs(current.options) do list[i] = { index = i, label = o.label, icon = o.icon } end
-    local sig = ('%s|%d|%d'):format(active and '1' or '0', current.selected, #list)
+    local title, state, stateIcon = context()
+    local sig = ('%s|%d|%d|%s|%s'):format(active and '1' or '0', current.selected, #list, tostring(title), tostring(state))
     for i = 1, #list do sig = sig .. '|' .. current.options[i].key end
     if not force and sig == current.sig then return end
     current.sig = sig
-    SendNUIMessage({ action = 'target:state', data = { active = active, options = list, selected = current.selected } })
+    SendNUIMessage({ action = 'target:state', data = {
+        active = active, options = list, selected = current.selected, title = title, state = state, stateIcon = stateIcon,
+        keys = TargetConfig.KeyLabels,
+    } })
 end
 
 local function clear()
@@ -73,6 +93,7 @@ end
 local function collect(ped)
     local pos = GetEntityCoords(ped)
     local found = {}
+    local zoneTitle = nil
     local entity = lastHit.hit and lastHit.entity or 0
     local hitCoords = lastHit.hit and lastHit.coords or nil
     local distance = hitCoords and #(pos - hitCoords) or math.huge
@@ -100,7 +121,11 @@ local function collect(ped)
 
     if hitCoords then
         for _, z in ipairs(nearbyZones) do
-            if Registry.zones[z.id] == z and z.zone:contains(hitCoords) then consider(z.options, entity, z.id) end
+            if Registry.zones[z.id] == z and z.zone:contains(hitCoords) then
+                local before = #found
+                consider(z.options, entity, z.id)
+                if #found > before and z.title then zoneTitle = zoneTitle or z.title end
+            end
         end
     end
 
@@ -112,7 +137,7 @@ local function collect(ped)
     end)
     local list = {}
     for i, f in ipairs(found) do list[i] = f.opt end
-    return list, entity, hitCoords, distance
+    return list, entity, hitCoords, distance, kind, zoneTitle
 end
 
 ---------------------------------------------------------------------------
@@ -182,8 +207,9 @@ CreateThread(function()
                 DisablePlayerFiring(PlayerId(), true)
 
                 updateRay(ped)
-                local list, entity, coords, distance = collect(ped)
+                local list, entity, coords, distance, kind, zoneTitle = collect(ped)
                 current.options, current.entity, current.coords = list, entity, coords
+                current.kind, current.zoneTitle = kind, zoneTitle
                 if current.selected > #list then current.selected = math.max(1, #list) end
 
                 if #list > 1 then

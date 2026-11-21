@@ -123,6 +123,15 @@ durableExport('TransferMoney', function(actor, fromCid, fromType, toCid, toType,
 end)
 durableExport('GetMoneyOperation', function(_, opId) return Veyl.Ok(Money.GetOperation(opId)) end)
 durableExport('GetMoneyHistory', function(_, citizenid, limit) return Veyl.Ok(Money.History(citizenid, limit)) end)
+durableExport('GetMoneyHistoryPage', function(_, citizenid, limit, offset, direction)
+    local rows, nextOffset = Money.HistoryPage(citizenid, limit, offset, direction)
+    return Veyl.Ok({ rows = rows, nextOffset = nextOffset })
+end)
+durableExport('ResolveBankAccount', function(_, account)
+    local r = Money.ResolveAccount(account)
+    if not r then return Veyl.Err('NOT_FOUND', 'Unknown account') end
+    return Veyl.Ok(r)
+end)
 
 ---------------------------------------------------------------------------
 -- Metadata

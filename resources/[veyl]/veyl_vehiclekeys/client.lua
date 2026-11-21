@@ -58,3 +58,33 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
+
+---------------------------------------------------------------------------
+-- Target options on vehicles (presentation; the server re-checks keys and distance on every lock toggle)
+---------------------------------------------------------------------------
+local function managed(entity) return entity ~= 0 and DoesEntityExist(entity) and Entity(entity).state.veylVehicleId ~= nil end
+local function locked(entity) return GetVehicleDoorLockStatus(entity) >= 2 end
+
+local function toggle(data)
+    if not data or not data.entity or not NetworkGetEntityIsNetworked(data.entity) then return end
+    Veyl.NotifyResult(Veyl.Callback('veyl_vehiclekeys', 'toggleLock', VehToNet(data.entity)))
+end
+
+CreateThread(function()
+    while GetResourceState('veyl_target') ~= 'started' do Wait(500) end
+    exports.veyl_target:addGlobalVehicle({
+        { name = 'veyl_unlock', label = 'Unlock vehicle', icon = 'unlock', distance = 3.0, priority = 2,
+          canInteract = function(entity) return managed(entity) and hasKey(entity) and locked(entity) end, onSelect = toggle },
+        { name = 'veyl_lock', label = 'Lock vehicle', icon = 'lock', distance = 3.0, priority = 2,
+          canInteract = function(entity) return managed(entity) and hasKey(entity) and not locked(entity) end, onSelect = toggle },
+        { name = 'veyl_inspect', label = 'Inspect vehicle', icon = 'inspect', distance = 3.0, priority = 1,
+          canInteract = function(entity) return managed(entity) end,
+          onSelect = function(data)
+              local e = data.entity
+              local fuel = Entity(e).state.veylFuel
+              Veyl.Notify(('Plate %s · Fuel %s · Engine %d%% · Body %d%%'):format(
+                  (GetVehicleNumberPlateText(e):gsub('^%s*(.-)%s*$', '%1')), fuel and ('%d%%'):format(math.floor(fuel)) or 'n/a',
+                  math.floor(math.max(0, GetVehicleEngineHealth(e)) / 10), math.floor(math.max(0, GetVehicleBodyHealth(e)) / 10)), 'info', 6000)
+          end },
+    })
+end)

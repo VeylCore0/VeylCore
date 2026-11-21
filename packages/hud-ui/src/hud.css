@@ -1,0 +1,49 @@
+/* Passive HUD: transparent, never focused, center of the screen kept clear. */
+.hud-root { position: fixed; inset: 0; pointer-events: none; font-size: calc(1.1rem * var(--hud-scale, 1)); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+
+.hud-compass { position: absolute; top: 1.6vh; left: 50%; transform: translateX(-50%); width: min(26rem, 40vw); text-align: center; }
+.hud-compass-strip { position: relative; height: 1.4em; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+.hud-dir { position: absolute; top: 0; transform: translateX(-50%); font-size: 0.75em; color: var(--text-muted); letter-spacing: 0.08em; }
+.hud-dir.major { color: var(--text); font-weight: 600; font-size: 0.85em; }
+.hud-compass-strip::after { content: ''; position: absolute; left: 50%; bottom: -4px; width: 7px; height: 7px; transform: translateX(-50%) rotate(45deg); border: 1px solid var(--accent); background: rgba(18, 19, 24, 0.8); }
+.hud-street { margin-top: 0.55em; font-size: 0.85em; font-weight: 500; }
+.hud-zone { color: var(--text-muted); font-weight: 400; }
+
+.hud-info { position: absolute; top: 2vh; right: 1.8vw; display: flex; flex-direction: column; align-items: flex-end; gap: 0.35em; }
+.hud-brand { display: flex; align-items: center; gap: 0.6em; font-size: 0.85em; letter-spacing: 0.3em; font-weight: 600; }
+.hud-sep { width: 1px; height: 1em; background: rgba(255, 255, 255, 0.35); }
+.hud-money { display: grid; grid-template-columns: 4em auto; gap: 1em; font-size: 0.85em; }
+.hud-money span { color: var(--text-muted); letter-spacing: 0.08em; text-align: right; }
+.hud-money strong { font-weight: 600; text-align: right; }
+
+.hud-minimap-frame { position: absolute; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
+
+.hud-status { position: absolute; bottom: 1.4vh; display: flex; align-items: center; gap: 1.2em; }
+.hud-stat svg { width: 1.25em; height: 1.25em; }
+.hud-stat { display: flex; flex-direction: column; align-items: center; gap: 0.3em; color: var(--text); }
+.hud-bar { width: 2.1em; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; overflow: hidden; }
+.hud-bar > span { display: block; height: 100%; background: var(--accent); transition: width 300ms; }
+.hud-stat.warn .hud-bar > span { background: var(--warning); }
+.hud-stat.danger { color: var(--danger); }
+.hud-stat.danger .hud-bar > span { background: var(--danger); }
+.hud-voice { display: flex; align-items: center; gap: 0.5em; color: var(--text-muted); }
+.hud-voice.talking { color: var(--accent); }
+.hud-voice.unavailable { opacity: 0.5; }
+.hud-divider { width: 1px; height: 1.2em; background: rgba(255, 255, 255, 0.25); margin-right: 0.3em; }
+.hud-signal { display: inline-flex; align-items: flex-end; gap: 2px; }
+.hud-signal > span { width: 3px; background: rgba(255, 255, 255, 0.25); border-radius: 1px; }
+.hud-signal > span.on { background: var(--accent); }
+
+.hud-vehicle { position: absolute; right: 2vw; bottom: 2.2vh; width: 12em; display: flex; flex-direction: column; gap: 0.35em; }
+.hud-speed-row { display: flex; align-items: baseline; gap: 0.45em; }
+.hud-speed { font-size: 3.2em; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.hud-unit { font-size: 0.85em; font-weight: 600; color: var(--text); }
+.hud-gear { margin-left: auto; align-self: center; min-width: 1.7em; height: 1.7em; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.55); border-radius: 4px; font-weight: 600; }
+.hud-rpm { height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; overflow: hidden; }
+.hud-rpm > span { display: block; height: 100%; background: var(--accent); }
+.hud-veh-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4em; font-size: 0.9em; }
+.hud-fuel { display: inline-flex; align-items: center; gap: 0.4em; margin-left: auto; margin-right: 1.4em; }
+.hud-fuel.low { color: var(--warning); }
+.hud-belt.on { color: var(--success); }
+.hud-belt.off { color: var(--danger); }
+.hud-belt.unavailable { color: var(--text-muted); opacity: 0.45; }

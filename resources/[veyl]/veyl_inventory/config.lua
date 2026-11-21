@@ -6,6 +6,8 @@ InventoryConfig = {
     UseReservationGraceMs = 10000,    -- reservation expires this long after the use duration
     ImagePath = 'nui://veyl_inventory/web/images',
     OpenKey = 'F2',
+    HotbarSlots = 5,                  -- keys 1..5 use the item in personal slots 1..5
+    GiveDistance = 3.0,
 
     -- Server-registered stashes. owner = true: every character has its own copy.
     -- groups = { police = 0 } restricts access (checked on the server for every mutation).

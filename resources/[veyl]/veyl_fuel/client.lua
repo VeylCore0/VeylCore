@@ -45,7 +45,7 @@ end)
 CreateThread(function()
     while GetResourceState('veyl_interact') ~= 'started' do Wait(200) end
     for i, s in ipairs(FuelConfig.Stations) do
-        exports.veyl_interact:AddZone({ id = 'fuel_' .. i, coords = s, radius = FuelConfig.StationRadius, icon = 'fa-solid fa-gas-pump',
+        exports.veyl_interact:AddZone({ id = 'fuel_' .. i, coords = s, radius = FuelConfig.StationRadius, icon = 'gas', title = 'Fuel pump',
             label = 'Refuel vehicle', event = 'veyl_fuel:refuel' })
         local blip = AddBlipForCoord(s.x, s.y, s.z)
         SetBlipSprite(blip, 361)

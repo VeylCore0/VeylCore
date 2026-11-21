@@ -238,6 +238,33 @@ function Money.History(citizenid, limit)
         FROM veyl_money_ledger WHERE citizenid = ? ORDER BY id DESC LIMIT ?]], { citizenid, math.min(tonumber(limit) or 15, 100) }) or {}
 end
 
+--- Paged history for UIs. direction: 'all' | 'in' | 'out'. Returns rows, nextOffset|nil.
+function Money.HistoryPage(citizenid, limit, offset, direction)
+    limit = math.max(1, math.min(tonumber(limit) or 10, 50))
+    offset = math.max(0, math.floor(tonumber(offset) or 0))
+    local cond = direction == 'in' and ' AND delta > 0' or direction == 'out' and ' AND delta < 0' or ''
+    local rows = MySQL.query.await(([[SELECT id, type, delta, balance_after, reason,
+        CASE WHEN DATE(created_at) = CURDATE() THEN CONCAT('Today, ', DATE_FORMAT(created_at, '%%H:%%i'))
+             WHEN DATE(created_at) = CURDATE() - INTERVAL 1 DAY THEN CONCAT('Yesterday, ', DATE_FORMAT(created_at, '%%H:%%i'))
+             ELSE DATE_FORMAT(created_at, '%%b %%e, %%H:%%i') END AS at
+        FROM veyl_money_ledger WHERE citizenid = ?%s ORDER BY id DESC LIMIT ? OFFSET ?]]):format(cond),
+        { citizenid, limit + 1, offset }) or {}
+    local more = #rows > limit
+    if more then rows[#rows] = nil end
+    return rows, more and (offset + limit) or nil
+end
+
+--- Resolves a bank account number (charinfo.account) to { citizenid, name } with a privacy-preserving name.
+function Money.ResolveAccount(account)
+    if type(account) ~= 'string' or not account:match('^[%w]+$') or #account > 24 then return nil end
+    local row = MySQL.single.await([[SELECT citizenid, charinfo FROM veyl_players
+        WHERE JSON_UNQUOTE(JSON_EXTRACT(charinfo, '$.account')) = ? AND deleted_at IS NULL LIMIT 1]], { account })
+    if not row then return nil end
+    local ok, ci = pcall(json.decode, row.charinfo)
+    ci = ok and ci or {}
+    return { citizenid = row.citizenid, name = ('%s %s.'):format(ci.firstname or '?', (ci.lastname or ''):sub(1, 1)) }
+end
+
 --- Loads balances for login. Runs through the citizen queue so it observes every pending write.
 function Money.Load(citizenid)
     return Citizen.Await(CoreEnqueue(citizenid, function()

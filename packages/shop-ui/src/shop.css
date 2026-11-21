@@ -1,0 +1,32 @@
+.shop-root { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 1.4rem; padding: 5vh 6vw; background: rgba(6, 6, 10, 0.35); }
+.shop-header { display: flex; justify-content: space-between; align-items: center; }
+.shop-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(19rem, 0.52fr); gap: 1rem; max-width: 96rem; width: 100%; margin: 0 auto; }
+.shop-state { margin: auto; min-width: 22rem; }
+
+.shop-catalog, .shop-basket { padding: 1.2rem 1.3rem; display: flex; flex-direction: column; min-height: 0; }
+.shop-title { font-size: 1.7rem; font-weight: 700; letter-spacing: 0.02em; }
+.shop-sub { margin-top: 0.1rem; }
+.shop-filters { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0; padding-bottom: 1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.shop-search { width: min(15rem, 100%); }
+
+.shop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; align-content: start; min-height: 0; }
+@media (max-width: 1300px) { .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .shop-main { grid-template-columns: 1fr; } }
+.shop-card { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255, 255, 255, 0.03); padding: 0.7rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.shop-card.out { opacity: 0.55; }
+.shop-card-img { height: 6.5rem; display: flex; align-items: center; justify-content: center; }
+.shop-card-name { font-weight: 600; }
+.shop-card-price { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.35rem; }
+.shop-add { min-height: 1.9rem; padding: 0.25rem 0.5rem; font-weight: 500; }
+
+.basket-lines { flex: 1; min-height: 6rem; margin-top: 0.8rem; border-top: 1px solid var(--border); }
+.basket-empty { padding: 1.5rem 0; text-align: center; }
+.basket-line { display: grid; grid-template-columns: 3.2rem 1fr auto 3.6rem; gap: 0.8rem; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid var(--border-soft); }
+.basket-thumb { width: 3.2rem; height: 3.2rem; border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); }
+.basket-name { font-weight: 600; }
+.basket-total { text-align: right; font-weight: 600; }
+.basket-sum { display: flex; justify-content: space-between; font-size: 1.4rem; font-weight: 700; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+.basket-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 1rem; }
+.basket-available { font-size: 0.85rem; margin: 0.4rem 0 1rem; }
+.basket-available.short { color: var(--danger); }
+.basket-pay { min-height: 2.9rem; font-size: 1.05rem; }

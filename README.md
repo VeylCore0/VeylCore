@@ -22,6 +22,7 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | v2 boot with the ox stack (txAdmin, `start_38435_dev_server.bat`) | ✅ Clean: all services ready, QB facade OK, ox_inventory bridge loaded |
 | **Native profile boot** (veyl_lib, veyl_target, veyl_inventory; ox stopped) | ✅ Clean: all services ready, inventory engine migrated, no script errors |
 | UI builds (React + TypeScript, Vite) | ✅ `npm run build` / `npm run typecheck` pass |
+| UI suite browser preview (20 scripted interactions, 3 resolutions) | ✅ See docs/UI-SUITE.md |
 | In-game acceptance scenarios | ❌ Not run yet (needs real players; checklist below) |
 
 ## Resources
@@ -50,6 +51,12 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
 | `[examples]/veyl_qbexample` | A QBCore-style resource running on VeylCore through the shim |
+
+## UI suite
+
+Inventory, Shop, Banking, HUD and Target follow the VeylCore concept designs (charcoal and violet, V mark). The
+screens, message schemas and test results are in [docs/UI-SUITE.md](docs/UI-SUITE.md). To review all five screens in a
+browser without FiveM, run `npm run preview`. It includes a "compare with concept" overlay.
 
 ## Installation
 
@@ -147,7 +154,7 @@ Only the primary job earns a paycheck.
 
 ## Player commands
 
-`F2` inventory, hold `Left Alt` to target (E/click to select), `L` lock, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
+`F2` inventory, `1`–`5` hotbar, hold `Left Alt` to target (E/click to select), `L` lock, `/hudsettings`, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
 `/duty`, `/quitjob`, `/hud`, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
 
 Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive` `/vkick` `/vgivemoney` `/vtakemoney`

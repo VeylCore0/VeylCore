@@ -7,7 +7,7 @@ CreateThread(function()
     for _, s in ipairs(InventoryConfig.Stashes) do
         if useTarget then
             exports.veyl_target:addSphereZone({
-                name = 'stash_' .. s.id, coords = s.coords, radius = s.radius or 1.5,
+                name = 'stash_' .. s.id, title = 'Storage', coords = s.coords, radius = s.radius or 1.5,
                 options = { { name = 'open_' .. s.id, label = 'Open ' .. s.label, icon = 'box', distance = (s.radius or 1.5) + 1.0,
                     onSelect = function() openStash(s.id) end } },
             })

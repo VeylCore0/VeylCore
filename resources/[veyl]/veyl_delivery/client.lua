@@ -145,11 +145,11 @@ CreateThread(function()
     local p = cfg.Depot.ped
     exports.veyl_interact:AddPed({
         id = 'delivery_depot', model = p.model, coords = p.coords, radius = cfg.Depot.radius,
-        label = 'GoPostal depot', scenario = 'WORLD_HUMAN_CLIPBOARD', icon = 'fa-solid fa-box',
+        label = 'GoPostal depot', scenario = 'WORLD_HUMAN_CLIPBOARD', icon = 'box',
         options = {
-            { label = 'Start a delivery shift', event = 'veyl_delivery:start', canInteract = function() return run == nil end },
-            { label = 'Finish shift and get paid', event = 'veyl_delivery:finish', canInteract = function() return run ~= nil end },
-            { label = 'Cancel route', event = 'veyl_delivery:cancel', canInteract = function() return run ~= nil end },
+            { label = 'Start a delivery shift', icon = 'box', event = 'veyl_delivery:start', canInteract = function() return run == nil end },
+            { label = 'Finish shift and get paid', icon = 'money', event = 'veyl_delivery:finish', canInteract = function() return run ~= nil end },
+            { label = 'Cancel route', icon = 'close', event = 'veyl_delivery:cancel', canInteract = function() return run ~= nil end },
         },
     })
     local blip = AddBlipForCoord(p.coords.x, p.coords.y, p.coords.z)

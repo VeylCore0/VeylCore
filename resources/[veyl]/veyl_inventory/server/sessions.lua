@@ -174,6 +174,79 @@ vlib.callback.register('veyl_inventory:refresh', function(src)
     return Ops.ok()
 end, { cooldownMs = 1000 })
 
+---------------------------------------------------------------------------
+-- Give to a nearby player
+---------------------------------------------------------------------------
+local function nearbyPlayers(src)
+    local ped = GetPlayerPed(src)
+    if ped == 0 then return {} end
+    local pos, bucket = GetEntityCoords(ped), GetPlayerRoutingBucket(src)
+    local list = {}
+    for target, p in pairs(Players) do
+        if target ~= src and GetPlayerName(target) and GetPlayerRoutingBucket(target) == bucket then
+            local tped = GetPlayerPed(target)
+            local d = tped ~= 0 and #(GetEntityCoords(tped) - pos) or math.huge
+            if d <= InventoryConfig.GiveDistance then
+                local pd = exports.veyl_core:GetPlayerData(target)
+                local name = pd and ('%s %s.'):format(pd.charinfo.firstname or '?', (pd.charinfo.lastname or ''):sub(1, 1)) or ('Citizen #' .. target)
+                list[#list + 1] = { id = target, name = name, distance = math.floor(d * 10 + 0.5) / 10, citizenid = p.citizenid }
+            end
+        end
+    end
+    table.sort(list, function(a, b) return a.distance < b.distance end)
+    return list
+end
+
+vlib.callback.register('veyl_inventory:nearby', function(src)
+    if not actor(src) then return err('NO_CHARACTER', 'No character loaded') end
+    local out = {}
+    for i, p in ipairs(nearbyPlayers(src)) do out[i] = { id = p.id, name = p.name, distance = p.distance } end
+    return Ops.ok(out)
+end, { cooldownMs = 500 })
+
+--- First slot that can take `item` (matching stack with room, else empty), or nil.
+local function destinationSlot(inv, it, count)
+    local def = ItemDefs[it.name]
+    if def.stack then
+        for s = 1, inv.slots do
+            local d = inv.items[s]
+            if d and Store.CanStack(d, it) and d.count + count <= def.maxStack then return s end
+        end
+    end
+    for s = 1, inv.slots do if not inv.items[s] then return s end end
+    return nil
+end
+
+vlib.callback.register('veyl_inventory:give', function(src, req)
+    local p = actor(src)
+    if not p then return err('NO_CHARACTER', 'No character loaded') end
+    if type(req) ~= 'table' or not vlib.validate.int(req.target, 1, 65535) then return err('INVALID_INPUT', 'Choose a player') end
+    -- Re-validate the recipient on the server: online, loaded, same bucket, within range.
+    local target
+    for _, n in ipairs(nearbyPlayers(src)) do if n.id == req.target then target = n break end end
+    if not target or not Players[req.target] then return err('TOO_FAR', 'That player is no longer nearby') end
+    local from = Store.Get(p.invId)
+    local to = Store.Get(Players[req.target].invId)
+    if not from or not to then return err('NOT_READY', 'Inventory unavailable') end
+    local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
+    if not it then return err('NOT_FOUND', 'Nothing in that slot') end
+    local count = vlib.validate.int(req.count, 1, it.count) and req.count or it.count
+    local toSlot = destinationSlot(to, it, count)
+    if not toSlot then return err('INVENTORY_FULL', 'Their inventory is full') end
+    local revisions = {}
+    if req.revision then revisions[from.id] = tonumber(req.revision) end
+    local res = Ops.Transfer({ opId = req.opId, actor = p.citizenid, from = from, fromSlot = req.slot, to = to, toSlot = toSlot,
+        count = count, revisions = revisions })
+    if res.ok then
+        local def = ItemDefs[it.name]
+        vlib.notify(req.target, { message = ('You received %dx %s'):format(count, def.label), type = 'success' })
+        res.message = ('Gave %dx %s'):format(count, def.label)
+    elseif res.code == 'STALE' then
+        Store.Snapshot(from, src)
+    end
+    return res
+end, { cooldownMs = 750 })
+
 AddEventHandler('playerDropped', function()
     local src = source
     if Players[src] or Sessions[src] then Inventory_OnCharacterUnloaded(src) end

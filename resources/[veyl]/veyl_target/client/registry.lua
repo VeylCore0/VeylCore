@@ -71,7 +71,8 @@ function Registry.addZone(owner, kind, data)
     local id = data.name and (owner .. ':' .. data.name) or (owner .. ':zone' .. zoneSeq)
     local options = {}
     for _, opt in ipairs(normaliseOptions(owner, data.options)) do options[opt.key] = opt end
-    Registry.zones[id] = { id = id, owner = owner, zone = zone, options = options, order = orderSeq, debug = data.debug }
+    Registry.zones[id] = { id = id, owner = owner, zone = zone, options = options, order = orderSeq, debug = data.debug,
+        title = type(data.title) == 'string' and data.title:sub(1, 24) or nil }
     return id
 end
 

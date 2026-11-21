@@ -2,10 +2,13 @@
   "name": "veylcore-ui",
   "private": true,
   "description": "Build workspace for VeylCore NUI apps. Compiled output is committed into each resource's web/dist.",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "npm run build -w @veyl/lib-ui && npm run build -w @veyl/target-ui && npm run build -w @veyl/inventory-ui",
-    "typecheck": "npm run typecheck -w @veyl/lib-ui && npm run typecheck -w @veyl/target-ui && npm run typecheck -w @veyl/inventory-ui"
+    "build": "npm run build -w @veyl/lib-ui && npm run build -w @veyl/target-ui && npm run build -w @veyl/inventory-ui && npm run build -w @veyl/shop-ui && npm run build -w @veyl/bank-ui && npm run build -w @veyl/hud-ui",
+    "typecheck": "npm run typecheck -w @veyl/lib-ui && npm run typecheck -w @veyl/target-ui && npm run typecheck -w @veyl/inventory-ui && npm run typecheck -w @veyl/shop-ui && npm run typecheck -w @veyl/bank-ui && npm run typecheck -w @veyl/hud-ui",
+    "preview": "npm run dev -w @veyl/preview"
   },
   "devDependencies": {
     "@types/react": "18.3.12",
