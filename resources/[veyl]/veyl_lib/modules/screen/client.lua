@@ -11,7 +11,7 @@ local M = {}
 function M.createScreen(opts)
     opts = opts or {}
     local name = opts.name or GetCurrentResourceName()
-    local self = { open = false, token = nil, ready = false, sessionId = nil, seq = 0 }
+    local self = { visible = false, token = nil, ready = false, sessionId = nil, seq = 0 }
 
     local function release()
         SetNuiFocus(false, false)
@@ -21,7 +21,7 @@ function M.createScreen(opts)
         end
     end
 
-    function self:isOpen() return self.open end
+    function self:isOpen() return self.visible end
     function self:session() return self.sessionId end
 
     function self:send(action, data)
@@ -29,8 +29,8 @@ function M.createScreen(opts)
     end
 
     function self:close(reason)
-        if not self.open then release() return end
-        self.open = false
+        if not self.visible then release() return end
+        self.visible = false
         self:send(name .. ':close')
         release()
         self.sessionId = nil
@@ -42,7 +42,7 @@ function M.createScreen(opts)
 
     --- Opens the page. Returns false, reason if focus is busy or the page never loaded.
     function self:open(action, data)
-        if self.open then self:send(action, data) return true end
+        if self.visible then self:send(action, data) return true end
         if IsPauseMenuActive() then return false, 'paused' end
         local token, reason = exports.veyl_lib:RequestFocus(name)
         if not token then return false, reason or 'busy' end
@@ -57,7 +57,7 @@ function M.createScreen(opts)
         if self.token ~= token then return false, 'revoked' end
         self.seq = self.seq + 1
         self.sessionId = ('%s:%d:%d'):format(name, GetGameTimer(), self.seq)
-        self.open = true
+        self.visible = true
         SetNuiFocus(true, true)
         self:send(action, data)
         return true
@@ -81,7 +81,7 @@ function M.createScreen(opts)
     if opts.closeOnDeath ~= false then
         CreateThread(function()
             while true do
-                if self.open and IsEntityDead(PlayerPedId()) then self:close('death') end
+                if self.visible and IsEntityDead(PlayerPedId()) then self:close('death') end
                 Wait(500)
             end
         end)
