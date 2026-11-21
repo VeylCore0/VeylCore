@@ -15,7 +15,8 @@ DealershipConfig = {
 
     Categories = {
         { id = 'compacts', label = 'Compacts' }, { id = 'sedans', label = 'Sedans' }, { id = 'coupes', label = 'Coupes' },
-        { id = 'suvs', label = 'SUVs' }, { id = 'muscle', label = 'Muscle' }, { id = 'sports', label = 'Sports' },
-        { id = 'offroad', label = 'Off-road' }, { id = 'motorcycles', label = 'Motorcycles' }, { id = 'vans', label = 'Vans' },
+        { id = 'suvs', label = 'SUVs' }, { id = 'muscle', label = 'Muscle' }, { id = 'sportsclassics', label = 'Classics' },
+        { id = 'sports', label = 'Sports' }, { id = 'super', label = 'Super' }, { id = 'offroad', label = 'Off-road' },
+        { id = 'motorcycles', label = 'Motorcycles' }, { id = 'vans', label = 'Vans' }, { id = 'cycles', label = 'Bicycles' },
     },
 }

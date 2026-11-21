@@ -48,8 +48,8 @@ There are four public garages (Legion Square, Pink Cage, Sandy Shores, Paleto) a
 
 The dealership is Premium Deluxe Motorsport. Talk to the salesperson (*Browse vehicles*).
 
-- **Catalog and prices:** both come from `veyl_core/shared/vehicles.lua` (`shop = 'pdm'`). There are 31 stock GTA models
-  in nine categories.
+- **Catalog and prices:** both come from `veyl_core/shared/vehicles.lua` (`shop = 'pdm'`). It lists all 876 base-game models from the FiveM reference; 549 civilian road vehicles are for sale
+  in 12 categories (armed, armoured and arena variants are cataloged but never sold; prices are per-category defaults you can edit).
 - **Purchase:** confirm the dialog, then the server runs `DebitOnce('dealer:<citizenid>:<op>')`, then
   `RegisterOwnedVehicle(created_op = same op)`.
   - The car is delivered to the bay if it's clear. Otherwise it's parked at `FallbackGarage` (Legion).

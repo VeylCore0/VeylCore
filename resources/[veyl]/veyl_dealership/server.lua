@@ -53,7 +53,7 @@ Veyl.RegisterCallback('purchase', function(src, citizenid, req)
     end
 
     local op = ('dealer:%s:%s'):format(citizenid, req.opId)
-    local pay = core('DebitOnce', citizenid, req.method, def.price, ('Vehicle purchase: %s %s'):format(def.brand or '', def.name), op)
+    local pay = core('DebitOnce', citizenid, req.method, def.price, ('Vehicle purchase: ' .. (((def.brand or '') .. ' ' .. def.name):gsub('^%s+', ''))), op)
     if not pay.ok and pay.code ~= 'DUPLICATE_OPERATION' then
         if pay.code == 'TIMEOUT' then return Veyl.Err('PENDING', 'Payment is being verified. Press Buy again to check.') end
         return pay

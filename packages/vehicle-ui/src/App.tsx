@@ -222,7 +222,7 @@ function DealerScreen({ data }: { data: DealerOpen }) {
               <button key={v.model} className={`vh-card${selected?.model === v.model ? ' on' : ''}`} onClick={() => { setSelected(v); setRetryOp(null); }}>
                 <div className="vh-card-icon"><Icon name={v.category === 'motorcycles' ? 'bolt' : 'car'} size="2.2rem" /></div>
                 <div className="vh-card-name">{v.name}</div>
-                <div className="v-muted vh-card-brand">{v.brand} · {catLabel(v.category)}</div>
+                <div className="v-muted vh-card-brand">{[v.brand, catLabel(v.category)].filter(Boolean).join(' · ')}</div>
                 <div className="vh-card-price">{money(v.price)}</div>
               </button>
             ))}
@@ -234,7 +234,7 @@ function DealerScreen({ data }: { data: DealerOpen }) {
           ) : (
             <>
               <div className="vh-title">{selected.name.toUpperCase()}</div>
-              <div className="v-muted">{selected.brand} · {catLabel(selected.category)}</div>
+              <div className="v-muted">{[selected.brand, catLabel(selected.category)].filter(Boolean).join(' · ')}</div>
               <div className="vh-detail-hero"><Icon name={selected.category === 'motorcycles' ? 'bolt' : 'car'} size="5rem" strokeWidth={1.1} /></div>
               <ul className="vh-facts">
                 <li><Icon name="check" size="0.95rem" /> Registered to you with its own plate</li>
@@ -259,7 +259,7 @@ function DealerScreen({ data }: { data: DealerOpen }) {
         <div className="v-dialog-backdrop" role="dialog" aria-modal="true" aria-label="Confirm purchase">
           <div className="v-panel vh-confirm">
             <div className="vh-title">CONFIRM PURCHASE</div>
-            <p>Buy the <strong>{selected.brand} {selected.name}</strong> for <strong>{money(selected.price)}</strong> from your {method === 'bank' ? 'bank account' : 'cash'}?</p>
+            <p>Buy the <strong>{[selected.brand, selected.name].filter(Boolean).join(' ')}</strong> for <strong>{money(selected.price)}</strong> from your {method === 'bank' ? 'bank account' : 'cash'}?</p>
             <div className="vh-confirm-row">
               <button className="v-btn" disabled={busy} onClick={() => setConfirm(false)}>Cancel</button>
               <button className="v-btn primary" disabled={busy} autoFocus onClick={() => void buy()}>{busy ? 'Processing…' : `Pay ${money(selected.price)}`}</button>
