@@ -3,7 +3,7 @@ import { Icon, RadioCard, money, nui } from '@veyl/ui';
 import { FloorPlan } from './FloorPlan';
 import { api, newOp, type Catalog, type LeaseView, type UnitView } from '../types';
 
-export function Leasing({ data, toast, onLeased }: { data: Catalog; toast: (k: 'ok' | 'error', t: string) => void; onLeased: (l: LeaseView) => void }) {
+export function Leasing({ data, toast, onLeased, onClose }: { data: Catalog; toast: (k: 'ok' | 'error', t: string) => void; onLeased: (l: LeaseView) => void; onClose: () => void }) {
   const type = data.types[0];
   const floors = useMemo(() => [...new Set(data.units.map((u) => u.floor))].sort(), [data.units]);
   const [floor, setFloor] = useState(floors[0] ?? 1);
@@ -28,7 +28,7 @@ export function Leasing({ data, toast, onLeased }: { data: Catalog; toast: (k: '
         <Icon name="home" size="2.4rem" />
         <h2>You live at Room {l.number}</h2>
         <p className="v-muted">{l.buildingLabel} · floor {l.floor}. Manage rent, keys and visitors from your home panel or the Apartments app.</p>
-        <button className="v-btn primary" onClick={() => void nui('close')}>Close</button>
+        <button className="v-btn primary" onClick={onClose}>Close</button>
       </div>
     );
   }

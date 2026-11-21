@@ -47,6 +47,8 @@ export function App() {
   const say: Say = useCallback((kind, text) => { setToast({ kind, text }); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setToast(null), 3500); }, []);
 
   useNuiMessage<Screen>('door:open', (d) => { setScreen(d); setOpenId((n) => n + 1); });
+  // vlib.createScreen sends '<screen name>:close' (doorlocks:close) whenever Lua closes the screen.
+  useNuiMessage('doorlocks:close', () => setScreen(null));
   useNuiMessage('door:close', () => setScreen(null));
   useNuiMessage<typeof status>('door:status', (d) => setStatus(d ?? { visible: false }));
   useNuiMessage<typeof select>('door:select', (d) => setSelect(d ?? { visible: false }));

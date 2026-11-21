@@ -41,6 +41,8 @@ export function App() {
     setOpenId((n) => n + 1);
     if (d.view === 'doorbell') { const v = d.data as Visit; setVisit({ ...v, until: Date.now() + v.expires * 1000 }); }
   });
+  // vlib.createScreen sends '<screen name>:close' (apartments:close) whenever Lua closes the screen.
+  useNuiMessage('apartments:close', () => { setScreen(null); setVisit(null); });
   useNuiMessage('apt:close', () => { setScreen(null); setVisit(null); });
   useNuiMessage<Visit>('apt:doorbell', (v) => setVisit({ ...v, until: Date.now() + v.expires * 1000 }));
   useNuiMessage<Placement>('apt:placement', (p) => setPlacement(p ?? { visible: false }));
@@ -112,7 +114,7 @@ export function App() {
             <CloseHint onClose={close} />
           </header>
           <main key={openId} className={`apt-main apt-view-${screen.view}`}>
-            {screen.view === 'leasing' && <Leasing data={screen.data} toast={say} onLeased={(l: LeaseView) => setScreen({ view: 'leasing', data: { ...screen.data, myLease: l, canLease: false } })} />}
+            {screen.view === 'leasing' && <Leasing data={screen.data} toast={say} onClose={close} onLeased={(l: LeaseView) => setScreen({ view: 'leasing', data: { ...screen.data, myLease: l, canLease: false } })} />}
             {screen.view === 'dashboard' && <div className="v-panel apt-panel"><DashboardView initial={screen.data} toast={say} /></div>}
             {screen.view === 'furniture' && <div className="v-panel apt-panel"><FurnitureView initial={screen.data} toast={say} /></div>}
             {screen.view === 'wardrobe' && <div className="v-panel apt-panel narrow"><WardrobeView initial={screen.data} toast={say} /></div>}
