@@ -49,7 +49,13 @@ local function problem(ped, pos, normal, container, ghost)
         if container == 'ground' and P.RequirePotIndoors then return 'Use a pot indoors' end
     end
     if tooClose(pos) then return 'Too close to another plant' end
-    if IsPositionOccupied(pos.x, pos.y, pos.z + 0.3, 0.45, false, true, true, true, false, ghost, false) then return 'Something is in the way' end
+    if container == 'equipment' and DrugsEquipClient then
+        for _, e in pairs(DrugsEquipClient.known) do
+            if #(pos - vector3(e.x, e.y, e.z)) < 2.0 then return 'Too close to other equipment' end
+        end
+    end
+    local radius = container == 'equipment' and 0.9 or 0.45
+    if IsPositionOccupied(pos.x, pos.y, pos.z + 0.3, radius, false, true, true, true, false, ghost, false) then return 'Something is in the way' end
     return nil
 end
 
@@ -89,13 +95,18 @@ local function begin(data)
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) then return Veyl.Notify('Get out of the vehicle first', 'error') end
     if exports.veyl_lib:IsModalOpen() then return end
-    local prod = DrugsProducts[data.product]
+    local eq = data.equipment and DrugsEquipment.types[data.equipment]
+    local prod = not eq and DrugsProducts[data.product] or nil
     local variety = prod and prod.varieties[data.variety]
-    if not variety then return end
+    if not eq and not variety then return end
 
     local containers = {}
-    for _, c in ipairs(prod.containers) do
-        if c == 'ground' or (c == 'pot' and count('plant_pot') > 0) or (c == 'tub' and count(prod.tubItem) > 0) then containers[#containers + 1] = c end
+    if eq then
+        containers = { 'equipment' }
+    else
+        for _, c in ipairs(prod.containers) do
+            if c == 'ground' or (c == 'pot' and count('plant_pot') > 0) or (c == 'tub' and count(prod.tubItem) > 0) then containers[#containers + 1] = c end
+        end
     end
     if #containers == 0 then
         local def = prod.tubItem and exports.veyl_inventory:GetItemDefinition(prod.tubItem)
@@ -104,7 +115,15 @@ local function begin(data)
     local ci = 1
     placing = true
 
-    local hash, scale = ghostModel(data.product, data.variety, containers[ci])
+    local hash, scale
+    if eq then
+        hash, scale = joaat(eq.prop), 1.0
+        RequestModel(hash)
+        local deadline = GetGameTimer() + 3000
+        while not HasModelLoaded(hash) and GetGameTimer() < deadline do Wait(10) end
+    else
+        hash, scale = ghostModel(data.product, data.variety, containers[ci])
+    end
     local ghost = makeGhost(hash, scale)
     local heading = GetEntityHeading(ped)
     local confirmed, last = nil, nil
@@ -123,8 +142,8 @@ local function begin(data)
         end
         local why = problem(ped, pos, normal, containers[ci], ghost)
         if why then SetEntityDrawOutlineColor(239, 143, 150, 255) else SetEntityDrawOutlineColor(152, 211, 174, 255) end
-        local state = { visible = true, valid = why == nil, reason = why, label = variety.label, product = prod.label,
-            container = containers[ci], canToggle = #containers > 1 }
+        local state = { visible = true, valid = why == nil, reason = why, label = eq and eq.label or variety.label,
+            product = eq and eq.label or prod.label, container = containers[ci], canToggle = #containers > 1 }
         if not last or last.valid ~= state.valid or last.reason ~= state.reason or last.container ~= state.container then
             DrugsUI.Placement(state)
             last = state
@@ -154,13 +173,14 @@ local function begin(data)
     DrugsUI.Placement({ visible = false })
     if not confirmed then return Veyl.Notify('Placement cancelled', 'info') end
 
-    local done = vlib.progress({ label = 'Planting', duration = DrugsConfig.ActionMs.place, canCancel = true,
+    local done = vlib.progress({ label = eq and 'Setting up' or 'Planting', duration = DrugsConfig.ActionMs.place, canCancel = true,
         disable = { move = true, car = true, combat = true },
-        anim = { dict = 'amb@world_human_gardener_plant@male@base', clip = 'base', flag = 1 } })
+        anim = eq and { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 1 }
+            or { dict = 'amb@world_human_gardener_plant@male@base', clip = 'base', flag = 1 } })
     ClearPedTasks(ped)
     if not done then return Veyl.Notify('Placement cancelled', 'info') end
     local c = confirmed.pos
-    local res = Veyl.CallbackTimeout('veyl_drugs', 'place', 20000, {
+    local res = Veyl.CallbackTimeout('veyl_drugs', eq and 'placeEquipment' or 'place', 20000, {
         opId = ('%08x%06x%06x'):format(GetGameTimer() % 0xffffffff, math.random(0, 0xffffff), math.random(0, 0xffffff)),
         item = data.item, variety = data.variety, container = confirmed.container,
         x = c.x, y = c.y, z = c.z, heading = confirmed.heading, interior = GetInteriorAtCoords(c.x, c.y, c.z),

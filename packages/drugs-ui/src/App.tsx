@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, KeyBadge, SearchBox, StateView, VMark, announceReady, nui, useNuiMessage } from '@veyl/ui';
-import { CONTAINERS, STAGES, eta, needs, type JournalData, type PlacementState, type PlantView } from './types';
+import { CONTAINERS, STAGES, eta, needs, type EquipmentView, type JournalData, type PlacementState, type PlantView } from './types';
+import { Equipment } from './Equipment';
 
 const REDUCED_KEY = 'veyl_drugs.reducedMotion';
 
@@ -14,18 +15,21 @@ export function App() {
   const [placement, setPlacement] = useState<PlacementState | null>(null);
   const [card, setCard] = useState<PlantView | null>(null);
   const [journal, setJournal] = useState<JournalData | null>(null);
+  const [equipment, setEquipment] = useState<EquipmentView | null>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => announceReady(), []);
   useNuiMessage<PlacementState>('drugs:placement', (d) => setPlacement(d && d.visible ? d : null));
   useNuiMessage<PlantView | null>('drugs:card', (d) => setCard(d ?? null));
-  useNuiMessage<JournalData>('drugs:journal', (d) => setJournal(d));
-  useNuiMessage('drugs:close', () => setJournal(null));
+  useNuiMessage<JournalData>('drugs:journal', (d) => { setEquipment(null); setJournal(d); });
+  useNuiMessage<EquipmentView>('drugs:equipment', (d) => { setJournal(null); setEquipment(d); });
+  useNuiMessage('drugs:close', () => { setJournal(null); setEquipment(null); });
 
   return (
     <>
       {placement && <PlacementHint s={placement} />}
-      {card && !journal && <PlantCard p={card} />}
+      {card && !journal && !equipment && <PlantCard p={card} />}
+      {equipment && <Equipment data={equipment} onData={setEquipment} />}
       {journal && <Journal data={journal} onData={setJournal} reduced={reduced} />}
     </>
   );

@@ -9,12 +9,12 @@ meters and challenges. There are no real recipes or instructions.
 | --- | --- | --- |
 | **A** | Framework adapters, persistence, migrations, secure inventory operations | ✅ Built |
 | **B** | Weed, coca and mushrooms: grow anywhere, placement, living plants, quality, harvest, supplier, Grow Journal | ✅ Built |
-| C | Processing benches and challenges, packaging and branding, meth / ecstasy / LSD / Veyl-X | Not started |
+| C | Processing benches and challenges, packaging and branding, meth / ecstasy / LSD / Veyl-X | 🟡 Part built: **weed table** (joints, bagging) and **coke table** (processing, bagging) with challenges, plus the **weed store**. Branding, meth, ecstasy, LSD and Veyl-X are not started |
 | D | Street sales, buyer contacts, economy and demand, progression tracks | Not started |
 | E | Crews and permissions, territories, police discovery and seizure, admin tools | Not started |
 | F | Visual polish, prop tuning, performance measurement, live integration testing | Not started |
 
-Nothing from C–F appears in-game yet. The UI has no placeholder buttons for them.
+Nothing from D–F, and none of the unbuilt parts of C, appears in-game yet. The UI has no placeholder buttons for them.
 
 ## What exists in this framework (and what doesn't)
 
@@ -119,6 +119,59 @@ inventory shows it under the item. Stacks only merge when all of these match, so
 | Mushrooms (tub only) | Mooncap | Thirsty, high ceiling (98) |
 | | Forest Cap | Quick (2.5 h) and forgiving, cap 72 |
 
+### Tables (placeable equipment)
+
+Buy a **Weed Table** at the weed store or a **Coke Table** from the Garden Supplier, then use it from your inventory. It
+uses the same placement preview, checks and controls as planting. Target the table for:
+
+| Option | When it shows |
+| --- | --- |
+| Use table | Always (owner) |
+| Collect from table | When items are waiting on it |
+| Pack up | When idle and empty; the table goes back to your inventory |
+
+**Recipes** (per unit, 1–5 units per job):
+
+| Table | Recipe | Uses | Makes | Challenge | Time |
+| --- | --- | --- | --- | --- | --- |
+| Weed Table | Roll joints | 1 Cannabis Bud (one batch) + 1 Rolling Papers | 2 Joints | Timing ring | 2.5 s |
+| Weed Table | Bag weed | 5 Cannabis Bud (one batch) + 1 Empty Baggie | 1 Bag of Weed | Timing ring | 3 s |
+| Coke Table | Process leaves | 4 Coca Leaves (one batch) + 1 Processing Supplies | 2 Cocaine | Calibration | 6 s |
+| Coke Table | Bag coke | 2 Cocaine (one batch) + 1 Empty Baggie | 1 Bag of Coke | Timing ring | 3 s |
+
+How a job works:
+- **Before you start**, the screen shows your batches (variety, grade, quality, batch ID, amount owned), what you have
+  against what you need, the output and the time.
+- **Batches are kept:** outputs keep the batch ID, variety and grade of what went in.
+- **Challenges:**
+  - *Timing ring:* press **Space** or click when the marker is in the zone.
+  - *Calibration:* hold **Space** to keep the needle in the drifting band.
+  - **Steady hands** skips the challenge (score 0.6).
+- **Quality:** the challenge moves quality by at most ±5. Table wear can take up to 5 more. The amount you get never
+  changes. The score is reported by the client, so its effect is deliberately capped at ±5.
+- **Esc during a job cancels it**, and the supplies come back.
+
+Durability:
+
+| Case | Outcome |
+| --- | --- |
+| Starting a job | Writes a job row, then takes each input with an operation id. If an input is missing, everything already taken is refunded |
+| Completing | The server checks the time and distance, then delivers once (`craft:<token>:out`) |
+| Inventory full | The output waits in the table's tray; use *Collect from table* |
+| Disconnect or server stop mid-job | The job is finished with the steady-hands score into your pockets or the tray, exactly once (checked against the inventory's operation records) |
+| Pack up | Refused while a job runs or the tray holds items |
+
+### Weed store and suppliers
+
+| Supplier | Location | Payment | Sells | Restocks |
+| --- | --- | --- | --- | --- |
+| **Smoke on the Water** (map blip) | Vespucci dispensary | Cash or bank | All four weed seeds, pots, nutrients, water, Weed Table, Rolling Papers, Empty Baggies, Grow Journal | Every 20 min |
+| **Garden Supplier** (no blip) | Grapeseed | Cash only | Coca and mushroom seeds, grow tubs, pots, nutrients, Coke Table, Processing Supplies, Empty Baggies, Grow Journal | Every 30 min |
+
+Both have limited stock per item.
+
+**Joints** are usable: a 4-second smoke that lowers stress by 15, through the existing `veyl_needs` handler.
+
 ### Grow Journal
 
 Use the item or `/growjournal` (requires the item) to open the tablet.
@@ -159,10 +212,12 @@ Use the item or `/growjournal` (requires the item) to open the tablet.
 
 | Check | Result |
 | --- | --- |
-| Server code in a Lua VM with an in-memory DB, inventory and money service, 44 checks. Covered: the growth model (determinism, offline floor, online death, care to quality, variety caps, Exotic reachable, overripe floor); placement (variety, distance, interiors, restricted zone, pot item, mushrooms tub-only, in-vehicle, success takes one seed, replay, spacing, wrong variety); actions (stranger blocked, stranger inspect redacted, busy, too-fast, replayed token, item taken once, remote refused, not-ready harvest); harvest (inventory full keeps the plant, delivered once with metadata, gone afterwards, no second harvest, only one of two simultaneous claims wins, timeout reported as pending); startup recovery (timed-out harvest delivered once, interrupted placements finished or dropped); supplier (stock, charge and delivery, repeat not charged, full inventory refused before paying, stock limit, distance) | ✅ 44/44 |
+| Server code in a Lua VM with an in-memory DB, inventory and money service, 44 checks (milestones A–B). Covered: the growth model (determinism, offline floor, online death, care to quality, variety caps, Exotic reachable, overripe floor); placement (variety, distance, interiors, restricted zone, pot item, mushrooms tub-only, in-vehicle, success takes one seed, replay, spacing, wrong variety); actions (stranger blocked, stranger inspect redacted, busy, too-fast, replayed token, item taken once, remote refused, not-ready harvest); harvest (inventory full keeps the plant, delivered once with metadata, gone afterwards, no second harvest, only one of two simultaneous claims wins, timeout reported as pending); startup recovery (timed-out harvest delivered once, interrupted placements finished or dropped); supplier (stock, charge and delivery, repeat not charged, full inventory refused before paying, stock limit, distance) | ✅ 44/44 |
 | Browser preview (journal and grow HUD): 12 checks. Covered: filters, search, keyboard selection, waypoint, reduced motion, Escape order, empty state, passive overlays have no pointer events, no full-screen backdrop | ✅ 12/12 |
 | Browser preview: the journal fits at 1280×720, 1920×1080 and 3440×1440 | ✅ 3/3 |
-| Lua syntax (181 files), all 10 UI builds | ✅ |
+| Equipment server code in the Lua VM (23 more checks, 67 in total). Covered: placement and replay, strangers blocked, batch listing, missing supplies, units cap, busy table, too-early or replayed completion, output delivered once with the batch kept, ±5 quality cap, cancel refunds, full inventory to tray, collect once, pack-up guards, interrupted coke job finished once after a restart | ✅ 67/67 |
+| Browser preview: the table screen (12 checks). Covered: recipes and batches, have/need, units capped by batch, timing challenge, completion, steady hands, Esc cancels a job then closes, tray collect, missing-supplies state | ✅ 12/12 |
+| Lua syntax (185 files), all 10 UI builds | ✅ |
 
 ### Needs your live server
 

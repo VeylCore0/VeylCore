@@ -210,3 +210,23 @@ export function journal(empty: boolean): JournalData {
 }
 
 export const plantCard = plant(1, 'weed', 'Cannabis', 'Violet Haze', 72, 64, 81, 96, 'Premium', 'premium', 'Grapeseed');
+
+import type { EquipmentView } from '../../drugs-ui/src/types';
+export function weedTable(empty: boolean, tray = false): EquipmentView {
+  const bud = (batch: string, grade: string, quality: number, variety: string, count: number) => ({
+    metadata: { product: 'weed', variety: variety.toLowerCase().replace(' ', '_'), varietyLabel: variety, grade, quality, batch }, count });
+  return {
+    id: 1, kind: 'weed_table', label: 'Weed Table', condition: 88, maxUnits: 5, challengeQuality: 5, busy: false,
+    tray: tray ? [{ item: 'weed_baggie', label: 'Bag of Weed', count: 2, grade: 'Premium' }] : [],
+    recipes: [
+      { id: 'roll_joints', label: 'Roll joints', icon: 'leaf', challenge: 'timing', msPerUnit: 2500,
+        inputs: [{ item: 'weed_bud', label: 'Cannabis Bud', count: 1, batch: true, have: 0 }, { item: 'rolling_papers', label: 'Rolling Papers', count: 1, batch: false, have: empty ? 0 : 6 }],
+        output: { item: 'joint', label: 'Joint', count: 2 },
+        batches: empty ? [] : [bud('B0002A', 'Premium', 78, 'Violet Haze', 12), bud('B0003C', 'Exotic', 91, 'Nightbloom', 3)] },
+      { id: 'bag_weed', label: 'Bag weed', icon: 'bag', challenge: 'timing', msPerUnit: 3000,
+        inputs: [{ item: 'weed_bud', label: 'Cannabis Bud', count: 5, batch: true, have: 0 }, { item: 'empty_baggie', label: 'Empty Baggie', count: 1, batch: false, have: empty ? 0 : 20 }],
+        output: { item: 'weed_baggie', label: 'Bag of Weed', count: 1 },
+        batches: empty ? [] : [bud('B0002A', 'Premium', 78, 'Violet Haze', 12)] },
+    ],
+  };
+}

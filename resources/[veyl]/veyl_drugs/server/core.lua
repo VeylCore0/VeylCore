@@ -55,6 +55,45 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        {
+            id = '002_equipment',
+            sql = {
+                [[CREATE TABLE IF NOT EXISTS veyl_drug_equipment (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    owner_cid VARCHAR(16) NOT NULL,
+                    kind VARCHAR(32) NOT NULL,
+                    x DOUBLE NOT NULL, y DOUBLE NOT NULL, z DOUBLE NOT NULL, heading FLOAT NOT NULL DEFAULT 0,
+                    bucket INT NOT NULL DEFAULT 0,
+                    interior INT NOT NULL DEFAULT 0,
+                    state ENUM('pending','placed','packed','seized') NOT NULL DEFAULT 'pending',
+                    `condition` FLOAT NOT NULL DEFAULT 100,
+                    tray LONGTEXT NULL,
+                    op_id VARCHAR(100) NOT NULL,
+                    created_at INT UNSIGNED NOT NULL,
+                    updated_at INT UNSIGNED NOT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_op (op_id),
+                    KEY idx_owner (owner_cid),
+                    KEY idx_state (state)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_drug_crafts (
+                    token VARCHAR(40) NOT NULL,
+                    equipment_id INT UNSIGNED NOT NULL,
+                    citizenid VARCHAR(16) NOT NULL,
+                    recipe VARCHAR(32) NOT NULL,
+                    units INT UNSIGNED NOT NULL,
+                    inputs LONGTEXT NOT NULL,
+                    batch LONGTEXT NULL,
+                    state ENUM('starting','running','delivered','tray','cancelled') NOT NULL DEFAULT 'starting',
+                    score FLOAT NULL,
+                    started_at INT UNSIGNED NOT NULL,
+                    duration_ms INT UNSIGNED NOT NULL,
+                    PRIMARY KEY (token),
+                    KEY idx_state (state),
+                    KEY idx_equipment (equipment_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            },
+        },
     })
     if not ok then return false end
     Drugs.ready = true

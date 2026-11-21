@@ -35,3 +35,16 @@ export function needs(p: PlantView): { text: string; tone: 'ok' | 'warn' | 'bad'
   if ((p.water ?? 100) < 40 || (p.care ?? 100) < 40) return { text: (p.water ?? 100) < 40 ? 'Getting dry' : 'Could use nutrients', tone: 'warn' };
   return { text: 'Growing', tone: 'ok' };
 }
+
+// Equipment ('drugs:equipment')
+export interface BatchMeta { product: string; variety: string; varietyLabel: string; grade: string; quality: number; batch: string }
+export interface RecipeView {
+  id: string; label: string; icon: string; challenge: 'timing' | 'calibration'; msPerUnit: number;
+  inputs: { item: string; label: string; count: number; batch: boolean; have: number }[];
+  output: { item: string; label: string; count: number };
+  batches: { metadata: BatchMeta; count: number }[];
+}
+export interface EquipmentView {
+  id: number; kind: string; label: string; condition: number; maxUnits: number; challengeQuality: number;
+  recipes: RecipeView[]; tray: { item: string; label: string; count: number; grade?: string }[]; busy: boolean;
+}

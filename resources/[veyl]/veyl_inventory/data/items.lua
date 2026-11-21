@@ -69,6 +69,22 @@ return {
     weed_bud = { label = 'Cannabis Bud', description = 'Freshly harvested.', image = 'weed_bud.png', weight = 50, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
     coca_leaf = { label = 'Coca Leaves', description = 'Freshly harvested.', image = 'coca_leaf.png', weight = 40, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
     mushroom_cap = { label = 'Mushrooms', description = 'Freshly harvested.', image = 'mushroom_cap.png', weight = 30, stack = true, maxStack = 100, metadataSchema = 'drug_batch' },
+    -- veyl_drugs equipment and packaging (fictional)
+    weed_table = { label = 'Weed Table', description = 'Placeable table for rolling joints and bagging weed.', image = 'weed_table.png',
+        weight = 8000, stack = false, use = { handler = 'drug_place_equipment', durationMs = 0, consumeCount = 0 } },
+    coke_table = { label = 'Coke Table', description = 'Placeable table for processing and bagging.', image = 'coke_table.png',
+        weight = 9000, stack = false, use = { handler = 'drug_place_equipment', durationMs = 0, consumeCount = 0 } },
+    rolling_papers = { label = 'Rolling Papers', image = 'rolling_papers.png', weight = 10, stack = true, maxStack = 50 },
+    empty_baggie = { label = 'Empty Baggie', image = 'empty_baggie.png', weight = 5, stack = true, maxStack = 100 },
+    lab_supplies = { label = 'Processing Supplies', description = 'Abstract supplies for the coke table.', image = 'lab_supplies.png',
+        weight = 500, stack = true, maxStack = 20 },
+    joint = { label = 'Joint', description = 'Takes the edge off.', image = 'joint.png', weight = 5, stack = true, maxStack = 50, metadataSchema = 'drug_batch',
+        use = { handler = 'consume', durationMs = 4000, consumeCount = 1, effects = { stress = -15 },
+                anim = { dict = 'amb@world_human_smoking@male@male_a@enter', clip = 'enter', flag = 49 },
+                prop = { model = 'prop_sh_joint_01', bone = 47419, pos = vec3(0.015, -0.009, 0.003), rot = vec3(55.0, 0.0, 110.0) } } },
+    weed_baggie = { label = 'Bag of Weed', description = 'Packaged for sale.', image = 'weed_baggie.png', weight = 30, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
+    coke_powder = { label = 'Cocaine', description = 'Processed, not yet packaged.', image = 'coke_powder.png', weight = 50, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
+    coke_baggie = { label = 'Bag of Coke', description = 'Packaged for sale.', image = 'coke_baggie.png', weight = 20, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
     qbexample_token = {
         label = 'QB Example Token', description = 'Demonstrates QB CreateUseableItem on VeylCore.', image = 'token.png',
         weight = 10, stack = true, maxStack = 50, usable = true, -- no use.handler: dispatched to the legacy usable-item registry

@@ -121,7 +121,8 @@ function DrugsClient.Refresh()
     local res = Veyl.Callback('veyl_drugs', 'nearby')
     if not res.ok then return end
     local seen = {}
-    for _, p in ipairs(res.data) do
+    if DrugsEquipClient then DrugsEquipClient.Sync(res.data.equipment or {}) end
+    for _, p in ipairs(res.data.plants or {}) do
         seen[p.id] = true
         known[p.id] = p
         if spawned[p.id] and spawned[p.id].stage ~= p.stage then despawn(p.id) end

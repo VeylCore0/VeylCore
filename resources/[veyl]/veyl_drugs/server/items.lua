@@ -1,7 +1,8 @@
--- Item use hooks (veyl_inventory use pipeline) and the Garden Supplier.
+-- Item use hooks (veyl_inventory use pipeline) and supplier NPCs.
 
 ---------------------------------------------------------------------------
--- Use handlers: seeds start placement mode (nothing is consumed until placement succeeds); the journal opens the tablet.
+-- Use handlers: seeds and equipment start placement mode (nothing is consumed until placement succeeds);
+-- the journal opens the tablet.
 ---------------------------------------------------------------------------
 local function registerUse()
     if GetResourceState('veyl_inventory') ~= 'started' then return end
@@ -17,6 +18,10 @@ local function registerUse()
             end
         end
     end)
+    exports.veyl_inventory:RegisterUseHandler('drug_place_equipment', function(ctx)
+        local kind = DrugsEquipmentByItem[ctx.item]
+        if kind then TriggerClientEvent('veyl_drugs:beginPlacement', ctx.source, { item = ctx.item, equipment = kind }) end
+    end)
     exports.veyl_inventory:RegisterUseHandler('drug_journal', function(ctx)
         TriggerClientEvent('veyl_drugs:openJournal', ctx.source)
     end)
@@ -31,44 +36,49 @@ Veyl.RegisterCallback('hasJournal', function(src)
 end, { cooldown = 500 })
 
 ---------------------------------------------------------------------------
--- Garden Supplier: limited stock, restocks over time, paid with DebitOnce, delivered with GiveItem (same operation id).
+-- Suppliers: limited stock per supplier, restocks over time, paid with DebitOnce, delivered with GiveItem
+-- (same operation id). Stock is reserved before paying and released on any failure.
 ---------------------------------------------------------------------------
-local S = DrugsConfig.Supplier
-local stock = {} -- [key] = { stock, restockedAt }
+local stock = {} -- ['<supplier>/<item[:variety]>'] = { stock, restockedAt, dirty }
 
-local function keyOf(e) return e.variety and (e.item .. ':' .. e.variety) or e.item end
+local function keyOf(sid, e) return sid .. '/' .. (e.variety and (e.item .. ':' .. e.variety) or e.item) end
+
+local function seedMeta(e)
+    if not e.variety then return nil end
+    for _, prod in pairs(DrugsProducts) do
+        if prod.seedItem == e.item and prod.varieties[e.variety] then return { variety = e.variety, varietyLabel = prod.varieties[e.variety].label } end
+    end
+end
 
 local function labelOf(e)
     local def = exports.veyl_inventory:GetItemDefinition(e.item)
     local label = def and def.label or e.item
-    if e.variety then
-        for _, prod in pairs(DrugsProducts) do
-            if prod.seedItem == e.item and prod.varieties[e.variety] then return ('%s (%s)'):format(label, prod.varieties[e.variety].label) end
-        end
-    end
-    return label
+    local meta = seedMeta(e)
+    return meta and ('%s (%s)'):format(label, meta.varietyLabel) or label
 end
 
 local function restock(now)
-    for _, e in ipairs(S.stock) do
-        local s = stock[keyOf(e)]
-        if s then
-            local periods = math.floor((now - s.restockedAt) / (S.restockMinutes * 60))
-            if periods > 0 then
-                s.stock = math.min(e.max, s.stock + periods * e.restock)
-                s.restockedAt = s.restockedAt + periods * S.restockMinutes * 60
-                s.dirty = true
+    for sid, s in pairs(DrugsConfig.Suppliers) do
+        for _, e in ipairs(s.stock) do
+            local st = stock[keyOf(sid, e)]
+            if st then
+                local periods = math.floor((now - st.restockedAt) / (s.restockMinutes * 60))
+                if periods > 0 then
+                    st.stock = math.min(e.max, st.stock + periods * e.restock)
+                    st.restockedAt = st.restockedAt + periods * s.restockMinutes * 60
+                    st.dirty = true
+                end
             end
         end
     end
 end
 
 local function save()
-    for k, s in pairs(stock) do
-        if s.dirty then
-            s.dirty = false
+    for k, st in pairs(stock) do
+        if st.dirty then
+            st.dirty = false
             MySQL.update('INSERT INTO veyl_drug_supplier_stock (k, stock, restocked_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE stock = VALUES(stock), restocked_at = VALUES(restocked_at)',
-                { k, s.stock, s.restockedAt })
+                { k, st.stock, st.restockedAt })
         end
     end
 end
@@ -78,68 +88,71 @@ AddEventHandler('veyl_drugs:ready', function()
     local saved = {}
     for _, r in ipairs(rows) do saved[r.k] = r end
     local now = os.time()
-    for _, e in ipairs(S.stock) do
-        local r = saved[keyOf(e)]
-        stock[keyOf(e)] = { stock = r and math.min(r.stock, e.max) or e.max, restockedAt = r and r.restocked_at or now, dirty = r == nil }
+    for sid, s in pairs(DrugsConfig.Suppliers) do
+        for _, e in ipairs(s.stock) do
+            local k = keyOf(sid, e)
+            local r = saved[k]
+            stock[k] = { stock = r and math.min(r.stock, e.max) or e.max, restockedAt = r and r.restocked_at or now, dirty = r == nil }
+        end
     end
     restock(now)
     save()
 end)
 
-local function nearSupplier(src)
+local function supplierFor(src, sid)
+    local s = DrugsConfig.Suppliers[sid]
+    if not s then return nil end
     local pos = Drugs.PlayerPos(src)
-    local c = S.coords
-    return pos ~= nil and #(pos - vector3(c.x, c.y, c.z)) <= 4.0
+    if not pos or #(pos - vector3(s.coords.x, s.coords.y, s.coords.z)) > 4.0 then return nil end
+    return s
 end
 
-Veyl.RegisterCallback('supplierList', function(src)
-    if not nearSupplier(src) then return Veyl.Err('TOO_FAR', 'Talk to the supplier') end
+Veyl.RegisterCallback('supplierList', function(src, _, sid)
+    local s = supplierFor(src, sid)
+    if not s then return Veyl.Err('TOO_FAR', 'Talk to the seller') end
     restock(os.time())
     local list = {}
-    for i, e in ipairs(S.stock) do
-        local s = stock[keyOf(e)]
-        list[#list + 1] = { index = i, label = labelOf(e), price = e.price, stock = s and s.stock or 0, max = e.max }
+    for i, e in ipairs(s.stock) do
+        local st = stock[keyOf(sid, e)]
+        list[#list + 1] = { index = i, label = labelOf(e), price = e.price, stock = st and st.stock or 0, max = e.max }
     end
-    return Veyl.Ok({ items = list, restockMinutes = S.restockMinutes })
+    return Veyl.Ok({ label = s.label, subtitle = s.subtitle, items = list, restockMinutes = s.restockMinutes, methods = s.methods })
 end, { cooldown = 500 })
 
---- buy(index, count, opId)
-Veyl.RegisterCallback('supplierBuy', function(src, citizenid, index, count, clientOp)
-    if not nearSupplier(src) then return Veyl.Err('TOO_FAR', 'Talk to the supplier') end
-    local e = Veyl.Validate.int(index, 1, #S.stock) and S.stock[index]
+--- supplierBuy(supplierId, index, count, method, clientOp)
+Veyl.RegisterCallback('supplierBuy', function(src, citizenid, sid, index, count, method, clientOp)
+    local s = supplierFor(src, sid)
+    if not s then return Veyl.Err('TOO_FAR', 'Talk to the seller') end
+    local e = Veyl.Validate.int(index, 1, #s.stock) and s.stock[index]
     if not e then return Veyl.Err('INVALID_INPUT', 'Unknown item') end
     if not Veyl.Validate.int(count, 1, 20) then return Veyl.Err('INVALID_INPUT', 'Choose 1 to 20') end
+    if not Veyl.Validate.oneOf(method, s.methods) then return Veyl.Err('INVALID_INPUT', 'That payment method is not accepted here') end
     if not Drugs.ValidClientOp(clientOp) then return Veyl.Err('INVALID_INPUT', 'Invalid request') end
     restock(os.time())
-    local s = stock[keyOf(e)]
-    if not s or s.stock < count then return Veyl.Err('OUT_OF_STOCK', ('Only %d left'):format(s and s.stock or 0)) end
-    local meta = nil
-    if e.variety then
-        for _, prod in pairs(DrugsProducts) do
-            if prod.seedItem == e.item then meta = { variety = e.variety, varietyLabel = prod.varieties[e.variety].label } end
-        end
-    end
+    local st = stock[keyOf(sid, e)]
+    if not st or st.stock < count then return Veyl.Err('OUT_OF_STOCK', ('Only %d left'):format(st and st.stock or 0)) end
+    local meta = seedMeta(e)
     local fits = Drugs.Inv.CanCarry(citizenid, e.item, count, meta)
     if not fits.ok then return Veyl.Err('INVENTORY_FULL', 'You cannot carry that much') end
     local total = e.price * count
     local op = ('supply:%s:%s'):format(citizenid, clientOp)
-    s.stock = s.stock - count -- reserve before paying; released on any failure
-    s.dirty = true
-    local pay = Drugs.Money.Debit(citizenid, S.methods[1], total, 'Garden supplies', op)
+    st.stock = st.stock - count
+    st.dirty = true
+    local pay = Drugs.Money.Debit(citizenid, method, total, s.label, op)
     if not pay.ok and pay.code ~= 'DUPLICATE_OPERATION' then
-        s.stock = s.stock + count
+        st.stock = st.stock + count
         return pay
     end
     local give = Drugs.Inv.Give(citizenid, e.item, count, meta, op)
     if not give.ok and give.code ~= 'DUPLICATE_OPERATION' then
         if give.code ~= 'TIMEOUT' then
-            Drugs.Money.Credit(citizenid, S.methods[1], total, 'Refund: garden supplies', op .. ':refund')
-            s.stock = s.stock + count
+            Drugs.Money.Credit(citizenid, method, total, 'Refund: ' .. s.label, op .. ':refund')
+            st.stock = st.stock + count
         end
         save()
         return Veyl.Err(give.code or 'INVENTORY_FULL', 'Could not hand over the items; you were refunded')
     end
     save()
-    Drugs.Log(citizenid, 'supplier_buy', nil, { item = keyOf(e), count = count, total = total })
+    Drugs.Log(citizenid, 'supplier_buy', nil, { supplier = sid, item = keyOf(sid, e), count = count, total = total })
     return Veyl.Ok(nil, ('Bought %dx %s for $%d'):format(count, labelOf(e), total))
 end, { cooldown = 1000 })

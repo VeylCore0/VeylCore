@@ -94,12 +94,18 @@ Veyl.RegisterCallback('nearby', function(src, citizenid)
     if not Drugs.ready then return Veyl.Err('NOT_READY', 'Not ready') end
     local pos, bucket = Drugs.PlayerPos(src)
     if not pos then return Veyl.Ok({}) end
-    local list = {}
+    local list, equipment = {}, {}
     for i, e in ipairs(Plants.Near(bucket, pos, DrugsConfig.Stream.Radius)) do
         if i > DrugsConfig.Stream.MaxSent then break end
         if e.p.state == 'growing' then list[#list + 1] = streamView(e.p, citizenid) end
     end
-    return Veyl.Ok(list)
+    if Equip then
+        for i, e in ipairs(Equip.Near(bucket, pos, DrugsConfig.Stream.Radius)) do
+            if i > 60 then break end
+            equipment[#equipment + 1] = Equip.StreamView(e.e, citizenid)
+        end
+    end
+    return Veyl.Ok({ plants = list, equipment = equipment })
 end, { cooldown = 1500 })
 
 ---------------------------------------------------------------------------

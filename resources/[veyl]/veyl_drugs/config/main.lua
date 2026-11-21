@@ -57,25 +57,47 @@ DrugsConfig = {
     ActionMs = { water = 3500, care = 4500, harvest = 6000, destroy = 4000, place = 1800 },
     InteractDistance = 2.6,
 
-    -- Supplier NPC (seeds, pots, tubs, nutrients, journal). Stock is limited and restocks over time.
-    Supplier = {
-        label = 'Garden Supplier', model = 'a_m_m_hillbilly_01',
-        coords = vector4(2196.24, 5598.83, 53.74, 340.0),   -- Grapeseed fields; move it in config if your map differs
-        methods = { 'cash' },
-        restockMinutes = 30,
-        stock = {
-            { item = 'weed_seed', variety = 'violet_haze', price = 60, max = 40, restock = 6 },
-            { item = 'weed_seed', variety = 'silverleaf', price = 45, max = 40, restock = 6 },
-            { item = 'weed_seed', variety = 'nightbloom', price = 110, max = 15, restock = 2 },
-            { item = 'weed_seed', variety = 'sunburst', price = 75, max = 30, restock = 5 },
-            { item = 'coca_seed', variety = 'andes_mist', price = 90, max = 25, restock = 4 },
-            { item = 'coca_seed', variety = 'red_ridge', price = 70, max = 25, restock = 4 },
-            { item = 'mushroom_spores', variety = 'mooncap', price = 120, max = 12, restock = 2 },
-            { item = 'mushroom_spores', variety = 'forest_cap', price = 80, max = 20, restock = 3 },
-            { item = 'plant_pot', price = 40, max = 20, restock = 4 },
-            { item = 'grow_tub', price = 150, max = 8, restock = 2 },
-            { item = 'plant_food', price = 25, max = 60, restock = 10 },
-            { item = 'grow_journal', price = 300, max = 10, restock = 2 },
+    -- Supplier NPCs. Stock is limited per supplier and restocks over time. blip = nil keeps a supplier off the map.
+    Suppliers = {
+        garden = {
+            label = 'Garden Supplier', subtitle = 'Cash only', model = 'a_m_m_hillbilly_01',
+            coords = vector4(2196.24, 5598.83, 53.74, 340.0),   -- Grapeseed fields; move it in config if your map differs
+            methods = { 'cash' },
+            restockMinutes = 30,
+            stock = {
+                { item = 'coca_seed', variety = 'andes_mist', price = 90, max = 25, restock = 4 },
+                { item = 'coca_seed', variety = 'red_ridge', price = 70, max = 25, restock = 4 },
+                { item = 'mushroom_spores', variety = 'mooncap', price = 120, max = 12, restock = 2 },
+                { item = 'mushroom_spores', variety = 'forest_cap', price = 80, max = 20, restock = 3 },
+                { item = 'grow_tub', price = 150, max = 8, restock = 2 },
+                { item = 'plant_pot', price = 40, max = 20, restock = 4 },
+                { item = 'plant_food', price = 25, max = 60, restock = 10 },
+                { item = 'coke_table', price = 2500, max = 3, restock = 1 },
+                { item = 'lab_supplies', price = 60, max = 30, restock = 6 },
+                { item = 'empty_baggie', price = 2, max = 200, restock = 40 },
+                { item = 'grow_journal', price = 300, max = 10, restock = 2 },
+            },
+        },
+        -- Everything for weed: seeds of every variety, pots, nutrients, the weed table, papers and baggies.
+        weedstore = {
+            label = 'Smoke on the Water', subtitle = 'Weed supplies', model = 'a_m_y_hippy_01',
+            coords = vector4(-1171.42, -1572.72, 4.66, 124.0),  -- Vespucci dispensary; move it in config if your map differs
+            methods = { 'cash', 'bank' },
+            restockMinutes = 20,
+            blip = { sprite = 140, colour = 2, scale = 0.75 },
+            stock = {
+                { item = 'weed_seed', variety = 'violet_haze', price = 60, max = 40, restock = 6 },
+                { item = 'weed_seed', variety = 'silverleaf', price = 45, max = 40, restock = 6 },
+                { item = 'weed_seed', variety = 'sunburst', price = 75, max = 30, restock = 5 },
+                { item = 'weed_seed', variety = 'nightbloom', price = 110, max = 15, restock = 2 },
+                { item = 'plant_pot', price = 40, max = 20, restock = 4 },
+                { item = 'plant_food', price = 25, max = 60, restock = 10 },
+                { item = 'water_bottle', price = 5, max = 80, restock = 20 },
+                { item = 'weed_table', price = 1800, max = 4, restock = 1 },
+                { item = 'rolling_papers', price = 3, max = 200, restock = 40 },
+                { item = 'empty_baggie', price = 2, max = 200, restock = 40 },
+                { item = 'grow_journal', price = 300, max = 10, restock = 2 },
+            },
         },
     },
 

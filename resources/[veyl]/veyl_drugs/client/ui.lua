@@ -2,12 +2,16 @@
 -- managed by vlib.createScreen (focus token, Escape, death/logout/resource-stop cleanup).
 
 DrugsUI = {}
-local screen = vlib.createScreen({ name = 'drugs' })
+local screen = vlib.createScreen({ name = 'drugs', onClose = function() TriggerEvent('veyl_drugs:screenClosed') end })
 local journalPlants = {}
 
 function DrugsUI.Placement(state) SendNUIMessage({ action = 'drugs:placement', data = state }) end
 function DrugsUI.Card(view) SendNUIMessage({ action = 'drugs:card', data = view }) end
 function DrugsUI.IsOpen() return screen:isOpen() end
+--- One modal screen per resource (journal or equipment); returns ok, reason.
+function DrugsUI.Open(action, data) return screen:open(action, data) end
+function DrugsUI.Send(action, data) screen:send(action, data) end
+function DrugsUI.Close() screen:close('done') end
 
 local function openJournal()
     if screen:isOpen() or not Veyl.IsLoaded() then return end

@@ -104,3 +104,55 @@
   .dr-row-growth { display: none; }
 }
 .dr-waypoint { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.4rem 0.7rem; font-size: 0.9rem; }
+
+/* Equipment (tables) */
+.dr-equip { pointer-events: auto; width: min(54rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 0.8rem; padding: 1.1rem 1.3rem;
+  background: #0f1015; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); }
+.dr-equip-head { display: grid; grid-template-columns: 2.6rem 1fr auto; gap: 0.8rem; align-items: center; }
+.dr-cond { display: grid; grid-template-columns: auto 8rem auto; justify-content: start; gap: 0.5rem; align-items: center; font-size: 0.8rem; margin-top: 0.15rem; }
+.dr-cond .track { height: 0.35rem; border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.dr-cond .track span { display: block; height: 100%; background: var(--accent); }
+.dr-tray { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.8rem; border: 1px solid rgba(233, 190, 113, 0.45); border-radius: var(--radius);
+  color: var(--warning); font-size: 0.9rem; }
+.dr-tray > span { flex: 1; }
+.dr-equip-body { display: grid; grid-template-columns: 12rem 1fr; gap: 1rem; min-height: 0; }
+.dr-recipes { display: flex; flex-direction: column; gap: 0.4rem; }
+.dr-recipe { display: flex; gap: 0.6rem; align-items: center; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.dr-recipe svg { color: var(--accent); }
+.dr-recipe.on { border-color: var(--accent); background: var(--accent-soft); }
+.dr-recipe:disabled { opacity: 0.6; cursor: default; }
+.dr-recipe-detail { display: flex; flex-direction: column; gap: 0.85rem; min-height: 0; overflow: auto; }
+.dr-io { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.8rem; align-items: start; }
+.dr-io > svg { color: var(--text-muted); margin-top: 1.4rem; }
+.dr-io-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+.dr-io-row { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.35rem 0.55rem; border-radius: 6px; background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 0.3rem; font-size: 0.9rem; }
+.dr-io-row.ok span:last-child { color: var(--success); }
+.dr-io-row.bad span:last-child { color: var(--danger); }
+.dr-io-note { font-size: 0.78rem; margin-top: 0.2rem; }
+.dr-batches { display: flex; flex-direction: column; gap: 0.35rem; }
+.dr-batch { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 0.15rem 0.5rem; padding: 0.5rem 0.7rem; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255, 255, 255, 0.03); color: var(--text); font: inherit; cursor: pointer; }
+.dr-batch .v-muted { grid-column: 1 / -1; font-size: 0.78rem; }
+.dr-batch.on { border-color: var(--accent); background: var(--accent-soft); }
+.dr-run { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.2rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.dr-run .v-btn.primary { margin-left: auto; }
+.dr-units { display: flex; align-items: center; gap: 0.5rem; }
+.dr-working { align-items: center; text-align: center; }
+.dr-timebar { position: relative; width: 100%; height: 0.55rem; border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: visible; }
+.dr-timebar span { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.dr-timebar em { position: absolute; right: 0; top: 0.8rem; font-style: normal; font-size: 0.8rem; color: var(--text-muted); }
+.dr-ring { position: relative; background: transparent; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
+.dr-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.dr-ring .track { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 14; }
+.dr-ring .zone { fill: none; stroke: var(--accent); stroke-width: 14; stroke-linecap: round; }
+.dr-ring .marker { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.dr-ring.hit .zone { stroke: var(--success); }
+.dr-ring.miss .zone { stroke: var(--danger); }
+.dr-ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); }
+.dr-gauge { position: relative; width: 4rem; height: 11rem; border-radius: 10px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); }
+.dr-gauge .band { position: absolute; left: 0; right: 0; height: 20%; background: var(--accent-soft); border-top: 1px solid var(--accent); border-bottom: 1px solid var(--accent); }
+.dr-gauge .needle { position: absolute; left: -0.4rem; right: -0.4rem; height: 4px; border-radius: 2px; background: var(--danger); transform: translateY(50%); }
+.dr-gauge .needle.in { background: var(--success); }
+@media (max-width: 1100px) { .dr-equip-body { grid-template-columns: 1fr; } .dr-recipes { flex-direction: row; flex-wrap: wrap; } }
