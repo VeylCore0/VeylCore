@@ -4,10 +4,10 @@ lua54 'yes'
 
 name 'veyl_vehicles'
 description 'VeylCore vehicle service: authorized server spawns, stable ids, owned-vehicle storage and cleanup ownership'
-version '0.2.0'
+version '0.3.0'
 
 dependencies { '/onesync', 'oxmysql', 'veyl_core' }
 
-shared_script '@veyl_core/lib/shared.lua'
+shared_scripts { '@veyl_core/lib/shared.lua', 'config.lua' }
 server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server.lua' }
-client_scripts { '@veyl_core/lib/client.lua', 'seatbelt.lua' }
+client_scripts { '@veyl_core/lib/client.lua', 'client.lua', 'seatbelt.lua' }

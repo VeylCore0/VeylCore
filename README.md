@@ -47,6 +47,9 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_vehiclekeys` | Key grants, `L` to lock/unlock, key-required driving |
 | `veyl_fuel` | Server-side consumption, fuel stations, refuelling paid through core money |
 | `veyl_shops` | 24/7 stores: server prices, durable debit, item grant, refund/review reconciliation |
+| `veyl_garages` | 4 garages + impound lot: take out / park owned vehicles, paid impound release ([docs/VEHICLES.md](docs/VEHICLES.md)) |
+| `veyl_dealership` | Premium Deluxe Motorsport: catalog, confirmed purchase, ownership registration and delivery |
+| `veyl_mechanic` | LS Customs: on-duty repairs that use parts, service invoices (`/invoices`) |
 | `veyl_delivery` | GoPostal route: depot NPC, assigned van and key, server-validated stops, one-time payout |
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
@@ -155,7 +158,7 @@ Only the primary job earns a paycheck.
 ## Player commands
 
 `F2` inventory, `1`–`5` hotbar, hold `Left Alt` to target (E/click to select), `L` lock, `/hudsettings`, `/logout`, `/appearance` (admins), `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
-`/duty`, `/quitjob`, `/hud`, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
+`/duty`, `/quitjob`, `/hud`, `/invoices`, `/mechanic`, `B` seatbelt, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
 
 Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive` `/vkick` `/vgivemoney` `/vtakemoney`
 `/vsetjob` `/vaddjob` `/vremovejob` `/vsetgang` `/vgiveitem` `/vreports` `/vclosereport` `/vtime` `/vweather`

@@ -48,6 +48,11 @@ return {
         weight = 10, stack = false, metadataSchema = 'identity_card',
     },
     scrap_metal = { label = 'Scrap Metal', description = 'A stackable crafting material.', image = 'scrap_metal.png', weight = 80, stack = true, maxStack = 100 },
+    -- Mechanic parts (consumed by veyl_mechanic repairs; sold at the mechanic parts counter)
+    engine_parts = { label = 'Engine Parts', description = 'Used by mechanics to repair an engine.', image = 'engine_parts.png', weight = 2000, stack = true, maxStack = 10 },
+    body_panels = { label = 'Body Panels', description = 'Used by mechanics to repair bodywork.', image = 'body_panels.png', weight = 1500, stack = true, maxStack = 10 },
+    tyre_kit = { label = 'Tyre Kit', description = 'Used by mechanics to replace burst tyres.', image = 'tyre_kit.png', weight = 1200, stack = true, maxStack = 10 },
+    cleaning_kit = { label = 'Cleaning Kit', description = 'Used by mechanics to wash a vehicle.', image = 'cleaning_kit.png', weight = 300, stack = true, maxStack = 20 },
     qbexample_token = {
         label = 'QB Example Token', description = 'Demonstrates QB CreateUseableItem on VeylCore.', image = 'token.png',
         weight = 10, stack = true, maxStack = 50, usable = true, -- no use.handler: dispatched to the legacy usable-item registry

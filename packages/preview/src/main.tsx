@@ -9,6 +9,7 @@ import { App as BankApp } from '../../bank-ui/src/App';
 import { App as HudApp } from '../../hud-ui/src/App';
 import { App as TargetApp } from '../../target-ui/src/App';
 import { App as AppearanceApp } from '../../appearance-ui/src/App';
+import { App as VehicleApp } from '../../vehicle-ui/src/App';
 import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
 import '../../inventory-ui/src/inventory.css';
 import '../../shop-ui/src/shop.css';
@@ -16,13 +17,15 @@ import '../../bank-ui/src/bank.css';
 import '../../hud-ui/src/hud.css';
 import '../../target-ui/src/target.css';
 import '../../appearance-ui/src/appearance.css';
+import '../../vehicle-ui/src/vehicles.css';
 import './preview.css';
 import * as F from './fixtures';
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
-const backdropOf = (s: Screen) => (isAppearance(s) ? 'hud' : s);
+const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer';
+const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
@@ -30,6 +33,7 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'inventory', label: 'Inventory', app: InventoryApp }, { id: 'shop', label: 'Shop', app: ShopApp },
   { id: 'bank', label: 'Bank', app: BankApp }, { id: 'hud', label: 'HUD', app: HudApp }, { id: 'target', label: 'Target', app: TargetApp },
   { id: 'creator', label: 'Creator', app: AppearanceApp }, { id: 'clothing', label: 'Clothing', app: AppearanceApp }, { id: 'barber', label: 'Barber', app: AppearanceApp },
+  { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
 ];
 const MODES: Mode[] = ['normal', 'loading', 'empty', 'error', 'restricted', 'pending'];
 
@@ -39,7 +43,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
     if (action === 'ui:ready') return { ok: true };
-    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : `${screen}:close`); return { ok: true }; }
+    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : `${screen}:close`); return { ok: true }; }
     if (isAppearance(screen) && (action === 'camera' || action === 'rotate')) return { ok: true };
     if (isAppearance(screen) && action === 'change') {
       const p = payload as { key: string; value: Slot };
@@ -125,6 +129,13 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         apState!.store!.outfits = list;
         return { ok: true, message: 'Outfit deleted (demo)', data: list };
       }
+      case 'garage:takeOut': devEmit('garage:close'); return { ok: true, message: 'Vehicle ready (demo)' };
+      case 'impound:takeOut': devEmit('garage:close'); return { ok: true, message: 'Released (demo)' };
+      case 'dealer:purchase': {
+        const p = payload as { model: string; expectedPrice: number };
+        if (p.model === 'banshee' && p.expectedPrice !== 99000) return { ok: false, code: 'PRICE_CHANGED', message: 'The price is now $99,000 (demo)', data: { price: 99000 } };
+        devEmit('dealer:close'); return { ok: true, message: 'Bought (demo)' };
+      }
       case 'creator:finish': devEmit('appearance:close'); return { ok: true };
       case 'creator:sex': { apState = F.appearanceOpen('create', false); apState.sex = (payload as { sex: 'm' | 'f' }).sex; return { ok: true, data: clone(apState) }; }
       default: return { ok: false, code: 'NOT_IMPLEMENTED', message: `No demo handler for ${action}` };
@@ -146,6 +157,8 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
       if (mode === 'error') devEmit('bank:error', { message: 'Banking is unavailable right now (demo).' });
       break;
     case 'hud': devEmit('hud:frame', F.hudFrame); break;
+    case 'garage': case 'impound': devEmit('garage:open', F.garageOpen(screen, empty)); break;
+    case 'dealer': devEmit('dealer:open', F.dealerOpen(empty)); break;
     case 'creator': case 'clothing': case 'barber':
       apState = F.appearanceOpen(AP_MODE[screen], empty);
       devEmit('appearance:open', clone(apState));

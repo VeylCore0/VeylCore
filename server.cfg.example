@@ -34,6 +34,9 @@ ensure veyl_fuel
 ensure veyl_banking
 ensure veyl_jobs
 ensure veyl_shops
+ensure veyl_garages
+ensure veyl_dealership
+ensure veyl_mechanic
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example

@@ -152,3 +152,37 @@ export function appearanceOpen(mode: AppearanceMode, empty: boolean): Appearance
     } : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Vehicles: garage, impound, dealership
+// ---------------------------------------------------------------------------
+import type { DealerOpen, GarageOpen, GarageVehicle } from '../../vehicle-ui/src/types';
+
+const OWNED: GarageVehicle[] = [
+  { id: 1, model: 'sultan', plate: 'VKX 4821', name: 'Sultan', brand: 'Karin', state: 'garaged', garage: 'legion', garageLabel: 'Legion Square Parking', fuel: 76, engine: 98, body: 91, impoundFee: 0, here: true, out: false },
+  { id: 2, model: 'faggio', plate: 'MTP 0193', name: 'Faggio', brand: 'Pegassi', state: 'garaged', garage: 'legion', garageLabel: 'Legion Square Parking', fuel: 18, engine: 64, body: 40, impoundFee: 0, here: true, out: false },
+  { id: 3, model: 'granger', plate: 'RDN 7710', name: 'Granger', brand: 'Declasse', state: 'garaged', garage: 'sandy', garageLabel: 'Sandy Shores Parking', fuel: 52, engine: 100, body: 100, impoundFee: 0, here: false, out: false },
+  { id: 4, model: 'blista', plate: 'CWE 3355', name: 'Blista', brand: 'Dinka', state: 'impound', fuel: 34, engine: 12, body: 8, impoundFee: 500, impoundReason: 'destroyed', here: false, out: false },
+  { id: 5, model: 'asea', plate: 'HPL 2047', name: 'Asea', brand: 'Declasse', state: 'out', garage: 'legion', fuel: 61, engine: 88, body: 77, impoundFee: 0, here: false, out: true },
+];
+
+export function garageOpen(kind: 'garage' | 'impound', empty: boolean): GarageOpen {
+  const vehicles = empty ? [] : OWNED.map((v) => ({ ...v, here: kind === 'impound' ? v.state === 'impound' : v.here }));
+  return { kind, placeId: kind === 'impound' ? 'impound' : 'legion', title: kind === 'impound' ? 'Impound Lot' : 'Legion Square Parking',
+    vehicles, balances: { cash: 420, bank: 12840 }, methods: ['cash', 'bank'] };
+}
+
+export function dealerOpen(empty: boolean): DealerOpen {
+  const v = (model: string, name: string, brand: string, price: number, category: string) => ({ model, name, brand, price, category });
+  return {
+    title: 'Premium Deluxe Motorsport', subtitle: 'New vehicles, registered to you on purchase.',
+    categories: [{ id: 'compacts', label: 'Compacts' }, { id: 'sedans', label: 'Sedans' }, { id: 'suvs', label: 'SUVs' }, { id: 'sports', label: 'Sports' }, { id: 'motorcycles', label: 'Motorcycles' }],
+    vehicles: empty ? [] : [
+      v('panto', 'Panto', 'Benefactor', 7500, 'compacts'), v('blista', 'Blista', 'Dinka', 13000, 'compacts'), v('asea', 'Asea', 'Declasse', 9000, 'sedans'),
+      v('tailgater', 'Tailgater', 'Obey', 26000, 'sedans'), v('granger', 'Granger', 'Declasse', 32000, 'suvs'), v('baller', 'Baller', 'Gallivanter', 42000, 'suvs'),
+      v('sultan', 'Sultan', 'Karin', 45000, 'sports'), v('banshee', 'Banshee', 'Bravado', 105000, 'sports'), v('faggio', 'Faggio', 'Pegassi', 2500, 'motorcycles'),
+      v('bati', 'Bati 801', 'Pegassi', 24000, 'motorcycles'),
+    ],
+    balances: { cash: 420, bank: 152840 }, methods: ['cash', 'bank'],
+  };
+}

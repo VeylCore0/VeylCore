@@ -1,0 +1,13 @@
+{
+  "name": "@veyl/vehicle-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build --mode garage && vite build --mode dealer",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@veyl/ui": "0.3.0"
+  }
+}

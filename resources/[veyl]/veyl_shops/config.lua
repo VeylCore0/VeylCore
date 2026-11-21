@@ -37,5 +37,19 @@ ShopsConfig = {
                 { item = 'qbexample_token', price = 1, category = 'tools' },
             },
         },
+        {
+            -- Mechanic parts counter at LS Customs (Burton). Only members of the mechanic job can buy here.
+            id = 'mechanic_parts', label = 'Parts Counter', subtitle = 'Mechanics only.',
+            ped = { model = 's_m_m_autoshop_01', coords = vector4(-345.17, -128.75, 39.01, 162.0) },
+            groups = { mechanic = 0 },
+            methods = { 'cash', 'bank' },
+            categories = { { id = 'parts', label = 'Parts' } },
+            catalog = {
+                { item = 'engine_parts', price = 120, category = 'parts' },
+                { item = 'body_panels', price = 90, category = 'parts' },
+                { item = 'tyre_kit', price = 60, category = 'parts' },
+                { item = 'cleaning_kit', price = 15, category = 'parts' },
+            },
+        },
     },
 }

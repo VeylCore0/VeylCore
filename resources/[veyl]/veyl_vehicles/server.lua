@@ -32,8 +32,35 @@ Veyl.Startup({ 'veyl_core' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        {
+            id = '002_owned_service',
+            sql = {
+                -- created_op: the purchase/grant operation that created the row (one row per operation, ever).
+                [[ALTER TABLE veyl_player_vehicles
+                    ADD COLUMN IF NOT EXISTS label VARCHAR(64) NULL,
+                    ADD COLUMN IF NOT EXISTS created_op VARCHAR(100) NULL,
+                    ADD COLUMN IF NOT EXISTS impound_fee INT UNSIGNED NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS impound_reason VARCHAR(64) NULL,
+                    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP]],
+                [[CREATE UNIQUE INDEX IF NOT EXISTS uq_created_op ON veyl_player_vehicles (created_op)]],
+            },
+        },
     })
 end)
+
+-- Vehicles left "out" when the server stopped have no entity any more: they go back to their last garage.
+CreateThread(function()
+    while not Veyl.IsReady() do Wait(250) end
+    local n = MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'garaged' WHERE state = 'out'")
+    if n and n > 0 then print(('^5[veyl_vehicles] %d vehicle(s) left out before the restart were returned to their garage^7'):format(n)) end
+end)
+
+local ownedActive = {} -- [ownedId] = vehicleId (at most one live instance per owned vehicle)
+
+local function impoundRow(ownedId, reason, fee)
+    MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'impound', impound_reason = ?, impound_fee = ? WHERE id = ? AND state = 'out'",
+        { reason, fee, ownedId })
+end
 
 local function removeTracking(id, reason, deleteEntity)
     local v = vehicles[id]
@@ -41,6 +68,13 @@ local function removeTracking(id, reason, deleteEntity)
     vehicles[id] = nil
     byEntity[v.entity] = nil
     if deleteEntity and DoesEntityExist(v.entity) then DeleteEntity(v.entity) end
+    if v.ownedId then
+        ownedActive[v.ownedId] = nil
+        -- An owned vehicle that disappears without being parked goes to the impound lot.
+        if reason ~= 'stored' and reason ~= 'owner_stopped' then
+            CreateThread(function() impoundRow(v.ownedId, reason == 'missing' and 'abandoned' or reason, VehiclesConfig.ImpoundFee) end)
+        end
+    end
     TriggerEvent('veyl_vehicles:removed', id, reason)
     return true
 end
@@ -63,7 +97,7 @@ local function spawnVehicle(req, owner)
     end
     nextId = nextId + 1
     local id = ('v%d_%d'):format(os.time(), nextId)
-    local plate = makePlate(req.platePrefix)
+    local plate = type(req.plate) == 'string' and req.plate or makePlate(req.platePrefix)
     SetVehicleNumberPlateText(entity, plate)
     if SetEntityOrphanMode then SetEntityOrphanMode(entity, 2) end
     local v = {
@@ -72,6 +106,7 @@ local function spawnVehicle(req, owner)
     }
     vehicles[id] = v
     byEntity[entity] = id
+    if req.ownedId then ownedActive[req.ownedId] = id end
     local st = Entity(entity).state
     st:set('veylVehicleId', id, true)
     if req.ownedId then st:set('veylOwnedId', req.ownedId, true) end
@@ -111,6 +146,164 @@ end)
 exports('GetVehicleIdFromEntity', function(entity) return byEntity[entity] end)
 exports('GetEntity', function(id) local v = vehicles[id]; return v and v.entity or nil end)
 
+---------------------------------------------------------------------------
+-- Owned vehicles (veyl_player_vehicles). Garages, the dealership and staff tools use these exports; nothing else
+-- writes ownership or storage state.
+---------------------------------------------------------------------------
+local PLATE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+local function randomPlate()
+    local t = {}
+    for i = 1, 8 do
+        local n = math.random(1, #PLATE_CHARS)
+        t[i] = PLATE_CHARS:sub(n, n)
+    end
+    t[4] = ' ' -- e.g. "ABC 1234"-style spacing: 3 + space + 4
+    return table.concat(t)
+end
+
+local function ownedRow(ownedId)
+    return MySQL.single.await([[SELECT id, citizenid, model, plate, label, props, state, garage, fuel, engine, body,
+        impound_fee, impound_reason FROM veyl_player_vehicles WHERE id = ?]], { ownedId })
+end
+
+local function publicRow(r)
+    return { id = r.id, model = r.model, plate = r.plate, label = r.label, state = r.state, garage = r.garage,
+        fuel = math.floor((r.fuel or 0) + 0.5), engine = math.floor((r.engine or 0) / 10 + 0.5), body = math.floor((r.body or 0) / 10 + 0.5),
+        impoundFee = r.impound_fee or 0, impoundReason = r.impound_reason, out = ownedActive[r.id] ~= nil }
+end
+
+--- Client-supplied vehicle properties: cosmetic data only, bounded and type-checked.
+local function cleanProps(p)
+    if type(p) ~= 'table' then return nil end
+    local ok, s = pcall(json.encode, p)
+    if not ok or #s > VehiclesConfig.MaxPropsBytes then return nil end
+    local function numbers(t, max)
+        if type(t) ~= 'table' then return nil end
+        local out = {}
+        for k, v in pairs(t) do
+            if #out > max then break end
+            if type(v) == 'number' and v == v and math.abs(v) < 100000 then out[k] = math.floor(v) elseif type(v) == 'boolean' then out[k] = v end
+        end
+        return out
+    end
+    local out = {}
+    for _, k in ipairs({ 'color1', 'color2', 'pearl', 'wheelColor', 'wheelType', 'windowTint', 'plateIndex', 'livery', 'dirt' }) do
+        if type(p[k]) == 'number' and p[k] == p[k] then out[k] = math.floor(p[k]) end
+    end
+    out.mods = numbers(p.mods, 60)
+    out.neon = numbers(p.neon, 4)
+    out.neonColor = numbers(p.neonColor, 3)
+    out.tyreSmoke = numbers(p.tyreSmoke, 3)
+    out.toggles = numbers(p.toggles, 8)
+    out.extras = numbers(p.extras, 20)
+    return out
+end
+
+--- RegisterOwnedVehicle(citizenid, model, { label?, garage?, opId? }) -> Ok({ ownedId, plate }).
+--- With opId, the same operation can never create a second vehicle (a repeat returns the first one).
+Veyl.AsyncExport('RegisterOwnedVehicle', function(citizenid, model, opts)
+    opts = type(opts) == 'table' and opts or {}
+    if not Veyl.Validate.str(citizenid, 1, 16) or not Veyl.Validate.str(model, 1, 64, '^[%w_]+$') then
+        return Veyl.Err('INVALID_INPUT', 'Invalid vehicle registration')
+    end
+    if opts.opId then
+        local existing = MySQL.single.await('SELECT id, plate FROM veyl_player_vehicles WHERE created_op = ?', { opts.opId })
+        if existing then return Veyl.Ok({ ownedId = existing.id, plate = existing.plate, existing = true }) end
+    end
+    for _ = 1, 8 do
+        local plate = randomPlate()
+        local ok, id = pcall(MySQL.insert.await, [[INSERT INTO veyl_player_vehicles (citizenid, model, plate, label, state, garage, created_op)
+            VALUES (?, ?, ?, ?, 'garaged', ?, ?)]], { citizenid, model, plate, opts.label, opts.garage, opts.opId })
+        if ok and id then return Veyl.Ok({ ownedId = id, plate = plate }) end
+        if opts.opId then
+            local existing = MySQL.single.await('SELECT id, plate FROM veyl_player_vehicles WHERE created_op = ?', { opts.opId })
+            if existing then return Veyl.Ok({ ownedId = existing.id, plate = existing.plate, existing = true }) end
+        end
+        -- otherwise: plate collision, try another plate
+    end
+    return Veyl.Err('DATABASE_ERROR', 'Could not register the vehicle')
+end)
+
+--- GetOwnedVehicles(citizenid) -> list of public rows.
+Veyl.AsyncExport('GetOwnedVehicles', function(citizenid)
+    local rows = MySQL.query.await([[SELECT id, citizenid, model, plate, label, state, garage, fuel, engine, body, impound_fee, impound_reason
+        FROM veyl_player_vehicles WHERE citizenid = ? ORDER BY id]], { citizenid }) or {}
+    local list = {}
+    for i, r in ipairs(rows) do list[i] = publicRow(r) end
+    return Veyl.Ok(list)
+end)
+
+--- SpawnOwnedVehicle(src, citizenid, ownedId, coords(vector4), { from = 'garaged'|'impound', garage? })
+--- Reserves the row first (state -> 'out' only if it is still where the caller says), so two requests can never
+--- produce two copies. Applies saved fuel, condition and properties. -> Ok({ vehicleId, netId, plate })
+Veyl.AsyncExport('SpawnOwnedVehicle', function(src, citizenid, ownedId, coords, opts)
+    opts = type(opts) == 'table' and opts or {}
+    if not Veyl.Validate.int(ownedId, 1) or not coords then return Veyl.Err('INVALID_INPUT', 'Invalid vehicle') end
+    if ownedActive[ownedId] then return Veyl.Err('INVALID_STATE', 'That vehicle is already out') end
+    local from = opts.from == 'impound' and 'impound' or 'garaged'
+    local affected
+    if from == 'garaged' and opts.garage then
+        affected = MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'out' WHERE id = ? AND citizenid = ? AND state = 'garaged' AND garage = ?",
+            { ownedId, citizenid, opts.garage })
+    else
+        affected = MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'out', impound_fee = 0, impound_reason = NULL WHERE id = ? AND citizenid = ? AND state = ?",
+            { ownedId, citizenid, from })
+    end
+    if affected ~= 1 then return Veyl.Err('INVALID_STATE', 'That vehicle is not available here') end
+    local row = ownedRow(ownedId)
+    local res = spawnVehicle({
+        model = row.model, coords = coords, citizenid = citizenid, temporary = false, ownedId = ownedId,
+        plate = row.plate, fuel = row.fuel,
+    }, GetInvokingResource())
+    if not res.ok then
+        -- Undo the reservation: the vehicle never left. A paid impound release stays paid: it waits at that lot as garaged.
+        MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'garaged', garage = COALESCE(?, garage) WHERE id = ? AND state = 'out'",
+            { opts.garage, ownedId })
+        return res
+    end
+    local okProps, props = pcall(json.decode, row.props or 'null')
+    TriggerClientEvent('veyl_vehicles:applyOwned', src, res.data.netId, okProps and props or nil, row.engine, row.body)
+    return res
+end)
+
+--- StoreOwnedVehicle(src, citizenid, netId, garage, props) -> Ok(). Only the owner can park it, and nobody may be inside.
+Veyl.AsyncExport('StoreOwnedVehicle', function(src, citizenid, netId, garage, props)
+    if not Veyl.Validate.int(netId, 1) or not Veyl.Validate.str(garage, 1, 64) then return Veyl.Err('INVALID_INPUT', 'Invalid vehicle') end
+    local entity = NetworkGetEntityFromNetworkId(netId)
+    local id = entity and entity ~= 0 and byEntity[entity]
+    local v = id and vehicles[id]
+    if not v or not v.ownedId then return Veyl.Err('NOT_FOUND', 'This is not a vehicle you can park here') end
+    if v.citizenid ~= citizenid then return Veyl.Err('NO_PERMISSION', 'Only the owner can park this vehicle') end
+    for seat = -1, 6 do
+        local ped = GetPedInVehicleSeat(entity, seat)
+        if ped and ped ~= 0 then return Veyl.Err('INVALID_STATE', 'Everyone needs to get out first') end
+    end
+    local fuel = GetResourceState('veyl_fuel') == 'started' and exports.veyl_fuel:GetFuel(id) or 100.0
+    local clean = cleanProps(props)
+    local affected = MySQL.update.await([[UPDATE veyl_player_vehicles SET state = 'garaged', garage = ?, fuel = ?, engine = ?, body = ?,
+        props = COALESCE(?, props) WHERE id = ? AND citizenid = ? AND state = 'out']],
+        { garage, fuel or 100.0, math.max(0.0, GetVehicleEngineHealth(entity)), math.max(0.0, GetVehicleBodyHealth(entity)),
+          clean and json.encode(clean) or nil, v.ownedId, citizenid })
+    if affected ~= 1 then return Veyl.Err('DATABASE_ERROR', 'Could not park the vehicle') end
+    removeTracking(id, 'stored', true)
+    return Veyl.Ok()
+end)
+
+--- ImpoundOwnedVehicle(ownedId, reason, fee): staff/police tools. Removes a live instance.
+exports('ImpoundOwnedVehicle', function(ownedId, reason, fee)
+    local vid = ownedActive[ownedId]
+    if vid then removeTracking(vid, 'stored', true) end
+    MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'impound', impound_reason = ?, impound_fee = ? WHERE id = ?",
+        { tostring(reason or 'impounded'):sub(1, 64), math.max(0, math.floor(tonumber(fee) or VehiclesConfig.ImpoundFee)), ownedId })
+    return true
+end)
+
+exports('GetOwnedVehicleIdFromEntity', function(entity)
+    local id = byEntity[entity]
+    return id and vehicles[id] and vehicles[id].ownedId or nil
+end)
+
 -- Destruction / disappearance monitoring.
 CreateThread(function()
     while true do
@@ -121,6 +314,10 @@ CreateThread(function()
             elseif not v.destroyed and (GetVehicleEngineHealth(v.entity) <= -3900.0 or GetEntityHealth(v.entity) <= 0) then
                 v.destroyed = true
                 TriggerEvent('veyl_vehicles:destroyed', id)
+                if v.ownedId then
+                    -- Wrecked owned vehicles are towed to the impound lot; the wreck is cleared after a short delay.
+                    SetTimeout(VehiclesConfig.WreckClearMs, function() removeTracking(id, 'destroyed', true) end)
+                end
             end
         end
     end

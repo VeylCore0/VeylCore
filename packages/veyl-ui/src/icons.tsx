@@ -64,6 +64,13 @@ const P: Record<string, string> = {
   rotate_right: 'M20 4v5h-5M19.4 9A8 8 0 1 0 18 16.5',
   reset: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
   camera: 'M3 8h4l2-3h6l2 3h4v11H3zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z',
+  // Vehicles
+  wrench: 'M14.5 6.5a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.5-1.5a4 4 0 0 1-5-5L13 2l1.5 4.5zM5 19l-2 2',
+  receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
+  garage: 'M3 21V9l9-5 9 5v12M7 21v-8h10v8M7 16h10',
+  fuel_drop: 'M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z',
+  engine: 'M4 10h3l2-3h6v3h2l2 2v5h-2l-2 2H8l-2-2H4zM12 7V4M10 4h4',
+  tag: 'M3 12V4h8l10 10-8 8zM7.5 8.5h.01',
 };
 
 export type IconName = keyof typeof P | string;
