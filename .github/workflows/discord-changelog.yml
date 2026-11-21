@@ -1,0 +1,31 @@
+# Posts each push to main as a changelog in Discord.
+# Setup (once): GitHub repo -> Settings -> Secrets and variables -> Actions -> New repository secret
+#   Name: DISCORD_CHANGELOG_WEBHOOK   Value: your Discord webhook URL
+name: Discord changelog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Post changelog
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then echo "DISCORD_CHANGELOG_WEBHOOK secret not set; skipping."; exit 0; fi
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            node tools/discord-changelog.mjs --last 1
+          else
+            node tools/discord-changelog.mjs "$BEFORE..$AFTER"
+          fi
