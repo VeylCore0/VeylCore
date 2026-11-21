@@ -14,6 +14,7 @@ never needs Node.
 | Banking | `veyl_banking` | Target a Fleeca counter → *Use bank* | Modal |
 | HUD | `veyl_hud` | Always on once a character is loaded; `/hud`, `/hudsettings` | Passive (never focused) |
 | Target | `veyl_target` | Hold **Left Alt**; scroll/arrows to choose; **E** or click | Passive overlay |
+| Appearance | `veyl_appearance` | Character creation; target a clothing store / barber → *Browse clothing* / *Get a haircut*; `/appearance` (admins) | Modal |
 
 Modal screens use `vlib.createScreen` (veyl_lib). It:
 - requests a focus token, so only one modal can own input;
@@ -107,6 +108,31 @@ The NUI never chooses an action: Lua resolves the selected option index from its
 - **Unlock** or **Lock vehicle**, only when you hold the key and the lock state matches;
 - **Inspect vehicle**.
 
+### Appearance (`veyl_appearance`)
+
+Modes and what each may change (enforced by the server; everything else is kept from the saved look):
+
+| Mode | Opened by | Groups | Cost |
+| --- | --- | --- | --- |
+| `create` | New character (veyl_spawn) | all | free, only while no look is saved |
+| `admin` | `/appearance` (`AllowCommand = 'admin'`: needs the `veyl.admin` ACE) | all | free |
+| `clothing` | Clothing store zone (15 stores, blip 73) | clothing, accessories | per changed category |
+| `barber` | Barber zone (7 shops, blip 71) | hair & makeup | per changed category |
+
+`appearance:open` carries `{ mode, title, subtitle, sex, allowCancel, categories[], values{key: slot}, original{key: slot}, palettes, store? }`
+(types in [`packages/appearance-ui/src/types.ts`](../packages/appearance-ui/src/types.ts)).
+
+| NUI → Lua | Payload | Notes |
+| --- | --- | --- |
+| `change` | `{ key, value: slot }` | Lua clamps to what the model has and returns `{ value, textures }` |
+| `camera` / `rotate` | `{ focus }` / `{ delta }` | camera presets in `AppearanceConfig.Cameras` |
+| `sex` | `{ sex }` | creator only |
+| `finish` | — | creator / admin: free save |
+| `checkout` | `{ method, opId, expectedTotal }` | server merges only the store's categories, prices them, `PRICE_CHANGED` if the total differs, one `DebitOnce` per op id, refund if the save fails |
+| `wearOutfit` / `saveOutfit` / `deleteOutfit` | `{ id }` / `{ name }` / `{ id }` | outfits copy your **saved** (paid) clothes; pieces from a saved outfit are free to switch back to |
+
+Prices, categories, store locations and camera framing live in `veyl_appearance/config.lua`.
+
 ## Browser preview (development only)
 
 ```bash
@@ -132,6 +158,8 @@ so it can never fake success in production.
 | Lua syntax check (150 files) | ✅ 0 errors |
 | Visual review against the concepts at 1280×720, 1920×1080 and 3440×1440 (headless Chrome screenshots) | ✅ Layouts match. Inventory rows scroll inside the panel at 720p as intended |
 | 20 scripted browser-preview interactions (select, drag-move, give dialog, Escape, shop add/pay/clear/out-of-stock, bank deposit validation, confirmed transfer, history paging, error state) | ✅ 20/20, no page errors |
+| Appearance: 27 scripted preview interactions (creator, clothing store, barber) | ✅ 27/27, no page errors |
+| Appearance server logic run in a Lua VM with an in-memory database (24 checks: pricing, mode restrictions, outfits, distance, funds, clamping, repeat-safety) | ✅ 24/24 |
 | **In-game (FiveM) checks** | ❌ Not run yet. See the checklist below |
 
 Browser-preview checks prove only the UI behaviour. They do not prove the server side or multiplayer behaviour.
@@ -146,6 +174,7 @@ Browser-preview checks prove only the UI behaviour. They do not prove the server
 - [ ] HUD: values update; vehicle display only while driving; MPH/KMH and scale persist after reconnect; minimap frame aligns
   at your resolution and safezone
 - [ ] Target: vehicle Locked/Unlocked state and actions; zone titles (Bank, Storage, Fuel pump); options vanish when you walk away
+- [ ] Appearance: new character → creator (no Esc); clothing store change + pay; barber hair colour + beard; outfits save / wear free; Esc with unpaid changes undoes them; blips on the map
 
 ## Known limitations
 

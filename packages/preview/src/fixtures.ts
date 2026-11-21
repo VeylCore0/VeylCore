@@ -85,3 +85,69 @@ export const targetState: TargetState = {
   active: true, selected: 1, title: 'Vehicle', state: 'Locked', stateIcon: 'car', keys: { hold: 'ALT', select: 'E' },
   options: [{ index: 1, label: 'Unlock vehicle', icon: 'unlock' }, { index: 2, label: 'Open trunk', icon: 'trunk' }, { index: 3, label: 'Inspect vehicle', icon: 'inspect' }],
 };
+
+// ---------------------------------------------------------------------------
+// Appearance (mirrors veyl_appearance/config.lua categories; counts are typical freemode values)
+// ---------------------------------------------------------------------------
+import type { AppearanceOpen, Category, Mode as AppearanceMode, Slot } from '../../appearance-ui/src/types';
+
+const AP_CATS: Category[] = [
+  { key: 'heritage', group: 'character', label: 'Heritage', icon: 'dna', camera: 'head', kind: 'heritage' },
+  { key: 'features', group: 'face', label: 'Face shape', icon: 'face', camera: 'head', kind: 'features' },
+  { key: 'eyes', group: 'face', label: 'Eye colour', icon: 'eye', camera: 'head', kind: 'eyes' },
+  { key: 'blemishes', group: 'skin', label: 'Blemishes', icon: 'face', camera: 'head', kind: 'overlay', max: 23 },
+  { key: 'ageing', group: 'skin', label: 'Ageing', icon: 'face', camera: 'head', kind: 'overlay', max: 14 },
+  { key: 'hair', group: 'hair', label: 'Hairstyle', icon: 'scissors', camera: 'head', kind: 'component', color: 'hair', color2: true, max: 78, textures: 1 },
+  { key: 'beard', group: 'hair', label: 'Beard', icon: 'beard', camera: 'head', kind: 'overlay', color: 'hair', max: 28 },
+  { key: 'eyebrows', group: 'hair', label: 'Eyebrows', icon: 'eye', camera: 'head', kind: 'overlay', color: 'hair', max: 33 },
+  { key: 'makeup', group: 'hair', label: 'Eye makeup', icon: 'sparkle', camera: 'head', kind: 'overlay', max: 74 },
+  { key: 'lipstick', group: 'hair', label: 'Lipstick', icon: 'sparkle', camera: 'head', kind: 'overlay', color: 'makeup', max: 9 },
+  { key: 'tops', group: 'clothing', label: 'Jackets & tops', icon: 'shirt', camera: 'body', kind: 'component', max: 391, textures: 4 },
+  { key: 'undershirt', group: 'clothing', label: 'Undershirts', icon: 'shirt', camera: 'body', kind: 'component', max: 187, textures: 2 },
+  { key: 'arms', group: 'clothing', label: 'Arms & gloves', icon: 'hand', camera: 'body', kind: 'component', max: 196, textures: 1 },
+  { key: 'legs', group: 'clothing', label: 'Pants', icon: 'pants', camera: 'legs', kind: 'component', max: 143, textures: 3 },
+  { key: 'shoes', group: 'clothing', label: 'Shoes', icon: 'shoe', camera: 'feet', kind: 'component', max: 101, textures: 2 },
+  { key: 'bag', group: 'clothing', label: 'Bags', icon: 'bag', camera: 'body', kind: 'component', max: 99, textures: 1 },
+  { key: 'mask', group: 'clothing', label: 'Masks', icon: 'mask', camera: 'head', kind: 'component', max: 196, textures: 1 },
+  { key: 'hat', group: 'accessories', label: 'Hats', icon: 'hat', camera: 'head', kind: 'prop', max: 159, textures: 1 },
+  { key: 'glasses', group: 'accessories', label: 'Glasses', icon: 'glasses', camera: 'head', kind: 'prop', max: 45, textures: 1 },
+  { key: 'watch', group: 'accessories', label: 'Watches', icon: 'watch', camera: 'body', kind: 'prop', max: 40, textures: 1 },
+];
+const AP_GROUPS: Record<AppearanceMode, string[]> = {
+  create: ['character', 'face', 'skin', 'hair', 'clothing', 'accessories'], admin: ['character', 'face', 'skin', 'hair', 'clothing', 'accessories'],
+  clothing: ['clothing', 'accessories'], barber: ['hair'],
+};
+const AP_PRICES: Record<string, number> = { tops: 60, undershirt: 30, arms: 20, legs: 45, shoes: 40, bag: 35, mask: 30, hat: 25, glasses: 30, watch: 80, hair: 30, beard: 20, eyebrows: 10, makeup: 15, lipstick: 10 };
+
+function apValue(c: Category): Slot {
+  switch (c.kind) {
+    case 'heritage': return { mother: 21, father: 4, shapeMix: 70, skinMix: 50 };
+    case 'features': return { values: new Array(20).fill(0) };
+    case 'eyes': return { d: 3 };
+    case 'component': return c.key === 'hair' ? { d: 12, t: 0, color: 3, color2: 3 } : { d: c.key === 'tops' ? 15 : 4, t: 0 };
+    case 'prop': return { d: -1, t: 0 };
+    default: return { d: -1, opacity: 100, color: 0 };
+  }
+}
+
+const shade = (i: number, hue: number) => `hsl(${(hue + i * 9) % 360} ${30 + (i % 5) * 10}% ${18 + (i % 8) * 8}%)`;
+
+export function appearanceOpen(mode: AppearanceMode, empty: boolean): AppearanceOpen {
+  const cats = AP_CATS.filter((c) => AP_GROUPS[mode].includes(c.group));
+  const values = Object.fromEntries(cats.map((c) => [c.key, apValue(c)]));
+  const store = mode === 'clothing' || mode === 'barber';
+  return {
+    mode, allowCancel: mode !== 'create', sex: 'm',
+    title: mode === 'create' ? 'Create your character' : mode === 'clothing' ? 'Clothing Store' : mode === 'barber' ? 'Barber Shop' : 'Appearance',
+    subtitle: mode === 'create' ? 'Pick a starting look. You can change clothes and hair later in stores.' : mode === 'clothing' ? 'Clothes and accessories' : 'Hair, beards and makeup',
+    categories: cats, values, original: JSON.parse(JSON.stringify(values)),
+    palettes: { hair: Array.from({ length: 64 }, (_, i) => shade(i, 20)), makeup: Array.from({ length: 64 }, (_, i) => shade(i, 330)) },
+    store: store ? {
+      prices: Object.fromEntries(cats.map((c) => [c.key, AP_PRICES[c.key] ?? 0])), balances: { cash: 420, bank: 12840 }, methods: ['cash', 'bank'],
+      outfits: mode === 'clothing' ? (empty ? [] : [
+        { id: 2, name: 'Work clothes', slots: { tops: { d: 22, t: 1 }, legs: { d: 10, t: 0 }, shoes: { d: 12, t: 0 } } },
+        { id: 1, name: 'Night out', slots: { tops: { d: 31, t: 0 }, legs: { d: 24, t: 0 } } },
+      ]) : null,
+    } : null,
+  };
+}

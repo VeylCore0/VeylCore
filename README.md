@@ -36,7 +36,7 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_ui` | Compatibility layer: the older `Veyl.UI.*` calls forward to veyl_lib |
 | `veyl_interact` | Older interaction API, forwarding to veyl_target (E-key fallback) |
 | `veyl_characters` | Character select/create/delete screen. The core validates everything |
-| `veyl_appearance` | Freemode ped editor, saved per `citizenid` |
+| `veyl_appearance` | Character creator, clothing stores and barbers (blips, prices, saved outfits), saved per `citizenid` |
 | `veyl_spawn` | Bounded spawn stages, last position, hospital respawn, death state in core metadata |
 | `veyl_inventory` | Inventory engine: server-owned items, slots, metadata and revisions; locked transactional moves with operation ids; stashes; reserved item use; React grid UI |
 | `veyl_needs` | Hunger/thirst/stress decay and food effects on core metadata (server-side) |
@@ -154,7 +154,7 @@ Only the primary job earns a paycheck.
 
 ## Player commands
 
-`F2` inventory, `1`–`5` hotbar, hold `Left Alt` to target (E/click to select), `L` lock, `/hudsettings`, `/logout`, `/appearance`, `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
+`F2` inventory, `1`–`5` hotbar, hold `Left Alt` to target (E/click to select), `L` lock, `/hudsettings`, `/logout`, `/appearance` (admins), `/cash`, `/givecash [id] [amount]`, `/job`, `/jobs`,
 `/duty`, `/quitjob`, `/hud`, `/report [message]`, and `/qbexample` / `/qbexample_cb` (example).
 
 Staff (`veyl.admin`): `/vplayers` `/vtp` `/vbring` `/vtpm` `/vcoords` `/vrevive` `/vkick` `/vgivemoney` `/vtakemoney`

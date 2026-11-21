@@ -8,19 +8,28 @@ import { App as ShopApp } from '../../shop-ui/src/App';
 import { App as BankApp } from '../../bank-ui/src/App';
 import { App as HudApp } from '../../hud-ui/src/App';
 import { App as TargetApp } from '../../target-ui/src/App';
+import { App as AppearanceApp } from '../../appearance-ui/src/App';
+import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
 import '../../inventory-ui/src/inventory.css';
 import '../../shop-ui/src/shop.css';
 import '../../bank-ui/src/bank.css';
 import '../../hud-ui/src/hud.css';
 import '../../target-ui/src/target.css';
+import '../../appearance-ui/src/appearance.css';
 import './preview.css';
 import * as F from './fixtures';
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber';
+const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
+const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
+const backdropOf = (s: Screen) => (isAppearance(s) ? 'hud' : s);
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
 const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'inventory', label: 'Inventory', app: InventoryApp }, { id: 'shop', label: 'Shop', app: ShopApp },
   { id: 'bank', label: 'Bank', app: BankApp }, { id: 'hud', label: 'HUD', app: HudApp }, { id: 'target', label: 'Target', app: TargetApp },
+  { id: 'creator', label: 'Creator', app: AppearanceApp }, { id: 'clothing', label: 'Clothing', app: AppearanceApp }, { id: 'barber', label: 'Barber', app: AppearanceApp },
 ];
 const MODES: Mode[] = ['normal', 'loading', 'empty', 'error', 'restricted', 'pending'];
 
@@ -30,7 +39,13 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
     if (action === 'ui:ready') return { ok: true };
-    if (action === 'close') { devEmit(`${screen}:close`); return { ok: true }; }
+    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : `${screen}:close`); return { ok: true }; }
+    if (isAppearance(screen) && (action === 'camera' || action === 'rotate')) return { ok: true };
+    if (isAppearance(screen) && action === 'change') {
+      const p = payload as { key: string; value: Slot };
+      if (apState) apState.values[p.key] = p.value;
+      return { ok: true, data: { value: p.value } };
+    }
     if (mode === 'pending') await wait(2000);
     if (mode === 'error') return { ok: false, code: 'DATABASE_ERROR', message: 'Demo: the server rejected this request.' };
     if (mode === 'restricted') return { ok: false, code: 'NO_PERMISSION', message: 'Demo: you do not have access to this.' };
@@ -69,6 +84,31 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
       case 'bank:resolveRecipient': return { ok: true, data: { token: 'demo', name: 'Jamie Cole', accountMasked: 'VC •••• 7731' } };
       case 'bank:transfer': return { ok: true, message: 'Transfer sent (demo)' };
       case 'bank:history': return { ok: true, data: mode === 'empty' ? { rows: [], nextOffset: null } : F.bankHistory((payload as { offset: number }).offset) };
+      case 'clothing:checkout': case 'barber:checkout': {
+        if (!apState) return { ok: false };
+        const p = payload as { expectedTotal: number; method: 'cash' | 'bank' };
+        apState.store!.balances[p.method] -= p.expectedTotal;
+        apState.original = clone(apState.values);
+        return { ok: true, message: `Paid ${p.expectedTotal} (demo)`, data: clone(apState) };
+      }
+      case 'clothing:wearOutfit': {
+        if (!apState) return { ok: false };
+        const o = apState.store!.outfits!.find((x) => x.id === (payload as { id: number }).id)!;
+        Object.assign(apState.values, clone(o.slots));
+        return { ok: true, data: clone(apState) };
+      }
+      case 'clothing:saveOutfit': {
+        const list = [{ id: Date.now(), name: String((payload as { name: string }).name), slots: clone(apState!.values) }, ...(apState!.store!.outfits ?? [])];
+        apState!.store!.outfits = list;
+        return { ok: true, message: 'Outfit saved (demo)', data: list };
+      }
+      case 'clothing:deleteOutfit': {
+        const list = (apState!.store!.outfits ?? []).filter((o) => o.id !== (payload as { id: number }).id);
+        apState!.store!.outfits = list;
+        return { ok: true, message: 'Outfit deleted (demo)', data: list };
+      }
+      case 'creator:finish': devEmit('appearance:close'); return { ok: true };
+      case 'creator:sex': { apState = F.appearanceOpen('create', false); apState.sex = (payload as { sex: 'm' | 'f' }).sex; return { ok: true, data: clone(apState) }; }
       default: return { ok: false, code: 'NOT_IMPLEMENTED', message: `No demo handler for ${action}` };
     }
   });
@@ -88,6 +128,10 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
       if (mode === 'error') devEmit('bank:error', { message: 'Banking is unavailable right now (demo).' });
       break;
     case 'hud': devEmit('hud:frame', F.hudFrame); break;
+    case 'creator': case 'clothing': case 'barber':
+      apState = F.appearanceOpen(AP_MODE[screen], empty);
+      devEmit('appearance:open', clone(apState));
+      break;
     case 'target': {
       const s: TargetState = empty ? { ...F.targetState, options: [] } : F.targetState;
       devEmit('target:state', s);
@@ -113,9 +157,9 @@ function Preview() {
 
   return (
     <>
-      {backdrop && <div className="pv-backdrop" style={{ backgroundImage: `url(/concepts/${screen}.webp)` }} />}
+      {backdrop && <div className="pv-backdrop" style={{ backgroundImage: `url(/concepts/${backdropOf(screen)}.webp)` }} />}
       <div key={`${screen}-${nonce}`} className="pv-stage"><Active /></div>
-      {overlay > 0 && <div className="pv-overlay" style={{ backgroundImage: `url(/concepts/${screen}.webp)`, opacity: overlay / 100 }} />}
+      {overlay > 0 && <div className="pv-overlay" style={{ backgroundImage: `url(/concepts/${backdropOf(screen)}.webp)`, opacity: overlay / 100 }} />}
       <div className="pv-bar">
         <strong>PREVIEW ONLY</strong>
         {SCREENS.map((s) => <button key={s.id} className={s.id === screen ? 'on' : ''} onClick={() => setScreen(s.id)}>{s.label}</button>)}

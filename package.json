@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @veyl/lib-ui && npm run build -w @veyl/target-ui && npm run build -w @veyl/inventory-ui && npm run build -w @veyl/shop-ui && npm run build -w @veyl/bank-ui && npm run build -w @veyl/hud-ui",
-    "typecheck": "npm run typecheck -w @veyl/lib-ui && npm run typecheck -w @veyl/target-ui && npm run typecheck -w @veyl/inventory-ui && npm run typecheck -w @veyl/shop-ui && npm run typecheck -w @veyl/bank-ui && npm run typecheck -w @veyl/hud-ui",
+    "build": "npm run build -w @veyl/lib-ui && npm run build -w @veyl/target-ui && npm run build -w @veyl/inventory-ui && npm run build -w @veyl/shop-ui && npm run build -w @veyl/bank-ui && npm run build -w @veyl/hud-ui && npm run build -w @veyl/appearance-ui",
+    "typecheck": "npm run typecheck -w @veyl/lib-ui && npm run typecheck -w @veyl/target-ui && npm run typecheck -w @veyl/inventory-ui && npm run typecheck -w @veyl/shop-ui && npm run typecheck -w @veyl/bank-ui && npm run typecheck -w @veyl/hud-ui && npm run typecheck -w @veyl/appearance-ui",
     "preview": "npm run dev -w @veyl/preview"
   },
   "devDependencies": {
