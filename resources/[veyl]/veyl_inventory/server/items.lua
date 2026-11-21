@@ -44,6 +44,8 @@ MetadataSchemas = {
     -- veyl_drugs
     drug_seed = { variety = 'string', varietyLabel = 'string' },
     drug_batch = { product = 'string', variety = 'string', varietyLabel = 'string', grade = 'string', quality = 'number', batch = 'string' },
+    -- veyl_doorlocks: a physical key for one registered door
+    door_key = { door = 'number', label = 'string', rev = 'number' },
 }
 
 --- Validates and normalises metadata for an item. Returns clean table or nil, error.

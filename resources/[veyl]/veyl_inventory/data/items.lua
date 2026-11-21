@@ -47,6 +47,10 @@ return {
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.png',
         weight = 10, stack = false, metadataSchema = 'identity_card',
     },
+    -- veyl_doorlocks
+    door_key = { label = 'Key', description = 'Opens one door.', image = 'keys.png', weight = 20, stack = false, metadataSchema = 'door_key' },
+    lockpick = { label = 'Lockpick', description = 'Picks simple locks. Might break.', image = 'lockpick.png', weight = 50, stack = true, maxStack = 10 },
+    door_ram = { label = 'Door Ram', description = 'Police breaching tool.', image = 'door_ram.png', weight = 6000, stack = false },
     scrap_metal = { label = 'Scrap Metal', description = 'A stackable crafting material.', image = 'scrap_metal.png', weight = 80, stack = true, maxStack = 100 },
     -- Mechanic parts (consumed by veyl_mechanic repairs; sold at the mechanic parts counter)
     engine_parts = { label = 'Engine Parts', description = 'Used by mechanics to repair an engine.', image = 'engine_parts.png', weight = 2000, stack = true, maxStack = 10 },
