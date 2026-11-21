@@ -39,6 +39,7 @@ ensure veyl_dealership
 ensure veyl_mechanic
 ensure veyl_drugs
 ensure veyl_phone
+ensure veyl_loadscreen
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example

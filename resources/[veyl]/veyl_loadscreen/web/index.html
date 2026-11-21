@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VeylCore</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="shade" aria-hidden="true"></div>
+  <canvas class="rain" aria-hidden="true"></canvas>
+
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="mk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9a3ff" /><stop offset="1" stop-color="#7d4fd1" /></linearGradient></defs>
+        <path d="M3 6h7l6 13 6-13h7L18.5 27h-5z" fill="url(#mk)" />
+        <path d="M10 6h4l2 4.5L18 6h4l-6 13z" fill="#e4d4ff" />
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name">VEYLCORE</div>
+        <div class="brand-sub">ROLEPLAY FRAMEWORK</div>
+      </div>
+    </div>
+    <div class="status glass" id="status" hidden>
+      <span class="dot"></span><span class="status-label">SERVER ONLINE</span>
+      <span class="sep"></span><span class="count" id="count"></span>
+    </div>
+  </header>
+
+  <main class="hero">
+    <h1 class="headline"><span id="h1">YOUR STORY.</span><span class="accent" id="h2">STARTS HERE.</span></h1>
+    <p class="subtitle" id="subtitle">A new city. A new chapter.</p>
+    <section class="updates glass" id="updates">
+      <h2 id="updatesTitle">CITY UPDATES</h2>
+      <ul id="updateList"></ul>
+    </section>
+  </main>
+
+  <aside class="player glass" id="player" hidden>
+    <h2>NOW PLAYING</h2>
+    <div class="track">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a1f6e" /><stop offset="1" stop-color="#140c24" /></linearGradient></defs>
+          <rect width="100" height="100" fill="url(#wave)" />
+          <path class="w1" d="M-10 70 C 20 40, 40 90, 70 50 S 110 30, 120 40" />
+          <path class="w2" d="M-10 80 C 25 55, 45 95, 75 60 S 110 45, 120 55" />
+          <path class="w3" d="M-10 60 C 15 30, 45 75, 70 40 S 110 20, 120 30" />
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="title" id="trackTitle">Midnight Drive</div>
+        <div class="artist" id="trackArtist">Veyl Radio</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="ctl" id="prev" aria-label="Previous track"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z" /></svg></button>
+      <button class="ctl play" id="play" aria-label="Pause"><svg viewBox="0 0 24 24" id="playIcon"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg></button>
+      <button class="ctl" id="next" aria-label="Next track"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg></button>
+    </div>
+    <div class="volume">
+      <button class="vol-btn" id="mute" aria-label="Mute"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="wv" d="M16 9a4 4 0 0 1 0 6" /></svg></button>
+      <input type="range" id="vol" min="0" max="100" value="35" aria-label="Volume" />
+      <svg class="vol-max" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="wv" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /></svg>
+    </div>
+    <div class="tap-hint" id="tapHint" hidden>Click to start the music</div>
+  </aside>
+
+  <footer class="bottom">
+    <div class="load-row">
+      <div>
+        <div class="load-title" id="loadTitle">Connecting to your next chapter</div>
+        <div class="load-sub" id="loadSub">Joining the server…</div>
+      </div>
+      <div class="pct" id="pct">0%</div>
+    </div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><span id="fill"></span></div>
+    <div class="foot-row">
+      <div class="tip"><span class="tip-tag">TIP</span><span id="tip">Get started at City Hall to find your first job.</span></div>
+      <div class="links">
+        <button class="link" id="discord" hidden>
+          <svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM9 10.5v.01M15 10.5v.01" /></svg>Discord
+        </button>
+        <button class="link" id="rules" hidden>
+          <svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5" /></svg>Server Rules
+        </button>
+      </div>
+    </div>
+    <div class="powered"><span></span>POWERED BY VEYLCORE<span></span></div>
+  </footer>
+
+  <script src="radio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

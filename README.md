@@ -52,6 +52,7 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_mechanic` | LS Customs: on-duty repairs that use parts, service invoices (`/invoices`, or the phone Invoices app) |
 | `veyl_drugs` | Fictional criminal enterprise, milestones A-B: grow-anywhere weed/coca/mushrooms, quality, harvest, supplier, Grow Journal ([docs/DRUGS.md](docs/DRUGS.md)) |
 | `veyl_phone` | Smartphone, milestones 1-3: per-character numbers, contacts, messages with honest sent/delivered/read, groups, blocking, pma-voice calls, notifications and app API ([docs/PHONE.md](docs/PHONE.md)) |
+| `veyl_loadscreen` | Loading screen: real load progress and status, live player count, city updates, rotating tips, Discord/rules links and Veyl Radio (original generated music or your own files). Edit `config.lua` |
 | `veyl_delivery` | GoPostal route: depot NPC, assigned van and key, server-validated stops, one-time payout |
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
