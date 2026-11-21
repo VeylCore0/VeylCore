@@ -12,6 +12,8 @@ import { App as AppearanceApp } from '../../appearance-ui/src/App';
 import { App as VehicleApp } from '../../vehicle-ui/src/App';
 import { App as DrugsApp } from '../../drugs-ui/src/App';
 import { App as PhoneApp } from '../../phone-ui/src/App';
+import { App as ApartmentsApp } from '../../apartments-ui/src/App';
+import { aptCatalog, aptDashboard, aptFurniture, aptHandler } from './aptMock';
 import { phoneApi, phoneDemo, phoneReset, phoneSession } from './phoneMock';
 import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
 import '../../inventory-ui/src/inventory.css';
@@ -23,17 +25,19 @@ import '../../appearance-ui/src/appearance.css';
 import '../../vehicle-ui/src/vehicles.css';
 import '../../drugs-ui/src/drugs.css';
 import '../../phone-ui/src/phone.css';
+import '../../apartments-ui/src/apartments.css';
 import './preview.css';
 import * as F from './fixtures';
 
 // Phone Garage pictures come from the dev server in the preview (nui:// in FiveM).
 (window as unknown as { __veylVehicleImages?: string }).__veylVehicleImages = '/vehicles';
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer' || s === 'journal' || s === 'grow' || s === 'table';
-const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' ? 'hud' : s);
+const isApt = (s: Screen) => s.startsWith('apt');
+const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isApt(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
@@ -44,6 +48,9 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
   { id: 'journal', label: 'Journal', app: DrugsApp }, { id: 'table', label: 'Table', app: DrugsApp }, { id: 'grow', label: 'Grow HUD', app: DrugsApp },
   { id: 'phone', label: 'Phone', app: PhoneApp },
+  { id: 'aptLease', label: 'Leasing', app: ApartmentsApp }, { id: 'aptHome', label: 'Home', app: ApartmentsApp },
+  { id: 'aptFurn', label: 'Furniture', app: ApartmentsApp }, { id: 'aptDesk', label: 'Desk', app: ApartmentsApp },
+  { id: 'aptWardrobe', label: 'Wardrobe', app: ApartmentsApp }, { id: 'aptBell', label: 'Doorbell', app: ApartmentsApp },
 ];
 const MODES: Mode[] = ['normal', 'loading', 'empty', 'error', 'restricted', 'pending'];
 
@@ -53,6 +60,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
     if (action === 'ui:ready') return { ok: true };
+    if (isApt(screen)) return aptHandler(action, payload, mode);
     if (screen === 'phone') {
       if (action === 'close') { devEmit('phone:close'); return { ok: true }; }
       if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };
@@ -187,6 +195,12 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
       if (mode === 'error') devEmit('bank:error', { message: 'Banking is unavailable right now (demo).' });
       break;
     case 'hud': devEmit('hud:frame', F.hudFrame); break;
+    case 'aptLease': devEmit('apt:open', { view: 'leasing', data: aptCatalog(empty) }); break;
+    case 'aptHome': devEmit('apt:open', { view: 'dashboard', data: aptDashboard(empty) }); break;
+    case 'aptFurn': devEmit('apt:open', { view: 'furniture', data: aptFurniture() }); break;
+    case 'aptDesk': devEmit('apt:open', { view: 'desk', data: { building: 'starlite', label: 'Starlite Motel front desk', tab: 'directory', directory: true } }); break;
+    case 'aptWardrobe': devEmit('apt:open', { view: 'wardrobe', data: { outfits: [{ id: 1, name: 'Work clothes' }, { id: 2, name: 'Night out' }], max: 10 } }); break;
+    case 'aptBell': devEmit('apt:open', { view: 'doorbell', data: { id: 7, name: 'Alex Carter', expires: 60 } }); break;
     case 'phone':
       phoneReset(empty);
       if (mode !== 'restricted') devEmit('phone:open', phoneSession(empty));

@@ -265,3 +265,74 @@ Veyl.RegisterCallback('deleteOutfit', function(_, citizenid, id)
     local saved = load(citizenid)
     return Veyl.Ok(saved and outfitsOf(citizenid, saved.model) or {}, 'Outfit deleted')
 end, { cooldown = 1000 })
+
+---------------------------------------------------------------------------
+-- Outfit exports for other resources (e.g. the veyl_apartments wardrobe). The CALLER checks where the player is and
+-- whether they may use that wardrobe; these only act on the given character's own outfits and SAVED appearance.
+--   Veyl.Await('veyl_appearance', 'GetOutfits', t, citizenid)            -> Ok({ outfits = { {id,name} }, max })
+--   Veyl.Await('veyl_appearance', 'SaveCurrentOutfit', t, citizenid, name) -> Ok(outfits)
+--   Veyl.Await('veyl_appearance', 'RenameOutfit', t, citizenid, id, name)  -> Ok(outfits)
+--   Veyl.Await('veyl_appearance', 'DeleteOutfit', t, citizenid, id)        -> Ok(outfits)
+--   Veyl.Await('veyl_appearance', 'WearOutfit', t, citizenid, id)          -> Ok({ appearance, outfits }) (saved; apply client-side)
+---------------------------------------------------------------------------
+local function outfitList(citizenid)
+    local saved = load(citizenid)
+    if not saved then return {} end
+    local out = {}
+    for _, o in ipairs(outfitsOf(citizenid, saved.model)) do out[#out + 1] = { id = o.id, name = o.name } end
+    return out
+end
+local function validName(name) return V.str(name, 1, 32) and not name:find('[%c<>]') end
+
+Veyl.AsyncExport('GetOutfits', function(citizenid)
+    if type(citizenid) ~= 'string' then return Veyl.Err('INVALID_INPUT', 'Invalid') end
+    return Veyl.Ok({ outfits = outfitList(citizenid), max = AppearanceConfig.MaxOutfits })
+end)
+
+Veyl.AsyncExport('SaveCurrentOutfit', function(citizenid, name)
+    if not validName(name) then return Veyl.Err('INVALID_INPUT', 'Give the outfit a name (max 32 characters)') end
+    local saved = load(citizenid)
+    if not saved then return Veyl.Err('NOT_FOUND', 'Create your character first') end
+    local count = MySQL.scalar.await('SELECT COUNT(*) FROM veyl_outfits WHERE citizenid = ?', { citizenid }) or 0
+    if count >= AppearanceConfig.MaxOutfits then return Veyl.Err('LIMIT', ('You can keep %d outfits; delete one first'):format(AppearanceConfig.MaxOutfits)) end
+    local slots = {}
+    for _, key in ipairs(Appearance.allowedKeys('clothing')) do slots[key] = Appearance.getSlot(saved, Appearance.byKey[key]) end
+    MySQL.insert.await('INSERT INTO veyl_outfits (citizenid, model, name, data) VALUES (?, ?, ?, ?)', { citizenid, saved.model, name, json.encode(slots) })
+    return Veyl.Ok({ outfits = outfitList(citizenid) }, 'Outfit saved')
+end)
+
+Veyl.AsyncExport('RenameOutfit', function(citizenid, id, name)
+    if not V.int(id, 1) or not validName(name) then return Veyl.Err('INVALID_INPUT', 'Give the outfit a name (max 32 characters)') end
+    local n = MySQL.update.await('UPDATE veyl_outfits SET name = ? WHERE id = ? AND citizenid = ?', { name, id, citizenid })
+    if n ~= 1 and not MySQL.scalar.await('SELECT 1 FROM veyl_outfits WHERE id = ? AND citizenid = ?', { id, citizenid }) then return Veyl.Err('NOT_FOUND', 'Outfit not found') end
+    return Veyl.Ok({ outfits = outfitList(citizenid) }, 'Outfit renamed')
+end)
+
+Veyl.AsyncExport('DeleteOutfit', function(citizenid, id)
+    if not V.int(id, 1) then return Veyl.Err('INVALID_INPUT', 'Unknown outfit') end
+    local n = MySQL.update.await('DELETE FROM veyl_outfits WHERE id = ? AND citizenid = ?', { id, citizenid })
+    if n ~= 1 then return Veyl.Err('NOT_FOUND', 'Outfit not found') end
+    return Veyl.Ok({ outfits = outfitList(citizenid) }, 'Outfit deleted')
+end)
+
+--- Wearing an outfit changes the SAVED look to those clothing pieces (they were already paid for when saved).
+Veyl.AsyncExport('WearOutfit', function(citizenid, id)
+    if not V.int(id, 1) then return Veyl.Err('INVALID_INPUT', 'Unknown outfit') end
+    local saved = load(citizenid)
+    if not saved then return Veyl.Err('NOT_FOUND', 'Create your character first') end
+    local row = MySQL.single.await('SELECT data FROM veyl_outfits WHERE id = ? AND citizenid = ? AND model = ?', { id, citizenid, saved.model })
+    if not row then return Veyl.Err('NOT_FOUND', 'Outfit not found (or made for another character model)') end
+    local ok, slots = pcall(json.decode, row.data)
+    if not ok or type(slots) ~= 'table' then return Veyl.Err('INVALID_STATE', 'That outfit is damaged') end
+    local allowed = {}
+    for _, key in ipairs(Appearance.allowedKeys('clothing')) do allowed[key] = true end
+    for key, slot in pairs(slots) do
+        local cat = Appearance.byKey[key]
+        if allowed[key] and cat and (cat.kind == 'component' or cat.kind == 'prop') and type(slot) == 'table' and slot.d ~= nil then
+            Appearance.setSlot(saved, cat, slot)
+        end
+    end
+    local next = Appearance.normalise(saved)
+    if not store(citizenid, next) then return Veyl.Err('DATABASE_ERROR', 'Could not save your look') end
+    return Veyl.Ok({ appearance = next, outfits = outfitList(citizenid) }, 'Outfit changed')
+end)

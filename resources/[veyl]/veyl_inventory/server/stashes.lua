@@ -2,7 +2,10 @@
 
 Stashes = {}
 
---- RegisterStash({ id, label, slots, maxWeight, owner = true|false|'<citizenid>', coords?, radius?, groups? })
+--- RegisterStash({ id, label, slots, maxWeight, owner = true|false|'<citizenid>', coords?, radius?, groups?,
+---                 authorize? = { resource, export } })
+--- authorize: the named server export is called as export(src, citizenid, stashId) -> allowed, code before every
+--- open and mutation, so the owning resource decides access from its own live rules (e.g. apartment keys).
 function Stashes.Register(def, registrant)
     assert(type(def) == 'table' and type(def.id) == 'string' and def.id:match('^[%w_%-]+$'),
         ('veyl_inventory: RegisterStash from %s needs an id of letters, digits, _ or -'):format(tostring(registrant)))
@@ -12,6 +15,8 @@ function Stashes.Register(def, registrant)
         id = def.id, label = def.label or def.id, slots = def.slots, maxWeight = def.maxWeight, owner = def.owner,
         coords = def.coords and vector3(def.coords.x, def.coords.y, def.coords.z) or nil, radius = tonumber(def.radius) or 2.0,
         groups = def.groups, registrant = registrant,
+        authorize = type(def.authorize) == 'table' and type(def.authorize.resource) == 'string' and type(def.authorize.export) == 'string'
+            and { resource = def.authorize.resource, export = def.authorize.export } or nil,
     }
 end
 
@@ -23,6 +28,11 @@ function Stashes.Resolve(src, citizenid, stashId)
     if def.coords then
         local ped = GetPlayerPed(src)
         if ped == 0 or #(GetEntityCoords(ped) - def.coords) > def.radius + 2.0 then return nil, 'TOO_FAR' end
+    end
+    if def.authorize then
+        if GetResourceState(def.authorize.resource) ~= 'started' then return nil, 'NOT_READY' end
+        local ok, allowed, code = pcall(function() return exports[def.authorize.resource][def.authorize.export](nil, src, citizenid, stashId) end)
+        if not ok or allowed ~= true then return nil, (ok and type(code) == 'string') and code or 'NO_PERMISSION' end
     end
     local owner
     if def.owner == true then owner = citizenid

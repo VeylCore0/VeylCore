@@ -40,6 +40,9 @@ ensure veyl_mechanic
 ensure veyl_drugs
 ensure veyl_phone
 ensure veyl_loadscreen
+# veyl_apartments needs the Starlite Motel MLO (free, by Zydrec): put zydrec-starlitemotel in your resources folder.
+ensure zydrec-starlitemotel
+ensure veyl_apartments
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example

@@ -35,6 +35,12 @@ tasks:
     subpath: resources/[veyl]
     dest: ./resources/[veyl]
 
+  # Starlite Motel MLO by Zydrec (free; credit: Zydrec). veyl_apartments manages its 30 rooms. Pinned to a tested commit.
+  - action: download_github
+    src: https://github.com/Zydrec/zydrec-starlitemotel
+    ref: 938925392446016f9bd4f2a7325a5b24b9b45523
+    dest: ./resources/zydrec-starlitemotel
+
   # VeylCore owns spawning: the default spawn manager and basic gamemode must not run.
   - action: remove_path
     path: ./resources/[managers]/spawnmanager
@@ -94,6 +100,8 @@ tasks:
       ensure veyl_drugs
       ensure veyl_phone
       ensure veyl_loadscreen
+      ensure zydrec-starlitemotel
+      ensure veyl_apartments
       ensure veyl_delivery
       ensure veyl_admin
       # ensure veyl_qbexample   # optional QBCore-style example resource
