@@ -49,6 +49,12 @@ return {
     },
     -- veyl_medical: lets anyone help a downed (not unconscious) person back up; used up on success
     first_aid_kit = { label = 'First Aid Kit', description = 'Help someone who is down back on their feet.', image = 'first_aid_kit.png', weight = 500, stack = true, maxStack = 5 },
+    gauze = { label = 'Gauze', description = 'Slows bleeding.', image = 'bandage.png', weight = 50, stack = true, maxStack = 10,
+        use = { handler = 'medical_gauze', durationMs = 3000, consumeCount = 1, anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 } } },
+    painkillers = { label = 'Painkillers', description = 'Dulls the pain of injuries for a while.', image = 'lab_supplies.png', weight = 30, stack = true, maxStack = 10,
+        use = { handler = 'medical_painkillers', durationMs = 2000, consumeCount = 1, anim = { dict = 'mp_suicide', clip = 'pill', flag = 49 } } },
+    medkit = { label = 'Medkit', description = 'Patches you up and stops bleeding. Does not fix broken bones.', image = 'first_aid_kit.png', weight = 800, stack = true, maxStack = 3,
+        use = { handler = 'medical_medkit', durationMs = 6000, consumeCount = 1, anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 } } },
     -- veyl_cityhall: printed at the City Hall desk; using one shows it to people nearby
     driver_license = { label = "Driver's Licence", description = 'Proof you can drive.', image = 'identity_card.png', weight = 10, stack = false,
         metadataSchema = 'licence_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 } },

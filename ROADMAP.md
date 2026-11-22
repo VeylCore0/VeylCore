@@ -48,7 +48,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Emotes:** search, favorites, props and shared emotes.
 - **Next:** in-game acceptance testing with real players.
 
-## 🔜 Then: emergency services
+## ✅ Built, now testing: emergency services
 - **Dispatch:** calls, blips, unit status and a panic button.
 - **Police:** duty, cuffs, escort and search, citations and impound.
 - **MDT:** people and vehicle lookups, reports and citations.

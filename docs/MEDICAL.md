@@ -63,3 +63,34 @@ While downed or unconscious, a full-screen overlay replaces the old help text. I
 | **Being helped** | The trace turns green and calm, with a progress bar for the revive or help-up. |
 
 Chips under the timer show how many EMS are on duty and whether they were alerted, or that a first aid kit can get you up when no EMS are around. The page is `packages/medical-ui` (built into `veyl_medical/web/dist`).
+
+## Injuries
+
+Every hit of 5+ damage is recorded on the body part it landed on (head, torso, arms, legs) with its cause, and saved on the character (`metadata.injuries`):
+
+| Kind | Caused by | Effect |
+|---|---|---|
+| Gunshot wound | Bullets | Bleeding +2 |
+| Laceration | Knives, bottles, machetes… | Bleeding +1 |
+| Fracture | Hard falls and crashes (arms, legs) | — |
+| Bruising | Fists, blunt weapons, light falls | — |
+| Burn | Fire, explosions | — |
+
+Severity goes from 1 to 4 per part.
+- **Legs at 2+:** you limp and cannot sprint.
+- **Head at 2+:** your view shakes now and then.
+- **Bleeding (1–4):** you lose 2 health every 30 s at level 1, faster at higher levels, until treated.
+
+`/injuries` lists your own. **EMS:** *Check injuries* on a person shows health, bleeding and every injury; *Treat injuries* (and a revive) heals all of them. A hospital respawn or check-in also clears them.
+
+### Items (24/7 shops)
+
+| Item | Effect |
+|---|---|
+| Gauze ($40) | Bleeding −2 |
+| Painkillers ($60) | +10 health, hides the limp and shake for 5 min (not the bleeding) |
+| Medkit ($450) | +60 health and stops bleeding. Does not fix fractures |
+
+### Beds
+
+On-duty EMS near Pillbox can *Put in hospital bed* a patient: they lie in the first free bed (`Beds` in `config.lua`, set them to your hospital MLO). Check-in treatment also happens in a bed. Patients get up with **E** once they are conscious.

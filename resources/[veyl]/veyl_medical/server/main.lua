@@ -170,6 +170,7 @@ Veyl.RegisterCallback('respawn', function(src, citizenid)
     publish(src, nil)
     setFlags(src, false, false)
     TriggerEvent('veyl:playerRespawned', src, citizenid) -- veyl_needs restores hunger/thirst minimums
+    Injuries.Clear(src)
     Veyl.Audit(src, 'medical_respawn', { fee = paidWith and fee or 0, method = paidWith })
     local h = C.Hospital.respawn
     local msg = paidWith and ('You were treated at %s. The bill was %s.'):format(C.Hospital.label, ('$' .. fee))
@@ -200,7 +201,7 @@ local function check(src, kind, target)
         if not ems then return Veyl.Err('NO_PERMISSION', 'Only on-duty EMS can treat injuries') end
         if st then return Veyl.Err('INVALID_STATE', 'Revive them first') end
         local ped = GetPlayerPed(target)
-        if ped ~= 0 and GetEntityHealth(ped) >= 200 then return Veyl.Err('INVALID_STATE', 'They are not hurt') end
+        if ped ~= 0 and GetEntityHealth(ped) >= 200 and not Injuries.Has(target) then return Veyl.Err('INVALID_STATE', 'They are not hurt') end
         return nil, C.TreatSeconds
     end
     return Veyl.Err('INVALID_INPUT', 'Unknown action')
@@ -230,8 +231,10 @@ Veyl.RegisterCallback('actionFinish', function(src, citizenid, token)
         clear(a.target, C.HealthAfterHelpUp)
     elseif a.kind == 'revive' then
         clear(a.target, 200)
+        Injuries.Clear(a.target)
     else
         TriggerClientEvent('veyl_medical:heal', a.target, 200)
+        Injuries.Clear(a.target)
     end
     Veyl.Notify(a.target, a.kind == 'treat' and 'Your injuries were treated.' or 'You were helped back on your feet.', 'success')
     Veyl.Audit(src, 'medical_' .. a.kind, { target = tcid })
@@ -265,6 +268,7 @@ Veyl.RegisterCallback('checkInStart', function(src)
     if err then return err end
     local token = Veyl.NewId()
     checkins[src] = { token = token, at = GetGameTimer() }
+    Injuries.PutInBed(src) -- treated lying in a bed when beds are set up
     return Veyl.Ok({ token = token, seconds = C.CheckInSeconds, fee = C.CheckInFee })
 end, { cooldown = 1000 })
 
@@ -284,6 +288,8 @@ Veyl.RegisterCallback('checkInFinish', function(src, citizenid, token, method)
         end
     end
     TriggerClientEvent('veyl_medical:heal', src, 200)
+    Injuries.Clear(src)
+    SetTimeout(1500, function() Injuries.LeaveBed(src) end)
     Veyl.Audit(src, 'medical_checkin', { fee = fee, method = method })
     return Veyl.Ok(nil, 'You were treated by hospital staff')
 end, { cooldown = 1000 })

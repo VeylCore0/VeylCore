@@ -41,3 +41,30 @@ MedicalConfig = {
     CheckInSeconds = 12,
     CheckInMaxEMS = 1,               -- check-in is only open while fewer than this many EMS are on duty (1 = none)
 }
+
+-- Injuries, treatment items and beds (server/injuries.lua, client/injuries.lua)
+MedicalConfig.Injuries = {
+    MinDamage = 5,                   -- hits smaller than this are ignored
+    BleedSecondsPerLevel = 30,       -- bleeding level 1 loses health every 30 s, level 4 every 7.5 s
+    BleedDamage = 2,
+    LimpAt = 2,                      -- leg severity that makes you limp and stops sprinting
+    ShakeAt = 2,                     -- head severity that shakes your view
+    PainkillerSeconds = 300,
+}
+
+MedicalConfig.Items = {
+    gauze = { item = 'gauze', bleeding = -2 },                 -- slows bleeding
+    painkillers = { item = 'painkillers', heal = 10 },        -- hides limp and shake for PainkillerSeconds
+    medkit = { item = 'medkit', heal = 60, bleeding = -99 },   -- stops bleeding; does not fix fractures
+}
+
+-- Hospital beds (Pillbox). Adjust to your hospital MLO: x, y, z of the mattress and the heading of the patient.
+MedicalConfig.Beds = {
+    vector4(353.1, -584.6, 43.11, 152.0),
+    vector4(356.79, -585.86, 43.11, 152.0),
+    vector4(354.12, -593.12, 43.1, 336.0),
+    vector4(350.79, -591.8, 43.1, 336.0),
+    vector4(346.99, -590.48, 43.1, 336.0),
+    vector4(360.32, -587.19, 43.02, 152.0),
+}
+MedicalConfig.BedDistance = 40.0     -- how close to the beds EMS must be to put someone in one
