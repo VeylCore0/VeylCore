@@ -22,6 +22,7 @@ server_scripts {
     'server/stashes.lua',
     'server/drops.lua',
     'server/sessions.lua',
+    'server/cash.lua',
     'server/adapter_veylcore.lua',
     'server/exports.lua',
     'server/weapons.lua',

@@ -59,6 +59,7 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_citizenjobs` | Trucking, garbage (with recyclables), taxi fares and tow calls; server-run routes and pay |
 | `veyl_gathering` | Mining, hunting and farming with skills and buyers |
 | `veyl_crafting` | Crafting benches and recipes using job materials, with crafting levels |
+| `veyl_minigames` | Lockpick mini game used by store robberies, safes and door locks (`exports.veyl_minigames:Lockpick`) |
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
 | `[examples]/veyl_qbexample` | A QBCore-style resource running on VeylCore through the shim |

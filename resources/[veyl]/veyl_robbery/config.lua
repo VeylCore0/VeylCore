@@ -1,6 +1,6 @@
 -- veyl_robbery configuration: store robberies. Money in whole dollars, times in seconds.
 -- Every shop marked `robbable = true` in veyl_shops/config.lua (all 24/7, LTD Gasoline and Rob's Liquor) can be
--- robbed at its register: hold the target key (ALT) and aim at the counter.
+-- robbed at its register: hold the target key (ALT) and aim at the counter or the clerk.
 
 RobberyConfig = {
     PoliceJobs = { 'police' },
@@ -8,8 +8,9 @@ RobberyConfig = {
     StoreCooldownMinutes = 30,     -- per store and target (register / safe), after a robbery starts
     PlayerCooldownMinutes = 10,    -- per robber
 
-    Register = { seconds = 25, reward = { 400, 900 } },          -- needs a weapon in hand
-    Safe = { seconds = 60, reward = { 1500, 3500 }, item = 'lockpick', breakChance = 0.25 },
+    -- Register: threaten the clerk (weapon in hand) or pick the till (lockpick + mini game).
+    Register = { seconds = 25, reward = { 400, 900 }, item = 'lockpick', pickSeconds = 12, difficulty = 'medium', pickBreakChance = 0.35 },
+    Safe = { seconds = 60, reward = { 1500, 3500 }, item = 'lockpick', breakChance = 0.25, difficulty = 'hard', pickBreakChance = 0.5 },
 
     AlarmDelaySeconds = 0,         -- dispatch goes out when the robbery starts (silent alarm)
 

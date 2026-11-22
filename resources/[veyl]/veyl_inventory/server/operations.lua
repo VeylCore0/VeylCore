@@ -203,6 +203,12 @@ local function persistLater(inv, slots, audit)
     end)
 end
 
+--- Apply already-planned items to memory and persist them in order (used by the cash mirror).
+function Ops.ApplyAndPersist(inv, items, slots, audit)
+    Store.Apply(inv, items, slots, inv.revision + 1)
+    persistLater(inv, slots, audit)
+end
+
 function Ops.LegacyAdd(inv, name, count, metadata)
     if not ItemDefs[name] then return false, 'invalid_item' end
     if not validCount(count) then return false, 'invalid_count' end

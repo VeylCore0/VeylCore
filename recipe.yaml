@@ -92,6 +92,7 @@ tasks:
       ensure veyl_inventory
       ensure veyl_target
       ensure veyl_ui
+      ensure veyl_minigames
       ensure veyl_world
       ensure veyl_interact
       ensure veyl_appearance

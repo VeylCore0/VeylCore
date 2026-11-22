@@ -2,6 +2,8 @@
 -- use.handler names a server handler registered with exports.veyl_inventory:RegisterUseHandler(name, fn).
 -- use.effects is server data read by that handler; the NUI can never submit handlers, effects or metadata.
 return {
+    -- Cash: mirrors the character's cash balance in veyl_core (server/cash.lua). Weightless.
+    money = { label = 'Cash', image = 'money.png', weight = 0, stack = true, maxStack = 100000000, description = 'Cold, hard cash.' },
     water_bottle = {
         label = 'Water Bottle', description = 'A bottle of drinking water.', image = 'water_bottle.png',
         weight = 500, stack = true, maxStack = 10,

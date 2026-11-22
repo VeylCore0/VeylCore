@@ -398,18 +398,31 @@ Veyl.RegisterCallback('breachStart', function(src, citizenid, id, method)
     return Veyl.Ok({ token = token, seconds = method == 'ram' and C.Breach.RamSeconds or C.Breach.LockpickSeconds })
 end, { cooldown = 1000 })
 
-Veyl.RegisterCallback('breachFinish', function(src, citizenid, token)
+Veyl.RegisterCallback('breachFinish', function(src, citizenid, token, picked)
     local b = breaches[src]
     breaches[src] = nil
     if not b or b.token ~= token then return Veyl.Err('INVALID_STATE', 'Start again') end
     local d = Doors.list[b.doorId]
     if not d or not d.locked then return Veyl.Err('INVALID_STATE', 'It is already open') end
+    if b.method == 'lockpick' and picked == false then
+        -- Failed the mini game: no wait, but the pick may snap.
+        if count(src, C.Items.lockpick) > 0 and math.random() < C.Breach.LockpickBreakChance then
+            exports.veyl_inventory:RemoveItem(src, C.Items.lockpick, 1)
+            log(d.id, citizenid, 'lockpick_fail', 'broke')
+            return Veyl.Err('FAILED', 'The lockpick snapped')
+        end
+        log(d.id, citizenid, 'lockpick_fail')
+        return Veyl.Err('FAILED', 'You could not pick the lock')
+    end
     local need = (b.method == 'ram' and C.Breach.RamSeconds or C.Breach.LockpickSeconds) * 1000 - 500
     if GetGameTimer() - b.at < need then return Veyl.Err('TOO_FAST', 'You stopped too early') end
     if not near(src, d) then return Veyl.Err('TOO_FAR', 'Move closer to the door') end
     if b.method == 'lockpick' then
         if count(src, C.Items.lockpick) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
-        if math.random() > d.settings.breach.lockpickChance then
+        -- With the mini game (veyl_minigames) the player's skill decides; without it, the configured chance does.
+        local failed
+        if picked == true then failed = false elseif picked == false then failed = true else failed = math.random() > d.settings.breach.lockpickChance end
+        if failed then
             if math.random() < C.Breach.LockpickBreakChance then
                 exports.veyl_inventory:RemoveItem(src, C.Items.lockpick, 1)
                 log(d.id, citizenid, 'lockpick_fail', 'broke')

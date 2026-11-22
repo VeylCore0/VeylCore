@@ -155,13 +155,27 @@ AddEventHandler('veyl_doorlocks:breach', function(args)
         local start = Veyl.CallbackTimeout('veyl_doorlocks', 'breachStart', 10000, args.id, args.method)
         if not start.ok then return Veyl.NotifyResult(start) end
         local ram = args.method == 'ram'
+        local began, picked = GetGameTimer(), nil
+        if not ram and GetResourceState('veyl_minigames') == 'started' then
+            -- Lockpick mini game first; the rest of the server's minimum time runs as a short progress bar.
+            local ped = PlayerPedId()
+            if Veyl.LoadAnimDict('mp_arresting') then TaskPlayAnim(ped, 'mp_arresting', 'a_uncuff', 3.0, 3.0, -1, 49, 0, false, false, false) end
+            local p = promise.new()
+            exports.veyl_minigames:Lockpick({ difficulty = 'medium', title = 'Pick the lock' }, function(ok) p:resolve(ok) end)
+            picked = Citizen.Await(p) == true
+            if not picked then
+                ClearPedTasks(ped)
+                return Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_doorlocks', 'breachFinish', 10000, start.data.token, false))
+            end
+        end
         if ram then TaskStartScenarioInPlace(PlayerPedId(), 'WORLD_HUMAN_HAMMERING', 0, true) end
-        local done = vlib.progress({ label = ram and 'Breaching the door' or 'Picking the lock', duration = start.data.seconds * 1000, canCancel = true,
+        local remaining = math.max(600, start.data.seconds * 1000 - (GetGameTimer() - began))
+        local done = vlib.progress({ label = ram and 'Breaching the door' or 'Picking the lock', duration = remaining, canCancel = true,
             disable = { move = true, car = true, combat = true },
             anim = (not ram) and { dict = 'mp_arresting', clip = 'a_uncuff', flag = 49 } or nil })
         ClearPedTasks(PlayerPedId())
         if not done then return Veyl.Notify('Stopped', 'info') end
-        Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_doorlocks', 'breachFinish', 10000, start.data.token))
+        Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_doorlocks', 'breachFinish', 10000, start.data.token, picked))
     end)
 end)
 

@@ -14,7 +14,7 @@ local function loadStores()
         if s.robbable and s.ped and s.ped.coords then
             local c = s.ped.coords
             local name = (s.blip and s.blip.name) or s.label
-            stores[s.id] = { id = s.id, label = ('%s (%s)'):format(name, s.id), register = vector3(c.x, c.y, c.z), safe = C.Safes[s.id] }
+            stores[s.id] = { id = s.id, label = ('%s (%s)'):format(name, s.id), register = vector3(c.x, c.y, c.z), heading = c.w or 0.0, safe = C.Safes[s.id] }
         end
     end
 end
@@ -30,7 +30,7 @@ end)
 --- The client asks for the list once (the shop list lives in veyl_shops).
 Veyl.RegisterCallback('stores', function()
     local out = {}
-    for id, s in pairs(stores) do out[#out + 1] = { id = id, label = s.label, register = s.register, safe = s.safe } end
+    for id, s in pairs(stores) do out[#out + 1] = { id = id, label = s.label, register = s.register, heading = s.heading, safe = s.safe } end
     return Veyl.Ok(out)
 end, { cooldown = 5000, requireCharacter = false })
 
@@ -60,7 +60,7 @@ local function alarm(store, kind)
     end)
 end
 
-Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind)
+Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind, method)
     local s = stores[storeId]
     if not s or (kind ~= 'register' and kind ~= 'safe') or (kind == 'safe' and not s.safe) then return Veyl.Err('INVALID_INPUT', 'Unknown target') end
     if not near(src, kind == 'safe' and s.safe or s.register, 3.0) then return Veyl.Err('TOO_FAR', 'Move closer') end
@@ -72,15 +72,18 @@ Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind)
     local key = storeId .. ':' .. kind
     if (storeCooldown[key] or 0) > now then return Veyl.Err('RATE_LIMITED', ('This %s was emptied recently'):format(kind)) end
     if (playerCooldown[citizenid] or 0) > now then return Veyl.Err('RATE_LIMITED', 'Lie low for a while first') end
-    if kind == 'register' and GetSelectedPedWeapon(GetPlayerPed(src)) == `WEAPON_UNARMED` then return Veyl.Err('NO_ITEM', 'You need a weapon to threaten the clerk') end
+    local picking = kind == 'register' and method == 'lockpick'
+    if kind == 'register' and not picking and GetSelectedPedWeapon(GetPlayerPed(src)) == `WEAPON_UNARMED` then return Veyl.Err('NO_ITEM', 'You need a weapon to threaten the clerk') end
+    if picking and (exports.veyl_inventory:GetItemCount(src, C.Register.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     if kind == 'safe' and (exports.veyl_inventory:GetItemCount(src, C.Safe.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     storeCooldown[key] = now + C.StoreCooldownMinutes * 60
     playerCooldown[citizenid] = now + C.PlayerCooldownMinutes * 60
     local token = Veyl.NewId()
-    jobs[src] = { store = storeId, kind = kind, at = GetGameTimer(), token = token }
+    local seconds = kind == 'safe' and C.Safe.seconds or (picking and C.Register.pickSeconds or C.Register.seconds)
+    jobs[src] = { store = storeId, kind = kind, at = GetGameTimer(), token = token, seconds = seconds }
     alarm(s, kind)
     Veyl.Audit(src, 'robbery_start', { store = storeId, kind = kind })
-    return Veyl.Ok({ token = token, seconds = kind == 'safe' and C.Safe.seconds or C.Register.seconds })
+    return Veyl.Ok({ token = token, seconds = seconds })
 end, { cooldown = 2000 })
 
 Veyl.RegisterCallback('finish', function(src, citizenid, token)
@@ -89,7 +92,7 @@ Veyl.RegisterCallback('finish', function(src, citizenid, token)
     if not j or j.token ~= token then return Veyl.Err('INVALID_STATE', 'Start again') end
     local s = stores[j.store]
     local cfg = j.kind == 'safe' and C.Safe or C.Register
-    if GetGameTimer() - j.at < cfg.seconds * 1000 - 600 then return Veyl.Err('TOO_FAST', 'You ran off too early') end
+    if GetGameTimer() - j.at < j.seconds * 1000 - 600 then return Veyl.Err('TOO_FAST', 'You ran off too early') end
     if not near(src, j.kind == 'safe' and s.safe or s.register, 3.5) then return Veyl.Err('TOO_FAR', 'You walked away') end
     if Player(src).state.medical or Player(src).state.cuffed then return Veyl.Err('INVALID_STATE', 'You were stopped') end
     if j.kind == 'safe' then
@@ -104,4 +107,15 @@ Veyl.RegisterCallback('finish', function(src, citizenid, token)
 end, { cooldown = 1000 })
 
 Veyl.RegisterCallback('cancel', function(src) jobs[src] = nil return Veyl.Ok() end, { cooldown = 200 })
+
+--- The lockpick mini game failed at a store: the pick may snap.
+Veyl.RegisterCallback('pickFailed', function(src, _, storeId, kind)
+    local s = stores[storeId]
+    if not s or not near(src, kind == 'safe' and (s.safe or s.register) or s.register, 4.0) then return Veyl.Ok() end
+    local cfg = kind == 'safe' and C.Safe or C.Register
+    if math.random() < (cfg.pickBreakChance or 0.3) and exports.veyl_inventory:RemoveItem(src, cfg.item, 1) then
+        return Veyl.Ok({ broke = true }, 'Your lockpick snapped')
+    end
+    return Veyl.Ok({ broke = false }, 'You slipped. Try again.')
+end, { cooldown = 1500 })
 AddEventHandler('playerDropped', function() jobs[source] = nil end)

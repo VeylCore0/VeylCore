@@ -160,6 +160,7 @@ end
 
 --- Applies committed items to memory and pushes deltas to every viewer of the inventory.
 function Store.Apply(inv, newItems, changedSlots, revision)
+    local cashBefore = (Cash and inv.type == 'player') and Cash.Count(inv.items) or nil
     inv.items = newItems
     inv.revision = revision
     inv.weight = computeWeight(newItems)
@@ -173,6 +174,7 @@ function Store.Apply(inv, newItems, changedSlots, revision)
         end
     end
     TriggerEvent('veyl_inventory:changed', inv.id, changedSlots)
+    if cashBefore then Cash.OnApplied(inv, cashBefore) end
 end
 
 function Store.Snapshot(inv, src)

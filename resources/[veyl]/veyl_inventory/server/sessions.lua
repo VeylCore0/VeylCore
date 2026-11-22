@@ -24,6 +24,7 @@ function Inventory_OnCharacterLoaded(src, citizenid, generation, label)
     inv.viewers[src] = 'primary'
     TriggerClientEvent('veyl_inventory:init', src, { primary = Store.View(inv, 'primary'), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
     Drops.Sync(src)
+    if Cash then CreateThread(function() Cash.Sync(src) end) end
 end
 
 function Inventory_OnCharacterUnloaded(src)
