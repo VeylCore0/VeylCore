@@ -51,3 +51,15 @@ Every revive, help-up, treatment, respawn and check-in is written to the audit l
 ## Voice
 
 With pma-voice running, a downed player can only whisper (`VoiceRangeDowned`, 1.5 m) and an unconscious player cannot be heard (`VoiceRangeUnconscious`). The normal range comes back when they are revived or respawn. The HUD shows one bar while the range is overridden.
+
+## Death screen
+
+While downed or unconscious, a full-screen overlay replaces the old help text. It never takes the mouse or keyboard: G and E still go to the game.
+
+| State | What it shows |
+|---|---|
+| **Downed** | "YOU'RE DOWN" over a red vignette that pulses with your heartbeat. The pulse and the heart-monitor trace speed up as you bleed out, and the last 20% turns critical (darker edges, blinking timer). A ring counts down to passing out. **G** calls for help, then shows the cooldown. |
+| **Unconscious** | "UNCONSCIOUS", a flatline and a grey, drained screen (`DeathFailMPIn` effect). The ring counts down to respawn, then **E** respawns at the hospital with the fee shown. |
+| **Being helped** | The trace turns green and calm, with a progress bar for the revive or help-up. |
+
+Chips under the timer show how many EMS are on duty and whether they were alerted, or that a first aid kit can get you up when no EMS are around. The page is `packages/medical-ui` (built into `veyl_medical/web/dist`).

@@ -5,8 +5,12 @@ local C = MedicalConfig
 local state = nil          -- nil | 'down' | 'dead'
 local bleedOutAt, respawnAt = 0, 0
 local reporting = false
-local helpedUntil = 0
+local helpedUntil, helpedTotal = 0, 0
 local fee = C.RespawnFee
+-- Shown on the death screen
+local bleedTotal, respawnTotal = C.BleedOutSeconds * 1000, C.RespawnSeconds * 1000
+local emsOnDuty, emsAlerted, callReadyAt = 0, 0, 0
+local respawning = false
 
 local ANIMS = {
     down = { dict = 'combat@damage@writhe', clip = 'writhe_loop' },
@@ -35,6 +39,11 @@ local function applySnapshot(s)
     if s and s.bleedOutIn then bleedOutAt = now + s.bleedOutIn * 1000 end
     if s and s.respawnIn then respawnAt = now + s.respawnIn * 1000 end
     if s and s.fee then fee = s.fee end
+    if s and s.bleedTotal then bleedTotal = s.bleedTotal * 1000 end
+    if s and s.respawnTotal then respawnTotal = s.respawnTotal * 1000 end
+    if s and s.ems then emsOnDuty = s.ems end
+    if s and s.emsAlerted then emsAlerted = s.emsAlerted end
+    if s and s.callCooldown then callReadyAt = now + s.callCooldown * 1000 end
 end
 
 --- Brings the ped back to life where it lies (keeps the vehicle seat) so it can play the downed animation.
@@ -91,8 +100,6 @@ local function onDeath()
     if not res or not res.ok then return end
     applySnapshot(res.data)
     resurrect()
-    if res.data.emsAlerted and res.data.emsAlerted > 0 then Veyl.Notify('EMS have been alerted.', 'info')
-    elseif state == 'down' then Veyl.Notify('No EMS are on duty. Someone with a first aid kit can still help you up.', 'warning', 7000) end
 end
 
 CreateThread(function()
@@ -109,10 +116,40 @@ CreateThread(function()
     end
 end)
 
-local function fmt(ms)
-    local s = math.max(0, math.ceil(ms / 1000))
-    return ('%d:%02d'):format(s // 60, s % 60)
+---------------------------------------------------------------------------
+-- Death screen (passive NUI: never takes focus) and screen effect
+---------------------------------------------------------------------------
+local function pushScreen()
+    local now = GetGameTimer()
+    if not state then
+        SendNUIMessage({ action = 'medical:state', data = { visible = false } })
+        return
+    end
+    SendNUIMessage({ action = 'medical:state', data = {
+        visible = true, state = state,
+        remainingMs = math.max(0, (state == 'down' and bleedOutAt or respawnAt) - now),
+        totalMs = state == 'down' and bleedTotal or respawnTotal,
+        callMs = math.max(0, callReadyAt - now),
+        helpedMs = math.max(0, helpedUntil - now), helpedTotalMs = helpedTotal,
+        ems = emsOnDuty, alerted = emsAlerted, fee = fee, respawning = respawning,
+        firstAid = C.CiviliansCanHelpUp, hospital = C.Hospital.label,
+    } })
 end
+
+CreateThread(function()
+    local fx = nil
+    while true do
+        pushScreen()
+        -- Unconscious: the world drains to grey. Downed: the page's red vignette does the work.
+        local want = state == 'dead' and 'DeathFailMPIn' or nil
+        if want ~= fx then
+            if fx then AnimpostfxStop(fx) end
+            if want then AnimpostfxPlay(want, 0, true) end
+            fx = want
+        end
+        Wait(state and 500 or 1000)
+    end
+end)
 
 -- Voice: downed players whisper, unconscious players cannot be heard (pma-voice; restored when the state ends).
 CreateThread(function()
@@ -147,7 +184,7 @@ CreateThread(function()
             DisableAllControlActions(0)
             for _, k in ipairs({ 1, 2, 245, 249, 199, 200, 46, 47, 38 }) do EnableControlAction(0, k, true) end -- look, chat, push-to-talk, pause, G, E
             if now < helpedUntil then
-                Veyl.HelpText('Someone is helping you…')
+                -- shown on the death screen
             elseif state == 'down' then
                 if now >= bleedOutAt and not transitioning then
                     transitioning = true
@@ -157,23 +194,31 @@ CreateThread(function()
                         transitioning = false
                     end)
                 end
-                Veyl.HelpText(('You are badly hurt. You pass out in %s~n~Press ~INPUT_DETONATE~ to call for help'):format(fmt(bleedOutAt - now)))
-                if IsControlJustPressed(0, 47) then
-                    CreateThread(function() Veyl.NotifyResult(Veyl.Callback('veyl_medical', 'callHelp', streetHere())) end)
+                if IsControlJustPressed(0, 47) and now >= callReadyAt then
+                    callReadyAt = now + C.CallCooldownSeconds * 1000
+                    CreateThread(function()
+                        local r = Veyl.Callback('veyl_medical', 'callHelp', streetHere())
+                        if r.ok and r.data then
+                            emsAlerted = r.data.emsAlerted or 0
+                            emsOnDuty = math.max(emsOnDuty, emsAlerted)
+                        end
+                        Veyl.NotifyResult(r)
+                        pushScreen()
+                    end)
                 end
             elseif state == 'dead' then
-                if now < respawnAt then
-                    Veyl.HelpText(('You are unconscious. You can respawn in %s'):format(fmt(respawnAt - now)))
-                else
-                    Veyl.HelpText(('Press ~INPUT_CONTEXT~ to respawn at the hospital ($%d)'):format(fee))
+                if now >= respawnAt then
                     if IsControlJustPressed(0, 38) and not transitioning then
                         transitioning = true
+                        respawning = true
+                        pushScreen()
                         CreateThread(function()
                             local r = Veyl.CallbackTimeout('veyl_medical', 'respawn', 15000)
                             if not r.ok then
                                 Veyl.NotifyResult(r)
                                 if r.data then applySnapshot(r.data) end
                                 transitioning = false
+                                respawning = false
                                 return
                             end
                             DoScreenFadeOut(500)
@@ -190,6 +235,7 @@ CreateThread(function()
                             DoScreenFadeIn(600)
                             Veyl.Notify(r.message, 'info', 7000)
                             transitioning = false
+                            respawning = false
                         end)
                     end
                 end
@@ -211,14 +257,19 @@ RegisterNetEvent('veyl_medical:heal', function(health)
     ClearPedBloodDamage(ped)
 end)
 RegisterNetEvent('veyl_medical:beingHelped', function(seconds)
-    helpedUntil = (tonumber(seconds) or 0) > 0 and GetGameTimer() + seconds * 1000 + 1000 or 0
+    seconds = tonumber(seconds) or 0
+    helpedUntil = seconds > 0 and GetGameTimer() + seconds * 1000 + 1000 or 0
+    helpedTotal = seconds > 0 and seconds * 1000 + 1000 or 0
+    pushScreen()
 end)
 RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
     if state then standUp(200) end
     state = nil
 end)
 AddEventHandler('onResourceStop', function(res)
-    if res ~= GetCurrentResourceName() or not state then return end
+    if res ~= GetCurrentResourceName() then return end
+    AnimpostfxStop('DeathFailMPIn')
+    if not state then return end
     local ped = PlayerPedId()
     SetEntityInvincible(ped, false)
     SetPedCanRagdoll(ped, true)

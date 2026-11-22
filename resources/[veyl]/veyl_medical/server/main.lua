@@ -61,7 +61,11 @@ local function snapshot(st)
         state = st.state,
         bleedOutIn = st.state == 'down' and math.max(0, st.at + C.BleedOutSeconds - now) or nil,
         respawnIn = st.state == 'dead' and math.max(0, st.respawnAt - now) or nil,
+        bleedTotal = C.BleedOutSeconds,
+        respawnTotal = st.state == 'dead' and math.max(1, st.respawnAt - st.at) or nil,
         fee = C.RespawnFee,
+        ems = #emsOnDuty(),
+        callCooldown = math.max(0, (st.lastCall or 0) + C.CallCooldownSeconds - now),
     }
 end
 

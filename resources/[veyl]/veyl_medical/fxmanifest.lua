@@ -11,3 +11,6 @@ dependencies { 'veyl_lib', 'veyl_core', 'veyl_ui', 'veyl_inventory', 'veyl_inter
 shared_scripts { '@veyl_lib/init.lua', '@veyl_core/lib/shared.lua', 'config.lua' }
 server_scripts { '@veyl_core/lib/server.lua', 'server/main.lua' }
 client_scripts { '@veyl_core/lib/client.lua', '@veyl_core/modules/playerdata.lua', 'client/main.lua' }
+
+ui_page 'web/dist/index.html'
+files { 'web/dist/index.html', 'web/dist/assets/*' }
