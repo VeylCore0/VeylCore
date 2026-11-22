@@ -1,0 +1,13 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+# GitBook site structure (Git Sync). One space, read from the docs/ folder (README.md = front page, SUMMARY.md = contents).
+site:
+  title: VeylCore
+  structure:
+    - type: space
+      key: veylcore-docs
+      title: VeylCore Docs
+      path: docs
+      default: true
+      content:
+        directory: ./docs
+        language: en
