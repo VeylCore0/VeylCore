@@ -45,8 +45,13 @@ return {
     phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false },
     identity_card = {
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.png',
-        weight = 10, stack = false, metadataSchema = 'identity_card',
+        weight = 10, stack = false, metadataSchema = 'identity_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 },
     },
+    -- veyl_cityhall: printed at the City Hall desk; using one shows it to people nearby
+    driver_license = { label = "Driver's Licence", description = 'Proof you can drive.', image = 'identity_card.png', weight = 10, stack = false,
+        metadataSchema = 'licence_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 } },
+    weapon_license = { label = 'Weapon Licence', description = 'Proof you may carry a firearm.', image = 'identity_card.png', weight = 10, stack = false,
+        metadataSchema = 'licence_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 } },
     -- veyl_doorlocks
     door_key = { label = 'Key', description = 'Opens one door.', image = 'keys.png', weight = 20, stack = false, metadataSchema = 'door_key' },
     lockpick = { label = 'Lockpick', description = 'Picks simple locks. Might break.', image = 'lockpick.png', weight = 50, stack = true, maxStack = 10 },
