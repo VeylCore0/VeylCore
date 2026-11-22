@@ -71,7 +71,23 @@ local function stop(instant)
     current = nil
     removeProps(c)
     local ped = PlayerPedId()
-    if instant then ClearPedTasksImmediately(ped) else ClearPedTasks(ped) end -- scenarios play their exit animation
+    if c.emote.scenario then
+        -- Scenarios bring their own props (rod, cup, phone...). An immediate clear leaves them floating, so let the
+        -- scenario end normally and then remove anything it left attached to us.
+        ClearPedTasks(ped)
+        SetTimeout(instant and 300 or 2500, function()
+            -- A new scenario emote started meanwhile owns the props now: leave them.
+            if current and current.emote.scenario then return end
+            local me = PlayerPedId()
+            for _, obj in ipairs(GetGamePool('CObject')) do
+                if IsEntityAttachedToEntity(obj, me) and not NetworkGetEntityIsNetworked(obj) then DeleteEntity(obj) end
+            end
+        end)
+    elseif instant then
+        ClearPedTasksImmediately(ped)
+    else
+        ClearPedTasks(ped)
+    end
 end
 
 local function play(e, clipOverride)

@@ -1,9 +1,12 @@
 -- Item use: server reserves -> client progress -> server completes (validates timing) -> server applies effect.
 
 local using = false
+local lastUse = 0
 
 function UseSlot(slot)
-    if using then return end
+    -- The server accepts one use start every 500 ms: ignore repeat presses instead of showing a rate-limit error.
+    if using or GetGameTimer() - lastUse < 600 then return end
+    lastUse = GetGameTimer()
     using = true
     local start = vlib.callback.await('veyl_inventory:useStart', { timeoutMs = 8000 }, slot)
     if type(start) ~= 'table' or not start.ok then
