@@ -99,14 +99,14 @@ RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
 end)
 
 ---------------------------------------------------------------------------
--- Basic death handling (until veyl_medical exists): timer, then hospital respawn
+-- Basic death handling, used only when veyl_medical is not running: timer, then hospital respawn
 ---------------------------------------------------------------------------
 CreateThread(function()
     while true do
         local sleep = 500
         if Veyl.IsLoaded() and not spawning then
             local ped = PlayerPedId()
-            if IsEntityDead(ped) and not isDead then
+            if IsEntityDead(ped) and not isDead and GetResourceState('veyl_medical') ~= 'started' then
                 isDead = true
                 TriggerServerEvent('veyl_spawn:died')
                 local respawnAt = GetGameTimer() + SpawnConfig.RespawnDelaySeconds * 1000

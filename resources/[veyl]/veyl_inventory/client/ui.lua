@@ -18,7 +18,7 @@ local opening = false
 --- Opens the player inventory, optionally with a stash beside it.
 function OpenInventory(stashId)
     if opening or screen:isOpen() or not LocalPlayer.state.isLoggedIn then return end
-    if IsEntityDead(PlayerPedId()) or IsPauseMenuActive() then return end
+    if IsEntityDead(PlayerPedId()) or LocalPlayer.state.medical or IsPauseMenuActive() then return end
     opening = true
     local res = vlib.callback.await('veyl_inventory:open', { timeoutMs = 10000 }, stashId)
     if type(res) ~= 'table' or not res.ok then

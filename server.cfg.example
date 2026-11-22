@@ -46,6 +46,7 @@ ensure veyl_apartments
 ensure veyl_doorlocks
 ensure veyl_cityhall
 ensure veyl_management
+ensure veyl_medical
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example

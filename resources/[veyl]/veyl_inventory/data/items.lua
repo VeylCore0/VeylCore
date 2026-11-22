@@ -47,6 +47,8 @@ return {
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.png',
         weight = 10, stack = false, metadataSchema = 'identity_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 },
     },
+    -- veyl_medical: lets anyone help a downed (not unconscious) person back up; used up on success
+    first_aid_kit = { label = 'First Aid Kit', description = 'Help someone who is down back on their feet.', image = 'first_aid_kit.png', weight = 500, stack = true, maxStack = 5 },
     -- veyl_cityhall: printed at the City Hall desk; using one shows it to people nearby
     driver_license = { label = "Driver's Licence", description = 'Proof you can drive.', image = 'identity_card.png', weight = 10, stack = false,
         metadataSchema = 'licence_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 } },

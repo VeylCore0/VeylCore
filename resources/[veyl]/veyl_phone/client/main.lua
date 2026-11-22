@@ -101,7 +101,7 @@ end
 local function openPhone(appId, route)
     if screen:isOpen() or not Veyl.IsLoaded() then return end
     local ped = PlayerPedId()
-    if IsEntityDead(ped) then return end
+    if IsEntityDead(ped) or LocalPlayer.state.medical == 'dead' then return end -- downed players can still call for help
     if A.BlockWhenAiming and IsPlayerFreeAiming(PlayerId()) then return end
     if A.BlockWhenSwimming and IsPedSwimming(ped) then return Veyl.Notify('Not while swimming', 'error') end
     local data, err = hello()
