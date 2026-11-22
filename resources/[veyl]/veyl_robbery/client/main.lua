@@ -59,7 +59,7 @@ local function addZones(list)
         zones[#zones + 1] = exports.veyl_target:addSphereZone({
             name = 'register_' .. storeId, coords = center, radius = 1.6, title = 'Register',
             options = {
-                { name = 'veyl_rob_register', label = 'Threaten the clerk', icon = 'money', distance = 3.5,
+                { name = 'veyl_rob_register', label = 'Rob the register', icon = 'money', distance = 3.5,
                   canInteract = function() return not LocalPlayer.state.cuffed and not busy end,
                   onSelect = function() CreateThread(function() rob(storeId, 'register', 'weapon') end) end },
                 { name = 'veyl_rob_register_pick', label = 'Pick the register lock', icon = 'lock', distance = 3.5,

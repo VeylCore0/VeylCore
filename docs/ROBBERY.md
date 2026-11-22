@@ -4,7 +4,7 @@ Every **24/7**, **LTD Gasoline** and **Rob's Liquor** can be robbed (each shop m
 
 | Target | Needs | Time | Take |
 |---|---|---|---|
-| **Register: threaten the clerk** | A weapon in hand (gun or melee) | 25 s | $400 – $900 cash |
+| **Register: rob it** | Nothing (set `Register.requireWeapon = true` to need a weapon in hand) | 25 s | $400 – $900 cash |
 | **Register: pick the lock** | A lockpick + the lockpick mini game (medium); a failed game may snap the pick (35 %) | 12 s after the game | $400 – $900 cash |
 | **Safe** (back room) | A lockpick + the lockpick mini game (hard); a failed game may snap the pick (50 %), and 25 % break on success | 60 s after the game | $1,500 – $3,500 cash |
 
@@ -15,4 +15,4 @@ Every **24/7**, **LTD Gasoline** and **Rob's Liquor** can be robbed (each shop m
 
 Safe positions are in `Safes` (by shop id) in `config.lua`; they assume the base-game store interiors, so check them on your map. A store without a safe entry has a register only. Rewards, times and cooldowns are in the same file.
 
-**Targeting the register:** hold ALT and aim at the counter, the till or the clerk. The zone (1.6 m) sits just in front of where the clerk stands, so it overlaps the counter. "Threaten the clerk" always shows; without a weapon the server says so. "Pick the register lock" shows when you carry a lockpick. Without `veyl_minigames` running, the pick steps succeed without a game.
+**Targeting the register:** hold ALT and aim at the counter, the till or the clerk. The zone (1.6 m) sits just in front of where the clerk stands, so it overlaps the counter. "Rob the register" always shows and needs no weapon (unless `requireWeapon` is on). "Pick the register lock" shows when you carry a lockpick. Without `veyl_minigames` running, the pick steps succeed without a game.

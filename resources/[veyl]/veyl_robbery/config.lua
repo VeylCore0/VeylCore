@@ -9,7 +9,8 @@ RobberyConfig = {
     PlayerCooldownMinutes = 10,    -- per robber
 
     -- Register: threaten the clerk (weapon in hand) or pick the till (lockpick + mini game).
-    Register = { seconds = 25, reward = { 400, 900 }, item = 'lockpick', pickSeconds = 12, difficulty = 'medium', pickBreakChance = 0.35 },
+    -- requireWeapon = true: a weapon must be in hand to threaten the clerk.
+    Register = { seconds = 25, reward = { 400, 900 }, requireWeapon = false, item = 'lockpick', pickSeconds = 12, difficulty = 'medium', pickBreakChance = 0.35 },
     Safe = { seconds = 60, reward = { 1500, 3500 }, item = 'lockpick', breakChance = 0.25, difficulty = 'hard', pickBreakChance = 0.5 },
 
     AlarmDelaySeconds = 0,         -- dispatch goes out when the robbery starts (silent alarm)

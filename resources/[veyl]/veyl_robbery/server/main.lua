@@ -73,7 +73,7 @@ Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind, method)
     if (storeCooldown[key] or 0) > now then return Veyl.Err('RATE_LIMITED', ('This %s was emptied recently'):format(kind)) end
     if (playerCooldown[citizenid] or 0) > now then return Veyl.Err('RATE_LIMITED', 'Lie low for a while first') end
     local picking = kind == 'register' and method == 'lockpick'
-    if kind == 'register' and not picking and GetSelectedPedWeapon(GetPlayerPed(src)) == `WEAPON_UNARMED` then return Veyl.Err('NO_ITEM', 'You need a weapon to threaten the clerk') end
+    if kind == 'register' and not picking and C.Register.requireWeapon and GetSelectedPedWeapon(GetPlayerPed(src)) == `WEAPON_UNARMED` then return Veyl.Err('NO_ITEM', 'You need a weapon to threaten the clerk') end
     if picking and (exports.veyl_inventory:GetItemCount(src, C.Register.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     if kind == 'safe' and (exports.veyl_inventory:GetItemCount(src, C.Safe.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     storeCooldown[key] = now + C.StoreCooldownMinutes * 60
