@@ -89,6 +89,26 @@ CreateThread(function()
         { name = 'veyl_police_search', label = 'Search', icon = 'inspect', distance = C.ActionDistance, priority = 4,
           canInteract = officerOnPlayer(function(st) return C.SearchRequires == 'any' or st.cuffed == true or st.medical ~= nil end),
           onSelect = function(d) CreateThread(function() search(d.entity) end) end },
+        { name = 'veyl_police_identify', label = 'Check ID (MDT)', icon = 'card', distance = C.ActionDistance, priority = 3,
+          canInteract = officerOnPlayer(function() return true end), onSelect = function(d) CreateThread(function()
+              local id = serverIdOf(d.entity)
+              local res = id and Veyl.Callback('veyl_police', 'identify', id)
+              if not res then return end
+              if not res.ok then return Veyl.NotifyResult(res) end
+              if GetResourceState('veyl_mdt') == 'started' then exports.veyl_mdt:OpenPerson(res.data.citizenid)
+              else Veyl.Notify(('ID: %s (%s)'):format(res.data.name, res.data.citizenid), 'info', 8000) end
+          end) end },
+        { name = 'veyl_police_gsr', label = 'Gunshot residue test', icon = 'inspect', distance = C.ActionDistance, priority = 2,
+          canInteract = officerOnPlayer(function() return true end), onSelect = function(d) CreateThread(function()
+              local id = serverIdOf(d.entity)
+              if not id then return end
+              local done = vlib.progress({ label = 'Swabbing hands', duration = 4000, canCancel = true, disable = { move = true, car = true, combat = true },
+                  anim = { dict = 'mp_arresting', clip = 'a_uncuff', flag = 49 } })
+              ClearPedTasks(PlayerPedId())
+              if not done then return end
+              local res = Veyl.Callback('veyl_police', 'gsr', id)
+              Veyl.Notify(res.message or 'Test failed', res.ok and (res.data.positive and 'warning' or 'success') or 'error', 7000)
+          end) end },
         { name = 'veyl_police_cite', label = 'Write citation', icon = 'receipt', distance = C.ActionDistance, priority = 3,
           canInteract = officerOnPlayer(function() return true end), onSelect = function(d) CreateThread(function() cite(d.entity) end) end },
     })
@@ -217,3 +237,26 @@ RegisterCommand('citations', function()
         if method then Veyl.NotifyResult(Veyl.Callback('veyl_police', 'payCitation', id, method)) end
     end)
 end, false)
+
+---------------------------------------------------------------------------
+-- Gunshot residue: report firing (at most every 10 s) and washing it off by swimming
+---------------------------------------------------------------------------
+CreateThread(function()
+    local lastFired, lastWashed = 0, 0
+    while true do
+        local ped = PlayerPedId()
+        if IsPedArmed(ped, 4) then
+            if IsPedShooting(ped) and GetGameTimer() - lastFired > 10000 then
+                lastFired = GetGameTimer()
+                TriggerServerEvent('veyl_police:fired')
+            end
+            Wait(0)
+        else
+            if IsPedSwimming(ped) and GetGameTimer() - lastWashed > 30000 then
+                lastWashed = GetGameTimer()
+                TriggerServerEvent('veyl_police:washed')
+            end
+            Wait(500)
+        end
+    end
+end)

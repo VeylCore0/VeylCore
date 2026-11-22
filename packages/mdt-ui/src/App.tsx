@@ -6,7 +6,9 @@ import { BrandHeader, CloseHint, Icon, StateView, announceReady, money, nui, use
 // ---------------------------------------------------------------------------
 interface Warrant { id: number; citizenid?: string; name?: string; reason: string; issued_by: string; status?: string; at: number }
 interface ReportRow { id: number; type: string; title: string; author_name?: string; role?: string; at: number }
-interface Dashboard { officer: string; warrants: Warrant[]; reports: ReportRow[]; flagged: { plate: string; stolen: number; bolo: number; notes?: string }[] }
+interface Charge { id: string; label: string; category: string; fine: number; months: number }
+interface Unit { id: number; name: string; grade?: string; status: string }
+interface Dashboard { officer: string; warrants: Warrant[]; reports: ReportRow[]; flagged: { plate: string; stolen: number; bolo: number; notes?: string }[]; charges: Charge[]; roster: Unit[] | null; canLicence: boolean }
 interface PersonRow { citizenid: string; firstname?: string; lastname?: string; birthdate?: string; phone?: string; job?: string; warrants?: number }
 interface Person extends Omit<PersonRow, 'warrants'> {
   gender?: number | string; nationality?: string; online: boolean; licences: { key: string; label: string; held: boolean }[];
@@ -15,8 +17,10 @@ interface Person extends Omit<PersonRow, 'warrants'> {
   warrants: Warrant[]; reports: ReportRow[]; notes: string; notesBy?: string; sentence?: { months: number; remaining: number } | null;
 }
 interface Vehicle { plate: string; model?: string; state?: string; registered: boolean; owner?: { citizenid: string; name: string }; stolen: boolean; bolo: boolean; notes: string; flaggedBy?: string }
-interface Report { id?: number; type: string; title: string; body: string; author_name?: string; at?: number; people: { citizenid: string; role: string; name?: string }[] }
-type Tab = 'dashboard' | 'people' | 'vehicles' | 'reports';
+interface Report { id?: number; type: string; title: string; body: string; author_name?: string; at?: number; people: { citizenid: string; role: string; name?: string }[]; charges?: string[] }
+type Tab = 'dashboard' | 'people' | 'vehicles' | 'reports' | 'roster' | 'penal';
+const totals = (ids: string[], charges: Charge[]) => ids.reduce((t, id) => { const c = charges.find((x) => x.id === id); return c ? { fine: t.fine + c.fine, months: t.months + c.months } : t; }, { fine: 0, months: 0 });
+const usd = (n: number) => '$' + n.toLocaleString('en-US');
 type Say = (k: 'ok' | 'error', t: string) => void;
 
 const api = <T,>(name: string, ...args: unknown[]) => nui<T>('api', { name, args }) as Promise<NuiResponse<T>>;
@@ -38,6 +42,7 @@ export function App() {
 
   useNuiMessage<Dashboard>('mdt:open', (d) => { setDash(d); setTab('dashboard'); setPersonId(null); setPlate(null); setReportId(null); });
   useNuiMessage('mdt:close', () => setDash(null));
+  useNuiMessage<{ citizenid: string }>('mdt:person', (d) => { if (d?.citizenid) { setTab('people'); setPlate(null); setReportId(null); setPersonId(d.citizenid); } });
   const close = useCallback(() => { void nui('close'); setDash(null); }, []);
   useEffect(() => {
     if (!dash) return;
@@ -59,9 +64,10 @@ export function App() {
   const openReport = (id: number | 'new') => { setTab('reports'); setReportId(id); };
   const refreshDash = async () => { const r = await api<Dashboard>('dashboard'); if (r.ok && r.data) setDash(r.data); };
 
-  const nav: { id: Tab; label: string; icon: 'home' | 'users' | 'car' | 'folder' }[] = [
+  const nav: { id: Tab; label: string; icon: 'home' | 'users' | 'car' | 'folder' | 'shield' | 'note' }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' }, { id: 'people', label: 'People', icon: 'users' },
     { id: 'vehicles', label: 'Vehicles', icon: 'car' }, { id: 'reports', label: 'Reports', icon: 'folder' },
+    { id: 'roster', label: 'Roster', icon: 'shield' }, { id: 'penal', label: 'Penal code', icon: 'note' },
   ];
 
   return (
@@ -77,9 +83,11 @@ export function App() {
         </aside>
         <main className="mdt-main">
           {tab === 'dashboard' && <DashboardView dash={dash} openPerson={openPerson} openVehicle={openVehicle} openReport={openReport} refresh={refreshDash} />}
-          {tab === 'people' && (personId ? <PersonView cid={personId} say={say} back={() => setPersonId(null)} openVehicle={openVehicle} openReport={openReport} /> : <PeopleSearch open={openPerson} say={say} />)}
+          {tab === 'people' && (personId ? <PersonView cid={personId} charges={dash.charges} canLicence={dash.canLicence} say={say} back={() => setPersonId(null)} openVehicle={openVehicle} openReport={openReport} /> : <PeopleSearch open={openPerson} say={say} />)}
           {tab === 'vehicles' && (plate ? <VehicleView plate={plate} say={say} back={() => setPlate(null)} openPerson={openPerson} /> : <VehicleSearch open={openVehicle} say={say} />)}
-          {tab === 'reports' && (reportId !== null ? <ReportEditor id={reportId} say={say} back={() => setReportId(null)} openPerson={openPerson} /> : <ReportList open={openReport} />)}
+          {tab === 'roster' && <RosterView initial={dash.roster} />}
+          {tab === 'penal' && <PenalCode charges={dash.charges} />}
+          {tab === 'reports' && (reportId !== null ? <ReportEditor id={reportId} charges={dash.charges} say={say} back={() => setReportId(null)} openPerson={openPerson} /> : <ReportList open={openReport} />)}
         </main>
       </div>
       {toast && <div className={`v-toast-inline ${toast.kind === 'error' ? 'error' : 'success'}`} role="alert"><Icon name={toast.kind === 'error' ? 'alert' : 'check'} size="1rem" />{toast.text}</div>}
@@ -169,10 +177,10 @@ function PeopleSearch({ open, say }: { open: (cid: string) => void; say: Say }) 
   );
 }
 
-function PersonView({ cid, say, back, openVehicle, openReport }: { cid: string; say: Say; back: () => void; openVehicle: (p: string) => void; openReport: (id: number | 'new') => void }) {
+function PersonView({ cid, charges, canLicence, say, back, openVehicle, openReport }: { cid: string; charges: Charge[]; canLicence: boolean; say: Say; back: () => void; openVehicle: (p: string) => void; openReport: (id: number | 'new') => void }) {
   const [p, setP] = useState<Person | null>(null);
   const [notes, setNotes] = useState('');
-  const [dialog, setDialog] = useState<'warrant' | 'sentence' | null>(null);
+  const [dialog, setDialog] = useState<'warrant' | 'sentence' | 'charges' | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { void (async () => { const r = await api<Person>('person', cid); if (r.ok && r.data) { setP(r.data); setNotes(r.data.notes); } else say('error', r.message ?? 'Not found'); })(); }, [cid, say]);
   const apply = (r: NuiResponse<Person>) => { if (r.ok && r.data) { setP(r.data); setNotes(r.data.notes); } say(r.ok ? 'ok' : 'error', r.message ?? (r.ok ? 'Saved' : 'Failed')); };
@@ -194,13 +202,17 @@ function PersonView({ cid, say, back, openVehicle, openReport }: { cid: string; 
           </div>
         </div>
         <div className="mdt-row-gap">
+          <button className="v-btn primary" onClick={() => setDialog('charges')}>Charges</button>
           <button className="v-btn danger" onClick={() => setDialog('warrant')}>Issue warrant</button>
           <button className="v-btn" onClick={() => setDialog('sentence')}>Sentence</button>
         </div>
       </div>
       <div className="mdt-grid">
         <Section title="Licences">
-          <div className="mdt-chips">{p.licences.map((l) => <span key={l.key} className={`mdt-chip ${l.held ? 'ok' : 'off'}`}>{l.held ? '✓' : '✕'} {l.label}</span>)}</div>
+          <div className="mdt-chips">{p.licences.map((l) => canLicence
+            ? <button key={l.key} className={`mdt-chip btn ${l.held ? 'ok' : 'off'}`} title={l.held ? 'Revoke' : 'Grant'} onClick={async () => apply(await api<Person>('setLicence', p.citizenid, l.key, !l.held))}>{l.held ? '✓' : '✕'} {l.label}</button>
+            : <span key={l.key} className={`mdt-chip ${l.held ? 'ok' : 'off'}`}>{l.held ? '✓' : '✕'} {l.label}</span>)}</div>
+          {canLicence && <div className="v-muted small">Click a licence to grant or revoke it.</div>}
         </Section>
         <Section title={`Warrants (${active.length} active)`}>
           {p.warrants.length === 0 && <div className="v-muted small">None.</div>}
@@ -243,6 +255,9 @@ function PersonView({ cid, say, back, openVehicle, openReport }: { cid: string; 
       </div>
       {dialog === 'warrant' && <FormDialog title={`Warrant for ${fullName(p)}`} fields={[{ name: 'reason', label: 'Reason', textarea: true }]} submit="Issue warrant" danger
         onCancel={() => setDialog(null)} onSubmit={async (v) => { const r = await api<Person>('issueWarrant', p.citizenid, v.reason); apply(r); if (r.ok) setDialog(null); }} />}
+      {dialog === 'charges' && <ChargesDialog name={fullName(p)} charges={charges} onCancel={() => setDialog(null)}
+        onFine={async (ids) => { const r = await api<Person>('chargeFine', p.citizenid, ids); apply(r); if (r.ok) setDialog(null); }}
+        onSentence={async (ids, withFine) => { const r = await api<Person>('chargeSentence', p.citizenid, ids, withFine); apply(r); if (r.ok) setDialog(null); }} />}
       {dialog === 'sentence' && <FormDialog title={`Sentence ${fullName(p)}`} fields={[{ name: 'months', label: 'Months (1 month = 1 minute in prison)', number: true }, { name: 'reason', label: 'Charges' }]} submit="Send to prison" danger
         onCancel={() => setDialog(null)} onSubmit={async (v) => { const r = await api<Person>('sentence', p.citizenid, Number(v.months), v.reason); apply(r); if (r.ok) setDialog(null); }} />}
     </div>
@@ -349,7 +364,7 @@ function ReportList({ open }: { open: (id: number | 'new') => void }) {
   );
 }
 
-function ReportEditor({ id, say, back, openPerson }: { id: number | 'new'; say: Say; back: () => void; openPerson: (c: string) => void }) {
+function ReportEditor({ id, charges, say, back, openPerson }: { id: number | 'new'; charges: Charge[]; say: Say; back: () => void; openPerson: (c: string) => void }) {
   const [r, setR] = useState<Report | null>(id === 'new' ? { type: 'incident', title: '', body: '', people: [] } : null);
   const [busy, setBusy] = useState(false);
   const [find, setFind] = useState<PersonRow[] | null>(null);
@@ -357,7 +372,7 @@ function ReportEditor({ id, say, back, openPerson }: { id: number | 'new'; say: 
   if (!r) return <div className="mdt-page"><Back onClick={back} label="Reports" /><StateView kind="loading" /></div>;
   const save = async () => {
     setBusy(true);
-    const res = await api<Report>('saveReport', { id: r.id, type: r.type, title: r.title, body: r.body, people: r.people.map((p) => ({ citizenid: p.citizenid, role: p.role })) });
+    const res = await api<Report>('saveReport', { id: r.id, type: r.type, title: r.title, body: r.body, people: r.people.map((p) => ({ citizenid: p.citizenid, role: p.role })), charges: r.charges ?? [] });
     setBusy(false);
     if (res.ok && res.data) setR(res.data);
     say(res.ok ? 'ok' : 'error', res.message ?? '');
@@ -379,6 +394,17 @@ function ReportEditor({ id, say, back, openPerson }: { id: number | 'new'; say: 
           </div>
           <textarea className="v-input mdt-body" value={r.body} maxLength={8000} placeholder="What happened, in order. Charges, evidence, statements." onChange={(e) => setR({ ...r, body: e.target.value })} />
         </div>
+        <div className="mdt-report-side">
+        <Section title={`Charges (${(r.charges ?? []).length})`} right={<span className="v-muted small">{(() => { const t = totals(r.charges ?? [], charges); return `${usd(t.fine)} · ${t.months} months`; })()}</span>}>
+          {(r.charges ?? []).map((cid, i) => { const c = charges.find((x) => x.id === cid); return (
+            <div key={i} className="mdt-involved"><span>{c?.label ?? cid}</span><span className="v-muted small">{usd(c?.fine ?? 0)} · {c?.months ?? 0} mo</span>
+              <button className="v-btn small link" aria-label="Remove" onClick={() => setR({ ...r, charges: (r.charges ?? []).filter((_, j) => j !== i) })}><Icon name="close" size="0.9rem" /></button></div>
+          ); })}
+          <select className="v-input" value="" onChange={(e) => { if (e.target.value) setR({ ...r, charges: [...(r.charges ?? []), e.target.value] }); }}>
+            <option value="">Add a charge…</option>
+            {charges.map((c) => <option key={c.id} value={c.id}>{c.category}: {c.label}</option>)}
+          </select>
+        </Section>
         <Section title={`People involved (${r.people.length})`}>
           {r.people.map((p, i) => (
             <div key={p.citizenid} className="mdt-involved">
@@ -397,6 +423,102 @@ function ReportEditor({ id, say, back, openPerson }: { id: number | 'new'; say: 
             </button>
           ))}
         </Section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+function ChargesDialog({ name, charges, onCancel, onFine, onSentence }: { name: string; charges: Charge[]; onCancel: () => void; onFine: (ids: string[]) => Promise<void>; onSentence: (ids: string[], withFine: boolean) => Promise<void> }) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [withFine, setWithFine] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState('');
+  const ids = Object.entries(counts).flatMap(([id, n]) => Array.from({ length: n }, () => id));
+  const t = totals(ids, charges);
+  const cats = [...new Set(charges.map((c) => c.category))];
+  const match = (c: Charge) => !q || c.label.toLowerCase().includes(q.toLowerCase());
+  const bump = (id: string, d: number) => setCounts((c) => ({ ...c, [id]: Math.max(0, Math.min(5, (c[id] ?? 0) + d)) }));
+  const run = async (fn: () => Promise<void>) => { setBusy(true); await fn(); setBusy(false); };
+  return (
+    <div className="v-dialog-backdrop" role="dialog" aria-modal="true">
+      <div className="v-panel mdt-dialog wide">
+        <h3>Charges: {name}</h3>
+        <input className="v-input" placeholder="Filter charges…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="mdt-charges v-scroll">
+          {cats.map((cat) => {
+            const list = charges.filter((c) => c.category === cat && match(c));
+            if (list.length === 0) return null;
+            return (
+              <div key={cat}>
+                <div className="mdt-charge-cat">{cat}</div>
+                {list.map((c) => (
+                  <div key={c.id} className={`mdt-charge${counts[c.id] ? ' on' : ''}`}>
+                    <span className="grow">{c.label}</span>
+                    <span className="v-muted small">{usd(c.fine)}{c.months ? ` · ${c.months} mo` : ''}</span>
+                    <span className="mdt-count">
+                      <button className="v-btn small" aria-label={`Remove one ${c.label}`} disabled={!counts[c.id]} onClick={() => bump(c.id, -1)}>−</button>
+                      <b>{counts[c.id] ?? 0}</b>
+                      <button className="v-btn small" aria-label={`Add one ${c.label}`} onClick={() => bump(c.id, 1)}>+</button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mdt-totals"><span>Total fine <b>{usd(t.fine)}</b></span><span>Prison <b>{t.months} months</b></span></div>
+        <label className="mdt-check"><input type="checkbox" checked={withFine} onChange={(e) => setWithFine(e.target.checked)} /> Also fine them when sending to prison</label>
+        <div className="mdt-row-gap end">
+          <button className="v-btn" onClick={onCancel}>Cancel</button>
+          <button className="v-btn primary" disabled={busy || ids.length === 0 || t.fine === 0} onClick={() => void run(() => onFine(ids))}>Issue fine {usd(t.fine)}</button>
+          <button className="v-btn danger" disabled={busy || t.months === 0} onClick={() => void run(() => onSentence(ids, withFine))}>Send to prison ({t.months} mo)</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RosterView({ initial }: { initial: Unit[] | null }) {
+  const [units, setUnits] = useState<Unit[] | null>(initial);
+  const refresh = async () => { const r = await api<Unit[]>('roster'); if (r.ok && r.data) setUnits(r.data); };
+  useEffect(() => { void refresh(); }, []);
+  return (
+    <div className="mdt-page">
+      <div className="mdt-page-head"><h2>On-duty officers</h2><button className="v-btn" onClick={() => void refresh()}><Icon name="reset" size="0.9rem" /> Refresh</button></div>
+      {units === null && <StateView kind="restricted" message="The roster needs veyl_dispatch." />}
+      {units && units.length === 0 && <StateView kind="empty" message="Nobody is on duty." />}
+      <div className="mdt-list">
+        {units?.map((u) => (
+          <div key={u.id} className="mdt-person static">
+            <span className="mdt-avatar"><Icon name="shield" size="1.1rem" /></span>
+            <span className="mdt-person-main"><strong>{u.name}</strong><em>{u.grade ?? ''}</em></span>
+            <span className={`mdt-badge ${u.status === 'available' ? 'ok' : u.status === 'busy' ? 'danger' : 'warn'}`}>{u.status.toUpperCase()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PenalCode({ charges }: { charges: Charge[] }) {
+  const [q, setQ] = useState('');
+  const cats = [...new Set(charges.map((c) => c.category))];
+  return (
+    <div className="mdt-page">
+      <div className="mdt-page-head"><h2>Penal code</h2></div>
+      <input className="v-input" placeholder="Search charges…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="mdt-grid">
+        {cats.map((cat) => {
+          const list = charges.filter((c) => c.category === cat && (!q || c.label.toLowerCase().includes(q.toLowerCase())));
+          if (list.length === 0) return null;
+          return (
+            <Section key={cat} title={cat}>
+              {list.map((c) => <div key={c.id} className="mdt-charge static"><span className="grow">{c.label}</span><span className="v-muted small">{usd(c.fine)} · {c.months ? `${c.months} months` : 'fine only'}</span></div>)}
+            </Section>
+          );
+        })}
       </div>
     </div>
   );

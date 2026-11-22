@@ -24,7 +24,8 @@ RegisterCommand(C.Command, function() CreateThread(open) end, false)
 vlib.addKeybind({ name = 'veyl_mdt', description = 'Open the MDT (police)', defaultKey = C.Key, onPressed = function() CreateThread(open) end })
 
 local ALLOWED = { dashboard = true, searchPeople = true, person = true, saveNotes = true, issueWarrant = true, closeWarrant = true,
-    searchVehicle = true, vehicle = true, flagVehicle = true, reports = true, report = true, saveReport = true, sentence = true }
+    searchVehicle = true, vehicle = true, flagVehicle = true, reports = true, report = true, saveReport = true, sentence = true,
+    chargeFine = true, chargeSentence = true, setLicence = true, roster = true }
 RegisterNUICallback('api', function(data, cb)
     if not screen:isOpen() or type(data) ~= 'table' or not ALLOWED[data.name] then return cb({ ok = false, code = 'INVALID_INPUT' }) end
     local args = type(data.args) == 'table' and data.args or {}
@@ -36,3 +37,11 @@ end)
 
 -- Going off duty closes it.
 RegisterNetEvent('VeylCore:Client:SetDuty', function(onDuty) if not onDuty and screen:isOpen() then screen:close('off_duty') end end)
+
+--- OpenPerson(citizenid): opens the MDT on a person's profile (used by the police "Check ID" option).
+exports('OpenPerson', function(citizenid)
+    CreateThread(function()
+        if not screen:isOpen() then open() end
+        if screen:isOpen() then screen:send('mdt:person', { citizenid = citizenid }) end
+    end)
+end)

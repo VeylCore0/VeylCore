@@ -79,3 +79,18 @@ h2 { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .mdt-profile { grid-template-columns: 4rem minmax(0, 1fr); }
   .mdt-profile > .mdt-row-gap { grid-column: 1 / -1; }
 }
+.mdt-chip.btn { font: inherit; font-size: 0.8rem; border: 1px solid transparent; cursor: pointer; }
+.mdt-chip.btn:hover { border-color: rgba(122, 167, 255, 0.5); }
+.mdt-report-side { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+.mdt-dialog.wide { width: min(44rem, 94vw); max-height: 88vh; }
+.mdt-charges { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; padding-right: 0.3rem; }
+.mdt-charge-cat { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9fb9ec; margin: 0.3rem 0 0.25rem; }
+.mdt-charge { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0.5rem; border-radius: 7px; border: 1px solid transparent; }
+.mdt-charge.on { border-color: rgba(122, 167, 255, 0.45); background: rgba(122, 167, 255, 0.08); }
+.mdt-charge .grow { flex: 1; min-width: 0; }
+.mdt-charge.static { border-bottom: 1px solid var(--border-soft); border-radius: 0; }
+.mdt-count { display: inline-flex; align-items: center; gap: 0.35rem; }
+.mdt-count b { min-width: 1.2rem; text-align: center; }
+.mdt-totals { display: flex; gap: 1.6rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: rgba(122, 167, 255, 0.1); }
+.mdt-totals b { font-size: 1.1rem; margin-left: 0.3rem; }
+.mdt-person.static { cursor: default; }

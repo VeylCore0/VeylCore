@@ -21,5 +21,8 @@ PoliceConfig = {
     ImpoundSeconds = 8,
     ImpoundFee = 750,             -- what the owner pays at the impound lot
 
+    GsrMinutes = 20,              -- a gunshot residue test is positive this long after firing (swimming washes it off)
+    IdentifyRequires = 'any',     -- 'any' | 'cuffed_or_down': who an officer can identify with Check ID
+
     UnCuffCommand = 'uncuff',     -- staff: /uncuff <id> (veyl.police.manage or veyl.admin)
 }

@@ -299,6 +299,69 @@ end, { cooldown = 1000 })
 ---------------------------------------------------------------------------
 -- Staff: /uncuff <id>
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- Gunshot residue: the client reports firing; officers can test anyone close
+---------------------------------------------------------------------------
+local lastShot = {} -- [src] = os.time()
+RegisterNetEvent('veyl_police:fired', function()
+    local src = source
+    if Player(src).state.medical then return end
+    lastShot[src] = os.time()
+end)
+
+Veyl.RegisterCallback('gsr', function(src, _, target)
+    local pd, tpd, err = officerOn(src, target)
+    if not pd then return err end
+    target = tonumber(target)
+    local positive = lastShot[target] and os.time() - lastShot[target] <= C.GsrMinutes * 60
+    Veyl.Audit(src, 'police_gsr', { target = tpd.citizenid, positive = positive == true })
+    return Veyl.Ok({ positive = positive == true }, positive and ('GSR POSITIVE: %s fired a weapon recently'):format(name(tpd))
+        or ('GSR negative for %s'):format(name(tpd)))
+end, { cooldown = 3000 })
+
+-- Washing (swimming) clears residue.
+RegisterNetEvent('veyl_police:washed', function() lastShot[source] = nil end)
+
+---------------------------------------------------------------------------
+-- Check ID: the officer's MDT opens on this person
+---------------------------------------------------------------------------
+Veyl.RegisterCallback('identify', function(src, _, target)
+    local pd, tpd, err = officerOn(src, target)
+    if not pd then return err end
+    target = tonumber(target)
+    if C.IdentifyRequires == 'cuffed_or_down' and not isCuffed(target) and not isDown(target) then
+        return Veyl.Err('INVALID_STATE', 'Ask for their ID, or detain them first')
+    end
+    Veyl.Audit(src, 'police_identify', { target = tpd.citizenid })
+    return Veyl.Ok({ citizenid = tpd.citizenid, name = name(tpd) })
+end, { cooldown = 1500 })
+
+--- RecordCitation(officerSrc, citizenid, amount, reason) -> Veyl.Ok({ id, paid }) / Veyl.Err. Used by the MDT;
+--- works for people who are not in the city (charged when the bank covers it, otherwise left unpaid).
+exports('RecordCitation', function(officerSrc, citizenid, amount, reason)
+    local ok, pd = isOfficer(officerSrc)
+    if not ok then return Veyl.Err('NO_PERMISSION', 'You need to be an on-duty officer') end
+    amount = math.floor(tonumber(amount) or 0)
+    if amount < 1 or amount > C.Citations.Max then return Veyl.Err('INVALID_INPUT', ('Amount must be $1 - $%d'):format(C.Citations.Max)) end
+    reason = type(reason) == 'string' and reason:gsub('[%c]', ''):sub(1, 160) or ''
+    if #reason < 3 then return Veyl.Err('INVALID_INPUT', 'Give a reason') end
+    if not MySQL.scalar.await('SELECT 1 FROM veyl_players WHERE citizenid = ?', { citizenid }) then return Veyl.Err('NOT_FOUND', 'Unknown person') end
+    local id = MySQL.insert.await('INSERT INTO veyl_police_citations (citizenid, officer_cid, officer_name, amount, reason) VALUES (?, ?, ?, ?, ?)',
+        { citizenid, pd.citizenid, name(pd), amount, reason })
+    local paid = false
+    if C.Citations.ChargeImmediately then
+        local r = core('DebitOnce', citizenid, 'bank', amount, ('Citation #%d: %s'):format(id, reason), 'citation:' .. id)
+        if r.ok or r.code == 'DUPLICATE_OPERATION' then
+            MySQL.update.await("UPDATE veyl_police_citations SET status = 'paid', paid_at = NOW() WHERE id = ?", { id })
+            paid = true
+        end
+    end
+    local tsrc = exports.veyl_core:GetSourceByCitizenId(citizenid)
+    if tsrc then Veyl.Notify(tsrc, ('Citation #%d: $%d for %s. %s'):format(id, amount, reason, paid and 'Paid from your bank.' or 'Unpaid: use /citations to pay.'), 'warning', 9000) end
+    Veyl.Audit(officerSrc, 'police_citation', { id = id, target = citizenid, amount = amount, paid = paid, via = 'mdt' })
+    return Veyl.Ok({ id = id, paid = paid }, ('Citation #%d written (%s)'):format(id, paid and 'paid' or 'unpaid'))
+end)
+
 RegisterCommand(C.UnCuffCommand, function(src, args)
     if src ~= 0 and not (Veyl.HasPermission(src, 'police.manage') or Veyl.HasPermission(src, 'admin')) then
         return Veyl.Notify(src, 'You do not have permission to use this command.', 'error')

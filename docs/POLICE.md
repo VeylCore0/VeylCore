@@ -47,4 +47,13 @@ Every cuff, uncuff, search, citation and impound is written to the audit log.
 
 ## Not included yet
 
-An armory, police vehicles and evidence. The armory can be a `veyl_shops` shop limited to the police job (`groups`).
+Evidence collection. (Police vehicles and the equipment locker are in `veyl_departments`.)
+
+## More tools
+
+| Option | What it does |
+|---|---|
+| **Check ID (MDT)** | Opens the MDT on that person's profile (`IdentifyRequires`: anyone, or only cuffed / downed people) |
+| **Gunshot residue test** | 4 s swab: positive if they fired a weapon in the last 20 min (`GsrMinutes`). Swimming washes it off |
+
+Department vehicles and the equipment locker are in [DEPARTMENTS.md](DEPARTMENTS.md).

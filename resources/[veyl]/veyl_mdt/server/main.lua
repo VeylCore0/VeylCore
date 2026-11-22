@@ -54,6 +54,7 @@ Veyl.Startup({ 'veyl_core' }, function()
                 KEY idx_cid (citizenid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
         } },
+        { id = '002_report_charges', sql = { 'ALTER TABLE veyl_mdt_reports ADD COLUMN IF NOT EXISTS charges TEXT NULL' } },
     })
 end)
 
@@ -104,14 +105,15 @@ end
 -- Dashboard
 ---------------------------------------------------------------------------
 Veyl.RegisterCallback('dashboard', function(src)
-    local _, name, err = guard(src)
+    local pd, name, err = guard(src)
     if err then return err end
     local warrants = MySQL.query.await([[SELECT w.id, w.citizenid, w.reason, w.issued_by, UNIX_TIMESTAMP(w.created_at) AS at, p.charinfo
         FROM veyl_mdt_warrants w LEFT JOIN veyl_players p ON p.citizenid = w.citizenid WHERE w.status = 'active' ORDER BY w.id DESC LIMIT 30]]) or {}
     for _, w in ipairs(warrants) do local ci = decode(w.charinfo) w.name = ('%s %s'):format(ci.firstname or '?', ci.lastname or '') w.charinfo = nil end
     local reports = MySQL.query.await([[SELECT id, type, title, author_name, UNIX_TIMESTAMP(created_at) AS at FROM veyl_mdt_reports ORDER BY id DESC LIMIT 15]]) or {}
     local flagged = MySQL.query.await([[SELECT plate, stolen, bolo, notes FROM veyl_mdt_vehicle_flags WHERE stolen = 1 OR bolo = 1 ORDER BY updated_at DESC LIMIT 20]]) or {}
-    return Veyl.Ok({ officer = name, warrants = warrants, reports = reports, flagged = flagged })
+    return Veyl.Ok({ officer = name, warrants = warrants, reports = reports, flagged = flagged, charges = C.Charges,
+        roster = Roster(), canLicence = (pd.job.grade and pd.job.grade.level or 0) >= C.LicenceGrade })
 end, { cooldown = 500 })
 
 ---------------------------------------------------------------------------
@@ -273,12 +275,13 @@ local TYPES = { incident = true, arrest = true, traffic = true, other = true }
 local ROLES = { suspect = true, victim = true, witness = true, officer = true }
 
 local function report(id)
-    local r = MySQL.single.await([[SELECT id, type, title, body, author_name, UNIX_TIMESTAMP(created_at) AS at, UNIX_TIMESTAMP(updated_at) AS updated
+    local r = MySQL.single.await([[SELECT id, type, title, body, author_name, charges, UNIX_TIMESTAMP(created_at) AS at, UNIX_TIMESTAMP(updated_at) AS updated
         FROM veyl_mdt_reports WHERE id = ?]], { id })
     if not r then return nil end
     r.people = MySQL.query.await([[SELECT rp.citizenid, rp.role, p.charinfo FROM veyl_mdt_report_people rp
         LEFT JOIN veyl_players p ON p.citizenid = rp.citizenid WHERE rp.report_id = ?]], { id }) or {}
     for _, p in ipairs(r.people) do local ci = decode(p.charinfo) p.name = ('%s %s'):format(ci.firstname or '?', ci.lastname or '') p.charinfo = nil end
+    r.charges = decode(r.charges)
     return r
 end
 
@@ -317,10 +320,10 @@ Veyl.RegisterCallback('saveReport', function(src, _, data)
     local id = tonumber(data.id)
     if id then
         if not MySQL.scalar.await('SELECT 1 FROM veyl_mdt_reports WHERE id = ?', { id }) then return Veyl.Err('NOT_FOUND', 'No report with that number') end
-        MySQL.update.await('UPDATE veyl_mdt_reports SET type = ?, title = ?, body = ? WHERE id = ?', { rtype, title, body, id })
+        MySQL.update.await('UPDATE veyl_mdt_reports SET type = ?, title = ?, body = ?, charges = ? WHERE id = ?', { rtype, title, body, json.encode(ValidCharges(data.charges)), id })
     else
-        id = MySQL.insert.await('INSERT INTO veyl_mdt_reports (type, title, body, author_cid, author_name) VALUES (?, ?, ?, ?, ?)',
-            { rtype, title, body, pd.citizenid, name })
+        id = MySQL.insert.await('INSERT INTO veyl_mdt_reports (type, title, body, author_cid, author_name, charges) VALUES (?, ?, ?, ?, ?, ?)',
+            { rtype, title, body, pd.citizenid, name, json.encode(ValidCharges(data.charges)) })
     end
     MySQL.update.await('DELETE FROM veyl_mdt_report_people WHERE report_id = ?', { id })
     local seen = 0
@@ -347,3 +350,102 @@ Veyl.RegisterCallback('sentence', function(src, _, citizenid, months, reason)
     if not res.ok then return res end
     return Veyl.Ok(profile(citizenid), res.message)
 end, { cooldown = 2000 })
+
+---------------------------------------------------------------------------
+-- Penal code: fines and sentences from charges
+---------------------------------------------------------------------------
+local chargeById = {}
+for _, c in ipairs(C.Charges) do chargeById[c.id] = c end
+
+--- Known charge ids from a client list (max 20, repeats allowed: two counts of the same charge).
+function ValidCharges(list)
+    local out = {}
+    for _, id in ipairs(type(list) == 'table' and list or {}) do
+        if #out >= 20 then break end
+        if chargeById[id] then out[#out + 1] = id end
+    end
+    return out
+end
+
+local function totals(ids)
+    local fine, months, labels = 0, 0, {}
+    for _, id in ipairs(ids) do
+        local c = chargeById[id]
+        fine, months = fine + c.fine, months + c.months
+        labels[#labels + 1] = c.label
+    end
+    return fine, months, table.concat(labels, ', ')
+end
+
+Veyl.RegisterCallback('chargeFine', function(src, _, citizenid, list)
+    local _, _, err = guard(src)
+    if err then return err end
+    if GetResourceState('veyl_police') ~= 'started' then return Veyl.Err('UNAVAILABLE', 'Citations need veyl_police') end
+    local ids = ValidCharges(list)
+    if #ids == 0 then return Veyl.Err('INVALID_INPUT', 'Pick at least one charge') end
+    local fine, _, labels = totals(ids)
+    local res = exports.veyl_police:RecordCitation(src, citizenid, fine, labels:sub(1, 160))
+    if not res.ok then return res end
+    return Veyl.Ok(profile(citizenid), res.message)
+end, { cooldown = 2000 })
+
+Veyl.RegisterCallback('chargeSentence', function(src, _, citizenid, list, withFine)
+    local _, _, err = guard(src)
+    if err then return err end
+    if GetResourceState('veyl_prison') ~= 'started' then return Veyl.Err('UNAVAILABLE', 'The prison system is not running') end
+    local ids = ValidCharges(list)
+    if #ids == 0 then return Veyl.Err('INVALID_INPUT', 'Pick at least one charge') end
+    local fine, months, labels = totals(ids)
+    if months < 1 then return Veyl.Err('INVALID_INPUT', 'These charges carry no prison time: issue a fine instead') end
+    local ok, res = pcall(function() return exports.veyl_prison:Sentence(src, citizenid, months, labels:sub(1, 160)) end)
+    if not ok or type(res) ~= 'table' then return Veyl.Err('INTERNAL', 'Could not sentence') end
+    if not res.ok then return res end
+    local msg = res.message
+    if withFine == true and fine > 0 and GetResourceState('veyl_police') == 'started' then
+        local f = exports.veyl_police:RecordCitation(src, citizenid, fine, labels:sub(1, 160))
+        if f.ok then msg = msg .. ' · ' .. f.message end
+    end
+    return Veyl.Ok(profile(citizenid), msg)
+end, { cooldown = 2000 })
+
+---------------------------------------------------------------------------
+-- Licences (senior officers)
+---------------------------------------------------------------------------
+Veyl.RegisterCallback('setLicence', function(src, _, citizenid, key, on)
+    local pd, _, err = guard(src)
+    if err then return err end
+    if (pd.job.grade and pd.job.grade.level or 0) < C.LicenceGrade then return Veyl.Err('NO_PERMISSION', 'Your rank cannot change licences') end
+    local known = false
+    for _, l in ipairs(C.Licences) do if l.key == key then known = true end end
+    if not known or type(citizenid) ~= 'string' then return Veyl.Err('INVALID_INPUT', 'Unknown licence') end
+    on = on == true
+    local tsrc = exports.veyl_core:GetSourceByCitizenId(citizenid)
+    if tsrc then
+        local lic = exports.veyl_core:GetMetadata(tsrc, 'licences')
+        lic = type(lic) == 'table' and lic or {}
+        lic[key] = on
+        exports.veyl_core:SetMetadata(tsrc, 'licences', lic)
+        Veyl.Notify(tsrc, ('Your %s was %s.'):format(key == 'driver' and "driver's licence" or key .. ' licence', on and 'granted' or 'revoked'), on and 'success' or 'warning')
+    else
+        local affected = MySQL.update.await(("UPDATE veyl_players SET metadata = JSON_SET(metadata, '$.licences.%s', JSON_EXTRACT(?, '$')) WHERE citizenid = ?"):format(key),
+            { on and 'true' or 'false', citizenid })
+        if affected ~= 1 then return Veyl.Err('NOT_FOUND', 'Unknown person') end
+    end
+    Veyl.Audit(src, 'mdt_licence', { target = citizenid, licence = key, on = on })
+    return Veyl.Ok(profile(citizenid), on and 'Licence granted' or 'Licence revoked')
+end, { cooldown = 1000 })
+
+---------------------------------------------------------------------------
+-- Roster (on-duty officers from veyl_dispatch)
+---------------------------------------------------------------------------
+function Roster()
+    if GetResourceState('veyl_dispatch') ~= 'started' then return nil end
+    local ok, list = pcall(function() return exports.veyl_dispatch:GetUnits('police') end)
+    return ok and list or nil
+end
+
+Veyl.RegisterCallback('roster', function(src)
+    local _, _, err = guard(src)
+    if err then return err end
+    return Veyl.Ok(Roster() or {})
+end, { cooldown = 500 })

@@ -252,3 +252,10 @@ end)
 RegisterNetEvent('veyl_dispatch:street', function(street)
     if type(street) == 'string' then Player(source).state:set('street', street:sub(1, 80), false) end
 end)
+
+--- GetUnits(service?) -> on-duty units with service, name (callsign), grade and status (used by the MDT roster).
+exports('GetUnits', function(service)
+    local out = {}
+    for _, u in ipairs(unitsView()) do if not service or u.service == service then out[#out + 1] = u end end
+    return out
+end)

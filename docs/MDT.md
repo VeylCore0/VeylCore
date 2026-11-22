@@ -32,3 +32,11 @@ From a profile an officer can:
 Citations come from `veyl_police` (`veyl_police_citations`). Licences come from the character (`metadata.licences`), live for online players.
 
 Every note, warrant, flag, report and sentence is written to the audit log.
+
+## Penal code, roster and licences
+
+- **Penal code** (`Charges` in `config.lua`, 31 charges in six groups): the *Penal code* page lists them. On a profile, **Charges** opens a picker (up to 5 counts each) that totals the fine and prison months, then **Issue fine** (a citation, also for people who are not in the city) or **Send to prison** (optionally with the fine).
+- **Reports** have a charges list with running totals.
+- **Roster:** every on-duty officer with callsign and dispatch status.
+- **Licences:** officers at `LicenceGrade` (2) or above click a licence on a profile to grant or revoke it, online or offline.
+- **Check ID** on a person (police target) opens their profile directly.
