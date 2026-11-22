@@ -18,7 +18,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const stateFile = join(root, '.roadmap-state');
 const args = process.argv.slice(2);
 const dry = args.includes('--dry-run');
-const COLORS = { '✅': 0x5fd3a5, '🛠️': 0xb892f4, '🔜': 0x7aa7ff, '🌱': 0xe9be71 };
+const COLORS = { '✅': 0x5fd3a5, '🧪': 0x6fc8e0, '🛠️': 0xb892f4, '🔜': 0x7aa7ff, '🌱': 0xe9be71 };
 
 function webhook() {
   const file = join(root, '.discord-roadmap-webhook');
