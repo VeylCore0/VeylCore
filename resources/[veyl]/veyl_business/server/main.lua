@@ -342,3 +342,32 @@ Veyl.RegisterCallback('service', function(src, citizenid, id, index, a1, a2)
 end, { cooldown = 1500 })
 
 AddEventHandler('playerDropped', function() crafting[source] = nil end)
+
+---------------------------------------------------------------------------
+-- Integration exports (used by veyl_customs). Async: call with Veyl.Await('veyl_business', name, timeout, ...).
+---------------------------------------------------------------------------
+--- CreditAccount(id, amount, reason, actor) -> Ok()
+Veyl.AsyncExport('CreditAccount', function(id, amount, reason, actor)
+    amount = math.floor(tonumber(amount) or 0)
+    if not biz(id) or amount < 1 then return Veyl.Err('INVALID_INPUT', 'Invalid business or amount') end
+    credit(id, amount, tostring(reason or 'Income'):sub(1, 120), tostring(actor or GetInvokingResource() or 'system'):sub(1, 64))
+    return Veyl.Ok()
+end)
+
+--- DebitAccount(id, amount, reason, actor) -> Ok() | Err('INSUFFICIENT_FUNDS')
+Veyl.AsyncExport('DebitAccount', function(id, amount, reason, actor)
+    amount = math.floor(tonumber(amount) or 0)
+    if not biz(id) or amount < 1 then return Veyl.Err('INVALID_INPUT', 'Invalid business or amount') end
+    if not debit(id, amount, tostring(reason or 'Expense'):sub(1, 120), tostring(actor or GetInvokingResource() or 'system'):sub(1, 64)) then
+        return Veyl.Err('INSUFFICIENT_FUNDS', 'The business account is short')
+    end
+    return Veyl.Ok()
+end)
+
+--- GetAccount(id) -> Ok({ owner, balance, label, job })
+Veyl.AsyncExport('GetAccount', function(id)
+    local b = biz(id)
+    if not b then return Veyl.Err('NOT_FOUND', 'Unknown business') end
+    local r = row(id)
+    return Veyl.Ok({ owner = r and r.owner_cid, balance = r and r.balance or 0, label = b.label, job = b.job })
+end)

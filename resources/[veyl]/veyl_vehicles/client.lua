@@ -20,6 +20,13 @@ local function getProps(veh)
     p.tyreSmoke = { r = r, g = g, b = b }
     p.extras = {}
     for i = 1, 14 do if DoesExtraExist(veh, i) then p.extras[tostring(i)] = IsVehicleExtraTurnedOn(veh, i) end end
+    -- v2: custom RGB paint (the indexed colour keeps defining the finish), custom tyres, interior/dashboard, xenon colour.
+    if GetIsVehiclePrimaryColourCustom(veh) then local r, g, b = GetVehicleCustomPrimaryColour(veh) p.customPrimary = { r = r, g = g, b = b } end
+    if GetIsVehicleSecondaryColourCustom(veh) then local r, g, b = GetVehicleCustomSecondaryColour(veh) p.customSecondary = { r = r, g = g, b = b } end
+    p.customTyres = GetVehicleModVariation(veh, 23)
+    p.interiorColor = GetVehicleInteriorColor(veh)
+    p.dashboardColor = GetVehicleDashboardColor(veh)
+    p.xenonColor = GetVehicleXenonLightsColour(veh)
     return p
 end
 
@@ -27,6 +34,13 @@ local function setProps(veh, p)
     if type(p) ~= 'table' then return end
     SetVehicleModKit(veh, 0)
     if p.color1 and p.color2 then SetVehicleColours(veh, p.color1, p.color2) end
+    if type(p.customPrimary) == 'table' and p.customPrimary.r then SetVehicleCustomPrimaryColour(veh, p.customPrimary.r, p.customPrimary.g, p.customPrimary.b)
+    elseif p.color1 then ClearVehicleCustomPrimaryColour(veh) end
+    if type(p.customSecondary) == 'table' and p.customSecondary.r then SetVehicleCustomSecondaryColour(veh, p.customSecondary.r, p.customSecondary.g, p.customSecondary.b)
+    elseif p.color2 then ClearVehicleCustomSecondaryColour(veh) end
+    if type(p.interiorColor) == 'number' then SetVehicleInteriorColor(veh, p.interiorColor) end
+    if type(p.dashboardColor) == 'number' then SetVehicleDashboardColor(veh, p.dashboardColor) end
+    if type(p.xenonColor) == 'number' then SetVehicleXenonLightsColour(veh, p.xenonColor) end
     if p.pearl and p.wheelColor then SetVehicleExtraColours(veh, p.pearl, p.wheelColor) end
     if p.wheelType then SetVehicleWheelType(veh, p.wheelType) end
     if p.windowTint then SetVehicleWindowTint(veh, p.windowTint) end
@@ -35,7 +49,10 @@ local function setProps(veh, p)
     if p.dirt then SetVehicleDirtLevel(veh, p.dirt + 0.0) end
     for k, v in pairs(p.mods or {}) do
         local i = tonumber(k)
-        if i and type(v) == 'number' and v >= 0 then SetVehicleMod(veh, i, v, false) end
+        if i and type(v) == 'number' then
+            -- -1 = stock: remove the mod (restoring a factory part must actually restore it).
+            if v >= 0 then SetVehicleMod(veh, i, v, (i == 23 or i == 24) and p.customTyres == true) else RemoveVehicleMod(veh, i) end
+        end
     end
     for k, v in pairs(p.toggles or {}) do
         local i = tonumber(k)

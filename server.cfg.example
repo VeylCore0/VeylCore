@@ -42,6 +42,7 @@ ensure veyl_shops
 ensure veyl_garages
 ensure veyl_dealership
 ensure veyl_mechanic
+ensure veyl_customs
 ensure veyl_weedprops       # custom weed models (must start before veyl_drugs)
 ensure veyl_drugs
 ensure sd-phone              # optional: in-hand phone prop models (sd_phone_black); falls back to the GTA phone without it

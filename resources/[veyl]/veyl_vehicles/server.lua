@@ -49,6 +49,11 @@ Veyl.Startup({ 'veyl_core' }, function()
             id = '003_insurance',
             sql = { [[ALTER TABLE veyl_player_vehicles ADD COLUMN IF NOT EXISTS insured_until DATETIME NULL]] },
         },
+        {
+            -- props_version: bumped by every authoritative change of the saved looks (veyl_customs purchases).
+            id = '004_props_version',
+            sql = { [[ALTER TABLE veyl_player_vehicles ADD COLUMN IF NOT EXISTS props_version INT UNSIGNED NOT NULL DEFAULT 0]] },
+        },
     })
 end)
 
@@ -211,8 +216,15 @@ local function cleanProps(p)
     out.tyreSmoke = numbers(p.tyreSmoke, 3)
     out.toggles = numbers(p.toggles, 8)
     out.extras = numbers(p.extras, 20)
+    out.customPrimary = numbers(p.customPrimary, 3)
+    out.customSecondary = numbers(p.customSecondary, 3)
+    for _, k in ipairs({ 'interiorColor', 'dashboardColor', 'xenonColor' }) do
+        if type(p[k]) == 'number' and p[k] == p[k] then out[k] = math.floor(p[k]) end
+    end
+    if type(p.customTyres) == 'boolean' then out.customTyres = p.customTyres end
     return out
 end
+CleanVehicleProps = cleanProps
 
 --- RegisterOwnedVehicle(citizenid, model, { label?, garage?, opId? }) -> Ok({ ownedId, plate }).
 --- With opId, the same operation can never create a second vehicle (a repeat returns the first one).
@@ -307,6 +319,11 @@ Veyl.AsyncExport('StoreOwnedVehicle', function(src, citizenid, netId, garage, pr
     end
     local fuel = GetResourceState('veyl_fuel') == 'started' and exports.veyl_fuel:GetFuel(id) or 100.0
     local clean = cleanProps(props)
+    if v.authProps then
+        -- Purchased looks are authoritative: a stale or edited client report cannot undo them.
+        clean = clean or {}
+        for k, val in pairs(v.authProps) do if k ~= 'dirt' then clean[k] = val end end
+    end
     local affected = MySQL.update.await([[UPDATE veyl_player_vehicles SET state = 'garaged', garage = ?, fuel = ?, engine = ?, body = ?,
         props = COALESCE(?, props) WHERE id = ? AND citizenid = ? AND state = 'out']],
         { garage, fuel or 100.0, math.max(0.0, GetVehicleEngineHealth(entity)), math.max(0.0, GetVehicleBodyHealth(entity)),
@@ -323,6 +340,35 @@ exports('ImpoundOwnedVehicle', function(ownedId, reason, fee)
     MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'impound', impound_reason = ?, impound_fee = ? WHERE id = ?",
         { tostring(reason or 'impounded'):sub(1, 64), math.max(0, math.floor(tonumber(fee) or VehiclesConfig.ImpoundFee)), ownedId })
     return true
+end)
+
+--- ApplyOwnedProps(ownedId, props, expectedVersion?) -> Ok({ version }) | Err('STALE')
+--- The authoritative way to change an owned vehicle's saved looks (used by veyl_customs after payment). Cleans the
+--- props, writes them with a version check, and makes them authoritative for the live entity until it is parked.
+Veyl.AsyncExport('ApplyOwnedProps', function(ownedId, props, expectedVersion)
+    if not Veyl.Validate.int(ownedId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid vehicle') end
+    local clean = cleanProps(props)
+    if not clean then return Veyl.Err('INVALID_INPUT', 'Invalid properties') end
+    local n
+    if expectedVersion ~= nil then
+        n = MySQL.update.await('UPDATE veyl_player_vehicles SET props = ?, props_version = props_version + 1 WHERE id = ? AND props_version = ?',
+            { json.encode(clean), ownedId, tonumber(expectedVersion) or -1 })
+    else
+        n = MySQL.update.await('UPDATE veyl_player_vehicles SET props = ?, props_version = props_version + 1 WHERE id = ?', { json.encode(clean), ownedId })
+    end
+    if n ~= 1 then return Veyl.Err('STALE', 'The vehicle was changed elsewhere') end
+    local vid = ownedActive[ownedId]
+    if vid and vehicles[vid] then vehicles[vid].authProps = clean end
+    return Veyl.Ok({ version = MySQL.scalar.await('SELECT props_version FROM veyl_player_vehicles WHERE id = ?', { ownedId }) })
+end)
+
+--- GetOwnedProps(ownedId) -> Ok({ props, version, model, plate, citizenid, state })
+Veyl.AsyncExport('GetOwnedProps', function(ownedId)
+    if not Veyl.Validate.int(ownedId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid vehicle') end
+    local r = MySQL.single.await('SELECT citizenid, model, plate, props, props_version, state, label FROM veyl_player_vehicles WHERE id = ?', { ownedId })
+    if not r then return Veyl.Err('NOT_FOUND', 'Vehicle not found') end
+    local ok, p = pcall(json.decode, r.props or 'null')
+    return Veyl.Ok({ props = ok and p or nil, version = r.props_version, model = r.model, plate = r.plate, citizenid = r.citizenid, state = r.state, label = r.label })
 end)
 
 exports('GetOwnedVehicleIdFromEntity', function(entity)
