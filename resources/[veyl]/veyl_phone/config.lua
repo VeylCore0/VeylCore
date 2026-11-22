@@ -110,7 +110,7 @@ PhoneConfig = {
     Racing = { JoinRadius = 60.0 },                  -- metres from the start line to join a race
     Tablet = { Mdt = 'mdt', Dispatch = 'dispatch' }, -- commands opened from the tablet menu
 
-    Wallpapers = { 'aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono' },
+    Wallpapers = { 'sunset', 'aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono' }, -- first = default for new phones
     Accents = { '#b892f4', '#7aa7ff', '#5fd3a5', '#f2c66d', '#ef8f96', '#e3e3ea' },
     Ringtones = { 'veyl', 'pulse', 'classic', 'chime' },
     NotificationSounds = { 'tap', 'bell', 'none' },

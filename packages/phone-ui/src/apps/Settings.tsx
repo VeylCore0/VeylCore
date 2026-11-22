@@ -79,7 +79,9 @@ export function SettingsApp() {
         )}
         {page === 'home' && (
           <>
-            <Toggle label="Clock & weather widget" value={settings.widgets.clock} onChange={(v) => set({ widgets: { ...settings.widgets, clock: v } })} />
+            <Toggle label="Weather widget" hint="Where you are and the weather" value={settings.widgets.weather !== false} onChange={(v) => set({ widgets: { ...settings.widgets, weather: v } })} />
+            <Toggle label="Calendar widget" value={settings.widgets.clock} onChange={(v) => set({ widgets: { ...settings.widgets, clock: v } })} />
+            <button className="ph-btn wide ghost" onClick={() => set({ layout: null })}>Reset home screen layout</button>
             <Toggle label="Recent conversations widget" value={settings.widgets.recent} onChange={(v) => set({ widgets: { ...settings.widgets, recent: v } })} />
             <Toggle label="Bank balance widget" hint="Hidden until you tap it (see Privacy)" value={settings.widgets.bank} onChange={(v) => set({ widgets: { ...settings.widgets, bank: v } })} />
             <p className="ph-help">To rearrange apps or make folders, hold an app on the home screen.</p>
@@ -119,6 +121,10 @@ export function SettingsApp() {
             <Slider label="Phone size" value={settings.scale} min={0.75} max={1.3} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ scale: v })} />
             <Choice label="Position" value={settings.position} options={['bottom-right', 'center-right', 'bottom-left'] as Settings['position'][]} onChange={(v) => set({ position: v })}
               render={(v) => (v === 'bottom-right' ? 'Bottom right' : v === 'center-right' ? 'Middle right' : 'Bottom left')} />
+            <Slider label="Move left / right" value={settings.offsetX ?? 0} min={-30} max={30} step={1} format={(v) => `${v > 0 ? '+' : ''}${v}%`} onChange={(v) => set({ offsetX: v })} />
+            <Slider label="Move up / down" value={settings.offsetY ?? 0} min={-30} max={30} step={1} format={(v) => `${v > 0 ? '+' : ''}${v}%`} onChange={(v) => set({ offsetY: v })} />
+            <Choice label="Text size" value={settings.textSize ?? 'default'} options={['small', 'default', 'large'] as NonNullable<Settings['textSize']>[]} onChange={(v) => set({ textSize: v })}
+              render={(v) => (v === 'small' ? 'Small' : v === 'large' ? 'Large' : 'Default')} />
             <Toggle label="Reduce motion" hint="No sliding or bouncing animations" value={settings.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
           </>
         )}

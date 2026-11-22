@@ -374,7 +374,11 @@ function Phone.CleanSettings(s)
             clock = bool(type(s.widgets) == 'table' and s.widgets.clock, true),
             recent = bool(type(s.widgets) == 'table' and s.widgets.recent, true),
             bank = bool(type(s.widgets) == 'table' and s.widgets.bank, true),
+            weather = bool(type(s.widgets) == 'table' and s.widgets.weather, true),
         },
+        textSize = oneOf(s.textSize, { 'small', 'default', 'large' }, 'default'),
+        offsetX = num(s.offsetX, -30, 30, 0),   -- fine position, % of the screen (added to position)
+        offsetY = num(s.offsetY, -30, 30, 0),
         scale = num(s.scale, 0.75, 1.3, 1.0),
         position = oneOf(s.position, { 'bottom-right', 'bottom-left', 'center-right' }, 'bottom-right'),
         reducedMotion = bool(s.reducedMotion, false),

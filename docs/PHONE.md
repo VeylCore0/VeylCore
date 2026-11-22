@@ -235,3 +235,21 @@ The Weazel News job (`weazel`: Reporter, Senior Reporter, Editor in Chief) is in
 Tables: `veyl_phone_photos`, `veyl_phone_job_apps`, `veyl_phone_standing`, `veyl_phone_news`, `veyl_phone_race_tracks`, `veyl_phone_race_results` (migration `004_phone3`).
 
 Checked here: Lua parses, the page type-checks and builds, the new tables and their queries run on MariaDB. Not checked in game yet: photos (needs screenshot-basic), valet spawn, speaker audio between two players, a full race with two players, and the tablet menu.
+
+## Phone shell 2 (visual redesign)
+
+Same resource, same data, same server APIs and exports: only the shell and the home screen were rebuilt.
+
+- **Device:** taller phone with thin even bezels, a dark titanium frame with side buttons, rounded screen corners. Size (75–130 %), corner (bottom right / middle right / bottom left) and a fine **Move left/right** and **Move up/down** offset (±30 % of the screen) are in Settings → Size & position. **Text size** (small / default / large) is there too.
+- **Dynamic Island:** a black pill at the top. During a call it widens to show the caller and the call time (or "Calling…"); tap it for mute, open call and hang up. It goes back to the pill when the call ends. It replaces the old green call bar.
+- **Status bar:** game time on the left; Do Not Disturb / silent, signal, Wi-Fi and battery on the right. **Signal and battery are cosmetic** (always full): there is no signal or battery simulation, so nothing pretends to drain or charge.
+- **Home:** Weather widget (the area you are in and the server weather; no temperature, because the server has no temperature and the phone will not invent one) and Calendar widget (weekday, date, month from the server clock). Apps on pages of 4 × 4 with page dots (scroll, swipe or tap a dot), a **Search** pill (Enter opens the first match), folders, and a frosted dock with Phone, Messages, Contacts and Settings. The home indicator sits under the dock.
+- **Rearranging:** hold an app to enter edit mode, then **drag it onto another spot**; tap an app in edit mode for *Move earlier / later*, folders, or *Remove from folder*. Settings → Home screen → *Reset home screen layout*. The layout is saved per character.
+- **Icons:** squircle icons with a soft gradient from each app's colour. Apartments, Boosting, Silk Road and Invoices (registered by veyl_apartments, veyl_boosting, veyl_crime and veyl_mechanic) now have matching icons.
+- **Wallpaper:** new default **Sunset** (purple to peach with an original hills-and-towers silhouette). Existing phones keep the wallpaper they chose.
+
+Settings added (validated on the server with safe defaults for older phones): , , , .
+
+**Not in this pass** (listed so nothing pretends to work): photo / location messages and Flock images (no image sharing yet), recorded voicemail audio (Voicemail holds written messages, not recordings), a drawn map in Maps (it lists places and sets GPS), direct purchases in Marketplace (listings are classified ads), contact avatars and favourites. These need new work or a media/voice recording provider.
+
+**Checked here:** the page type-checks and builds; the server settings code parses. Not checked in game yet: the look at 1080p / 1440p / 4K / ultrawide, the Dynamic Island during a real call, drag-to-reorder, and the position offsets.

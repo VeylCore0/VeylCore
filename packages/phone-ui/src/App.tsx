@@ -36,6 +36,8 @@ const PhoneCtx = createContext<Ctx | null>(null);
 export const usePhone = () => useContext(PhoneCtx)!;
 
 const WALLPAPERS: Record<string, string> = {
+  // Purple to peach dusk with an original city-and-hills silhouette (drawn in CSS, see .wp-sunset).
+  sunset: "url(\"data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 260' preserveAspectRatio='none'%3E%3Cpath d='M0 120 C60 90 110 70 170 92 C220 110 250 60 300 72 C340 82 370 100 400 96 L400 260 L0 260Z' fill='%23453063' opacity='.85'/%3E%3Cpath d='M0 170 C80 140 140 150 200 160 C260 170 320 140 400 150 L400 260 L0 260Z' fill='%232f2148'/%3E%3Cg fill='%2322183a'%3E%3Crect x='40' y='150' width='14' height='110'/%3E%3Crect x='58' y='132' width='18' height='128'/%3E%3Crect x='80' y='160' width='12' height='100'/%3E%3Crect x='96' y='142' width='16' height='118'/%3E%3Crect x='118' y='170' width='12' height='90'/%3E%3C/g%3E%3Cg fill='%23f6c48f' opacity='.55'%3E%3Crect x='61' y='140' width='2' height='2'/%3E%3Crect x='67' y='150' width='2' height='2'/%3E%3Crect x='99' y='160' width='2' height='2'/%3E%3Crect x='45' y='170' width='2' height='2'/%3E%3Crect x='70' y='176' width='2' height='2'/%3E%3C/g%3E%3Crect x='305' y='60' width='1.5' height='34' fill='%23453063'/%3E%3C/svg%3E\") bottom / 100% 38% no-repeat, linear-gradient(180deg, #2a1c4e 0%, #3a2463 34%, #5b3473 58%, #b4687a 80%, #f0a37f 100%)",
   aurora: 'linear-gradient(160deg, #1a1030 0%, #3b1f6e 45%, #7d4cd6 70%, #1b1330 100%)',
   dusk: 'linear-gradient(180deg, #2a1838 0%, #6a2c5e 40%, #d0705a 75%, #241533 100%)',
   vinewood: 'radial-gradient(circle at 70% 20%, #7a4fd0 0%, transparent 40%), linear-gradient(180deg, #0f1022 0%, #262248 60%, #141325 100%)',
@@ -205,7 +207,7 @@ export function App() {
   // Closed: passive banners + incoming call pill only (no focus, no pointer events).
   const reduced = settings?.reducedMotion;
   const posClass = `pos-${settings?.position ?? 'bottom-right'}`;
-  const style = { '--accent': settings?.accent ?? '#b892f4', '--ph-scale': String(settings?.scale ?? 1) } as React.CSSProperties;
+  const style = { '--accent': settings?.accent ?? '#b892f4', '--ph-scale': String(settings?.scale ?? 1), '--ph-ox': `${settings?.offsetX ?? 0}vw`, '--ph-oy': `${settings?.offsetY ?? 0}vh` } as React.CSSProperties;
 
   if (!visible || !session || !settings) {
     return (
@@ -230,12 +232,10 @@ export function App() {
   return (
     <PhoneCtx.Provider value={ctx}>
       <div className={`ph-stage ${posClass}${reduced ? ' ph-reduced' : ''}`} style={style}>
-        <div className={`ph-device${settings.theme === 'light' ? ' light' : ''}`} role="dialog" aria-label="Phone">
-          <div className="ph-screen" style={{ background: WALLPAPERS[settings.wallpaper] ?? WALLPAPERS.aurora }}>
+        <div className={`ph-device text-${settings.textSize ?? 'default'}${settings.theme === 'light' ? ' light' : ''}`} role="dialog" aria-label="Phone">
+          <div className={`ph-screen wp-${settings.wallpaper}`} style={{ background: WALLPAPERS[settings.wallpaper] ?? WALLPAPERS.sunset }}>
+            <Island />
             <StatusBar />
-            {call && call.state !== 'ended' && nav.app !== 'phone' && !(call.state === 'incoming') && (
-              <button className="ph-callbar" onClick={() => go('phone', 'call')}><Icon name="call" size="0.9rem" /> {call.state === 'connected' ? 'On a call' : 'Calling…'} · {call.display}</button>
-            )}
             {call && (call.state === 'incoming' || ((call.state === 'connected' || call.state === 'outgoing' || call.state === 'ended') && nav.app === 'phone' && nav.route === 'call')) ? (
               <CallScreen />
             ) : nav.locked ? (
@@ -265,17 +265,48 @@ function Banner({ n, onOpen }: { n: Notification; onOpen?: () => void }) {
   );
 }
 
+// Status bar. Signal and battery are cosmetic (there is no signal or battery simulation): always full, never fake drain.
 function StatusBar() {
   const { world, settings } = usePhone();
   const time = useClock(world);
   return (
     <div className="ph-status" aria-hidden="true">
-      <span>{time}</span>
+      <span className="ph-status-time">{time}</span>
       <span className="ph-status-icons">
-        {settings.dnd && <Icon name="moon" size="0.8rem" />}
-        {settings.silent && <Icon name="bell_off" size="0.8rem" />}
+        {settings.dnd && <Icon name="moon" size="0.75rem" />}
+        {settings.silent && <Icon name="bell_off" size="0.75rem" />}
         <span className="ph-signal"><i /><i /><i /><i /></span>
+        <svg className="ph-wifi" viewBox="0 0 16 12" width="15" height="11"><path d="M8 11.2 5.6 8.8a3.4 3.4 0 0 1 4.8 0L8 11.2Zm-4.2-4.2-1.3-1.3a7.8 7.8 0 0 1 11 0l-1.3 1.3a6 6 0 0 0-8.4 0ZM1.3 4.5 0 3.2a11.3 11.3 0 0 1 16 0l-1.3 1.3a9.5 9.5 0 0 0-13.4 0Z" fill="currentColor" /></svg>
+        <span className="ph-battery"><i /></span>
       </span>
+    </div>
+  );
+}
+
+// Dynamic Island: idle pill; during a call it shows the caller and the call time, and expands to call controls.
+function Island() {
+  const { call, go, hangup, mute } = usePhone();
+  const [open, setOpen] = useState(false);
+  const [, tick] = useState(0);
+  const active = call && (call.state === 'connected' || call.state === 'outgoing');
+  useEffect(() => { if (!active) { setOpen(false); return; } const t = window.setInterval(() => tick((x) => x + 1), 1000); return () => window.clearInterval(t); }, [active]);
+  if (!active || !call) return <div className="ph-island" aria-hidden="true" />;
+  const secs = call.state === 'connected' && call.since ? Math.max(0, Math.floor(Date.now() / 1000 - call.since)) : 0;
+  const elapsed = call.state === 'connected' ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : 'Calling…';
+  return (
+    <div className={`ph-island live${open ? ' open' : ''}`} role="status" aria-label={`Call with ${call.display}, ${elapsed}`}>
+      <button className="ph-island-row" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="ph-island-ico"><Icon name="call" size="0.7rem" /></span>
+        <span className="ph-island-name">{call.display}</span>
+        <span className="ph-island-time">{elapsed}</span>
+      </button>
+      {open && (
+        <div className="ph-island-ctrl">
+          {call.state === 'connected' && <button onClick={mute} aria-pressed={!!call.muted} className={call.muted ? 'on' : ''}><Icon name={call.muted ? 'mic_off' : 'mic'} size="0.95rem" /></button>}
+          <button onClick={() => { setOpen(false); go('phone', 'call'); }} aria-label="Open call"><Icon name="phone_size" size="0.95rem" /></button>
+          <button className="end" onClick={hangup} aria-label="End call"><Icon name="hang" size="0.95rem" /></button>
+        </div>
+      )}
     </div>
   );
 }
@@ -324,23 +355,28 @@ function allApps(session: Session): AppDef[] {
 function AppIcon({ app, badge, onClick, onPointerDown, editing, size = 'md' }: { app: AppDef; badge?: number; onClick?: () => void; onPointerDown?: (e: React.PointerEvent) => void; editing?: boolean; size?: 'md' | 'sm' }) {
   const st = APP_STYLE[app.id] ?? { icon: app.icon ?? 'box', color: app.color ?? '#3a3346' };
   return (
-    <button className={`ph-app ${size}${editing ? ' editing' : ''}`} onClick={onClick} onPointerDown={onPointerDown} aria-label={app.label}>
-      <span className="ph-app-icon" style={{ background: st.color }}><Icon name={st.icon} size={size === 'sm' ? '1rem' : '1.45rem'} />{!!badge && <em>{badge > 99 ? '99+' : badge}</em>}</span>
+    <button className={`ph-app ${size}${editing ? ' editing' : ''}`} onClick={onClick} onPointerDown={onPointerDown} aria-label={badge ? `${app.label}, ${badge} unread` : app.label}>
+      <span className="ph-app-icon" style={{ '--c': st.color } as React.CSSProperties}><Icon name={st.icon} size={size === 'sm' ? '1.55rem' : '1.55rem'} />{!!badge && <em>{badge > 99 ? '99+' : badge}</em>}</span>
       {size === 'md' && <span className="ph-app-label">{app.label}</span>}
     </button>
   );
 }
 
+const PAGE_SIZE = 16; // 4 columns x 4 rows per home page
+
 function Home({ openedAt }: { openedAt: number }) {
-  const { session, settings, saveSettings, go, world, money, unread, badges } = usePhone();
+  const { session, settings, saveSettings, go, world, unread, badges } = usePhone();
   const apps = useMemo(() => allApps(session), [session]);
   const byId = useMemo(() => Object.fromEntries(apps.map((a) => [a.id, a])), [apps]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [folderOpen, setFolderOpen] = useState<number | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [recent, setRecent] = useState<ConversationItem[] | null>(null);
+  const [page, setPage] = useState(0);
+  const [area, setArea] = useState<string | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
   const holdTimer = useRef<number>();
+  const swipe = useRef<number | null>(null);
   const dock = apps.filter((a) => a.dock);
 
   // Layout: saved order (apps + folders), plus any new non-dock apps appended. Unknown ids are dropped.
@@ -355,11 +391,15 @@ function Home({ openedAt }: { openedAt: number }) {
     for (const a of apps) if (!a.dock && !used.has(a.id)) out.push(a.id);
     return out;
   }, [apps, settings.layout]);
+  const pages = Math.max(1, Math.ceil(layout.length / PAGE_SIZE));
+  useEffect(() => { if (page >= pages) setPage(pages - 1); }, [page, pages]);
 
+  // Weather widget: the area you are in (from the game) and the server weather. No temperature is shown: the server
+  // does not provide one, and an invented number would be wrong.
   useEffect(() => {
-    if (!settings.widgets.recent) return;
-    void api<{ items: ConversationItem[] }>('conversations', 0).then((r) => setRecent(r.ok && r.data ? r.data.items.slice(0, 2) : []));
-  }, [settings.widgets.recent]);
+    if (!settings.widgets.weather) return;
+    void nui<{ label: string }>('locationLabel').then((r) => { if (r.ok && r.data) setArea(r.data.label.split(', ').pop() ?? r.data.label); });
+  }, [settings.widgets.weather]);
 
   const badgeOf = (id: string) => (id === 'messages' ? unread : badges[id] ?? 0);
   const open = (a: AppDef) => {
@@ -367,14 +407,26 @@ function Home({ openedAt }: { openedAt: number }) {
     if (a.external) { void nui('openExternal', { id: a.id }); return; }
     go(a.id);
   };
-  const startHold = () => { holdTimer.current = window.setTimeout(() => setEditing(true), 550); };
+  const startHold = (i: number) => (e: React.PointerEvent) => {
+    if (editing) { setDragFrom(i); (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId); return; }
+    holdTimer.current = window.setTimeout(() => setEditing(true), 550);
+  };
   const endHold = () => window.clearTimeout(holdTimer.current);
-
-  const move = (index: number, dir: -1 | 1) => {
+  // Drag to reorder (edit mode): drop an app or folder on another cell to move it there.
+  const dropOn = (to: number) => {
+    if (dragFrom === null || dragFrom === to) { setDragFrom(null); return; }
     const next = [...layout];
-    const j = index + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[index], next[j]] = [next[j], next[index]];
+    const [item] = next.splice(dragFrom, 1);
+    next.splice(to, 0, item);
+    setDragFrom(null);
+    void saveSettings({ layout: next });
+  };
+  const moveBy = (id: string, dir: -1 | 1) => {
+    const i = layout.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= layout.length) return;
+    const next = [...layout];
+    [next[i], next[j]] = [next[j], next[i]];
     void saveSettings({ layout: next });
   };
   const toFolder = (id: string, target: number | 'new') => {
@@ -394,69 +446,77 @@ function Home({ openedAt }: { openedAt: number }) {
     void saveSettings({ layout: next });
   };
 
-  const q = search.trim().toLowerCase();
+  const q = (search ?? '').trim().toLowerCase();
   const found = q ? apps.filter((a) => a.label.toLowerCase().includes(q)) : [];
   const w = world && WEATHER[world.weather];
-  const time = useClock(world);
+  const now = new Date((session.serverTime + (Date.now() - openedAt) / 1000) * 1000);
   const folders = layout.map((e, i) => (typeof e === 'string' ? null : { i, e })).filter(Boolean) as { i: number; e: { folder: string; apps: string[] } }[];
+  const showWidgets = page === 0 && (settings.widgets.weather || settings.widgets.clock);
 
   return (
-    <div className="ph-home">
-      <label className="ph-search"><Icon name="search" size="0.9rem" /><input placeholder="Search apps" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
-      {q ? (
-        <div className="ph-grid">
-          {found.length === 0 && <div className="ph-empty">No apps match “{search}”.</div>}
-          {found.map((a) => <AppIcon key={a.id} app={a} badge={badgeOf(a.id)} onClick={() => open(a)} />)}
-        </div>
+    <div className="ph-home" onWheel={(e) => { if (search === null && Math.abs(e.deltaY) > 30) setPage((p) => Math.max(0, Math.min(pages - 1, p + (e.deltaY > 0 ? 1 : -1)))); }}
+      onPointerDown={(e) => { swipe.current = e.clientX; }} onPointerUp={(e) => {
+        endHold();
+        if (swipe.current !== null && dragFrom === null) { const dx = e.clientX - swipe.current; if (Math.abs(dx) > 60) setPage((p) => Math.max(0, Math.min(pages - 1, p + (dx < 0 ? 1 : -1)))); }
+        swipe.current = null;
+      }} onPointerLeave={endHold}>
+      {search !== null ? (
+        <>
+          <label className="ph-search"><Icon name="search" size="0.9rem" /><input autoFocus placeholder="Search apps" value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setSearch(null); } if (e.key === 'Enter' && found[0]) open(found[0]); }} /><button className="ph-link" onClick={() => setSearch(null)}>Cancel</button></label>
+          <div className="ph-grid">
+            {q && found.length === 0 && <div className="ph-empty">No apps match “{search}”.</div>}
+            {(q ? found : apps).map((a) => <AppIcon key={a.id} app={a} badge={badgeOf(a.id)} onClick={() => open(a)} />)}
+          </div>
+        </>
       ) : (
         <>
-          <div className="ph-widgets">
-            {settings.widgets.clock && (
-              <div className="ph-widget wide">
-                <div className="ph-w-time">{time}</div>
-                <div className="ph-w-sub">{serverDate(session.serverTime, openedAt)}</div>
-                {w ? <div className="ph-w-weather"><Icon name={w.icon} size="1rem" /> {w.label}</div> : <div className="ph-w-sub">Weather unavailable</div>}
-              </div>
-            )}
-            {settings.widgets.recent && (
-              <button className="ph-widget" onClick={() => go('messages')}>
-                <div className="ph-w-title"><Icon name="chat" size="0.85rem" /> Recent</div>
-                {recent === null ? <div className="ph-w-sub">Loading…</div> : recent.length === 0 ? <div className="ph-w-sub">No conversations yet</div>
-                  : recent.map((c) => <div key={c.id} className="ph-w-line"><strong>{c.title}</strong>{c.unread > 0 && <em>{c.unread}</em>}</div>)}
-              </button>
-            )}
-            {settings.widgets.bank && (
-              <div className="ph-widget">
-                <div className="ph-w-title"><Icon name="bank" size="0.85rem" /> Bank</div>
-                {money ? (
-                  <button className="ph-w-balance" onClick={() => saveSettings({ showBank: !settings.showBank })} aria-label="Toggle balance visibility">
-                    {settings.showBank ? `$${money.bank.toLocaleString('en-US')}` : '$ • • • •'}
-                  </button>
-                ) : <div className="ph-w-sub">Unavailable</div>}
-              </div>
-            )}
+          {showWidgets && (
+            <div className="ph-widgets">
+              {settings.widgets.weather && (
+                <div className="ph-widget ph-weather">
+                  <div className="ph-w-place"><Icon name="pin" size="0.8rem" /> {area ?? 'Los Santos'}</div>
+                  {w ? <><div className="ph-w-big"><Icon name={w.icon} size="1.9rem" /></div><div className="ph-w-cond"><Icon name={w.icon} size="0.85rem" /> {w.label}</div></>
+                    : <div className="ph-w-cond">Weather unavailable</div>}
+                </div>
+              )}
+              {settings.widgets.clock && (
+                <div className="ph-widget ph-calendar">
+                  <div className="ph-w-day"><Icon name="clock" size="0.8rem" /> {now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}</div>
+                  <div className="ph-w-date">{now.getDate()}</div>
+                  <div className="ph-w-month">{now.toLocaleDateString('en-US', { month: 'long' })}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="ph-pages">
+            <div className="ph-pages-track" style={{ transform: `translateX(-${page * 100}%)` }}>
+              {Array.from({ length: pages }, (_, p) => (
+                <div className="ph-grid ph-page" key={p} aria-hidden={p !== page}>
+                  {layout.slice(p * PAGE_SIZE, (p + 1) * PAGE_SIZE).map((e, k) => {
+                    const i = p * PAGE_SIZE + k;
+                    const cellProps = { className: `ph-cell${dragFrom === i ? ' dragging' : ''}${dragFrom !== null && dragFrom !== i ? ' drop' : ''}`, onPointerUp: () => { if (dragFrom !== null) dropOn(i); } };
+                    return typeof e === 'string' ? (
+                      byId[e] && <div key={e} {...cellProps}><AppIcon app={byId[e]} badge={badgeOf(e)} editing={editing} onClick={() => open(byId[e])} onPointerDown={startHold(i)} /></div>
+                    ) : (
+                      <div key={`f${i}`} {...cellProps}>
+                        <button className={`ph-app md${editing ? ' editing' : ''}`} onClick={() => setFolderOpen(i)} onPointerDown={startHold(i)} aria-label={`Folder ${e.folder}`}>
+                          <span className="ph-app-icon ph-folder">{e.apps.slice(0, 4).map((id) => <i key={id} style={{ background: (APP_STYLE[id] ?? { color: byId[id]?.color ?? '#555' }).color }} />)}</span>
+                          <span className="ph-app-label">{e.folder}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="ph-grid" onPointerUp={endHold} onPointerLeave={endHold}>
-            {layout.map((e, i) => typeof e === 'string' ? (
-              byId[e] && (
-                <div key={e} className="ph-cell">
-                  <AppIcon app={byId[e]} badge={badgeOf(e)} editing={editing} onClick={() => open(byId[e])} onPointerDown={startHold} />
-                  {editing && <div className="ph-move"><button aria-label="Move left" onClick={() => move(i, -1)}>‹</button><button aria-label="Move right" onClick={() => move(i, 1)}>›</button></div>}
-                </div>
-              )
-            ) : (
-              <div key={`f${i}`} className="ph-cell">
-                <button className={`ph-app md${editing ? ' editing' : ''}`} onClick={() => setFolderOpen(i)} onPointerDown={startHold} aria-label={`Folder ${e.folder}`}>
-                  <span className="ph-app-icon ph-folder">{e.apps.slice(0, 4).map((id) => <i key={id} style={{ background: (APP_STYLE[id] ?? { color: byId[id]?.color ?? '#555' }).color }} />)}</span>
-                  <span className="ph-app-label">{e.folder}</span>
-                </button>
-                {editing && <div className="ph-move"><button aria-label="Move left" onClick={() => move(i, -1)}>‹</button><button aria-label="Move right" onClick={() => move(i, 1)}>›</button></div>}
-              </div>
-            ))}
-          </div>
-          {editing ? <button className="ph-done" onClick={() => { setEditing(false); setMenuFor(null); }}>Done</button>
-            : <div className="ph-hint">Hold an app to rearrange or make folders</div>}
+          {editing ? <button className="ph-done" onClick={() => { setEditing(false); setMenuFor(null); setDragFrom(null); }}>Done</button>
+            : <button className="ph-searchpill" onClick={() => setSearch('')}><Icon name="search" size="0.8rem" /> Search</button>}
+          {pages > 1 && <div className="ph-dots" role="tablist" aria-label="Home pages">{Array.from({ length: pages }, (_, p) => <button key={p} role="tab" aria-selected={p === page} aria-label={`Page ${p + 1}`} className={p === page ? 'on' : ''} onClick={() => setPage(p)} />)}</div>}
+          {editing && <div className="ph-hint">Drag an app onto another spot to move it. Tap an app for folders.</div>}
         </>
       )}
 
@@ -467,6 +527,7 @@ function Home({ openedAt }: { openedAt: number }) {
       {menuFor && (
         <div className="ph-sheet" role="dialog" aria-label="App options">
           <div className="ph-sheet-title">{byId[menuFor]?.label}</div>
+          {layout.includes(menuFor) && <><button onClick={() => moveBy(menuFor, -1)}>Move earlier</button><button onClick={() => moveBy(menuFor, 1)}>Move later</button></>}
           <button onClick={() => toFolder(menuFor, 'new')}><Icon name="folder" size="1rem" /> New folder</button>
           {folders.map(({ i, e }) => <button key={i} onClick={() => toFolder(menuFor, i)}><Icon name="folder" size="1rem" /> Move to {e.folder}</button>)}
           {folders.some(({ e }) => e.apps.includes(menuFor)) && <button onClick={() => outOfFolder(menuFor)}>Remove from folder</button>}

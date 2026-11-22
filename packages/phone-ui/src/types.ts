@@ -3,7 +3,8 @@
 export interface Settings {
   wallpaper: string; accent: string; ringtone: string; notifySound: string; ringVolume: number; notifyVolume: number; theme?: 'dark' | 'light'; phoneCase?: string;
   silent: boolean; dnd: boolean; lockPreview: 'full' | 'sender' | 'hidden'; readReceipts: boolean; showBank: boolean;
-  widgets: { clock: boolean; recent: boolean; bank: boolean };
+  widgets: { clock: boolean; recent: boolean; bank: boolean; weather?: boolean };
+  textSize?: 'small' | 'default' | 'large'; offsetX?: number; offsetY?: number;
   scale: number; position: 'bottom-right' | 'bottom-left' | 'center-right'; reducedMotion: boolean;
   layout: LayoutEntry[] | null; appPrefs: Record<string, { muted: boolean }>; installed?: string[] | null;
 }
@@ -58,6 +59,7 @@ export const APP_STYLE: Record<string, { icon: string; color: string }> = {
   market: { icon: 'tag', color: '#c95d84' }, notes: { icon: 'note', color: '#d4a43c' }, calculator: { icon: 'calc', color: '#4b4a57' },
   maps: { icon: 'pin', color: '#3fa06b' }, services: { icon: 'bell', color: '#d0584f' }, mail: { icon: 'send', color: '#4b7fd6' },
   voicemail: { icon: 'call', color: '#7a5bc4' },
+  apartments: { icon: 'home', color: '#8b63d6' }, boosting: { icon: 'engine', color: '#3a3486' }, darkweb: { icon: 'eye', color: '#2b2a31' }, invoices: { icon: 'receipt', color: '#d0843f' },
   camera: { icon: 'camera', color: '#46464f' }, jobs: { icon: 'briefcase', color: '#c9883e' }, bills: { icon: 'receipt', color: '#2f8f74' },
   music: { icon: 'mic', color: '#d4487a' }, news: { icon: 'note', color: '#c23b3b' }, racing: { icon: 'car', color: '#e0a63a' },
 };
