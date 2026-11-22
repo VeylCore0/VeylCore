@@ -38,11 +38,11 @@ Nothing from D–F, and none of the unbuilt parts of C, appears in-game yet. The
    ensure veyl_target
    ensure veyl_interact
    ...
-   ensure veyl_weedprops   # custom weed models (stream resource, kept outside this repo)
+   ensure veyl_weedprops   # custom weed models (stream resource)
    ensure veyl_drugs
    ```
-   `veyl_weedprops` lives in `server/resources/veyl_weedprops` on your server. It is not in the GitHub repo, so a
-   fresh install needs it copied in. Without it, weed falls back to the base-game Biker DLC weed props.
+   `veyl_weedprops` is in `resources/[veyl]` and is installed by the txAdmin recipe. Without it, weed falls back to the
+   base-game Biker DLC weed props.
 2. Restart the server. Migration `001_plants` creates three tables:
    - `veyl_drug_plants`
    - `veyl_drug_logs`
