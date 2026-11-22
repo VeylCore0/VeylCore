@@ -4,7 +4,7 @@
 
 RobberyConfig = {
     PoliceJobs = { 'police' },
-    MinPolice = 2,                 -- on-duty officers needed before a store can be robbed
+    MinPolice = 0,                 -- on-duty officers needed before a store can be robbed
     StoreCooldownMinutes = 30,     -- per store and target (register / safe), after a robbery starts
     PlayerCooldownMinutes = 10,    -- per robber
 
