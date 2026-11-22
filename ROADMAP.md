@@ -55,12 +55,12 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Prison:** sentences that persist, and controlled release.
 - **EMS:** injuries, treatment, beds and medical items.
 
-## 🔜 Then: public beta
-- **Businesses:** ownership, employees, stock and workstations.
-- **A second civilian job:** recycling, fishing, trucking or taxi.
-- **The first robbery:** a store robbery with dispatch and cooldowns.
-- **Migration tools** for servers coming from QBCore or QBox.
-- **Full restart, backup and clean-install checks.**
+## ✅ Built, now testing: public beta
+- **Businesses:** Bean Machine and Burger Shot: ownership, staff, a business account, stock orders, workstations and a register.
+- **Fishing:** three fishing spots with their own fish, and a fish market.
+- **Store robberies:** registers and safes, a police minimum, a silent alarm to dispatch and cooldowns.
+- **Migration tool:** imports characters, money, jobs, inventories and vehicles from QBCore or QBox.
+- **Operations:** a server health check, database backups and restart and clean-install checklists.
 
 ## 🌱 Later
 - **More crime:**

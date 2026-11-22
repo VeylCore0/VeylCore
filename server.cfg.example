@@ -58,6 +58,11 @@ ensure veyl_police
 ensure veyl_mdt
 ensure veyl_prison
 ensure veyl_departments
+ensure veyl_robbery
+ensure veyl_fishing
+ensure veyl_business
+ensure veyl_doctor
+# ensure veyl_migrate      # only while importing from QBCore / QBox (docs/MIGRATION.md)
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example
