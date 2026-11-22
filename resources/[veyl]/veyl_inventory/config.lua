@@ -1,6 +1,6 @@
 InventoryConfig = {
     PlayerSlots = 30,
-    PlayerMaxWeight = 30000,         -- integer grams
+    PlayerMaxWeight = 130000,         -- integer grams
     MaxMetadataBytes = 2048,
     UseTimeToleranceMs = 400,         -- completion may arrive this much earlier than the use duration
     UseReservationGraceMs = 10000,    -- reservation expires this long after the use duration
