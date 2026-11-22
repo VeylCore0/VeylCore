@@ -5,8 +5,12 @@
 RobberyConfig = {
     PoliceJobs = { 'police' },
     MinPolice = 0,                 -- on-duty officers needed before a store can be robbed
-    StoreCooldownMinutes = 30,     -- per store and target (register / safe), after a robbery starts
-    PlayerCooldownMinutes = 10,    -- per robber
+    StoreCooldownMinutes = 30,     -- per till and per safe, after a robbery starts (each till in a store is separate)
+    PlayerCooldownMinutes = 0,     -- per robber between robberies (0 = rob every till in a store back to back)
+
+    -- Till props: every one inside a robbable store can be picked on its own. Stores whose interior has no till prop
+    -- fall back to a target zone at the counter.
+    TillModels = { 'prop_till_01', 'prop_till_02', 'prop_till_03', 'p_till_01_s' },
 
     -- Register: pick the till's lock (lockpick + mini game), then empty it.
     Register = { seconds = 12, reward = { 400, 900 }, item = 'lockpick', difficulty = 'medium', pickBreakChance = 0.35 },

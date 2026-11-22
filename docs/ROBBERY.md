@@ -15,3 +15,5 @@ Every **24/7**, **LTD Gasoline** and **Rob's Liquor** can be robbed (each shop m
 Safe positions are in `Safes` (by shop id) in `config.lua`; they assume the base-game store interiors, so check them on your map. A store without a safe entry has a register only. Rewards, times and cooldowns are in the same file.
 
 **Targeting the register:** hold ALT and aim at the counter, the till or the clerk. The zone (1.6 m) sits just in front of where the clerk stands, so it overlaps the counter. "Pick the register lock" shows when you carry a lockpick. Without `veyl_minigames` running, the pick steps succeed without a game.
+
+**Several tills per store:** every till prop (`TillModels`) inside a robbable store is its own target with its own 30-minute cooldown, so you can pick one till and then the next. Only the first till in a 2-minute window raises the alarm. `PlayerCooldownMinutes` (default 0) adds a wait between robberies for the same robber. Counters without a till prop keep the old target zone.

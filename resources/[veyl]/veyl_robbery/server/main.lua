@@ -60,26 +60,34 @@ local function alarm(store, kind)
     end)
 end
 
-Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind)
+Veyl.RegisterCallback('start', function(src, citizenid, storeId, kind, till)
     local s = stores[storeId]
     if not s or (kind ~= 'register' and kind ~= 'safe') or (kind == 'safe' and not s.safe) then return Veyl.Err('INVALID_INPUT', 'Unknown target') end
-    if not near(src, kind == 'safe' and s.safe or s.register, 3.0) then return Veyl.Err('TOO_FAR', 'Move closer') end
+    -- Which till: the client sends the till prop's position; it must be inside this store.
+    local pos = kind == 'safe' and s.safe or s.register
+    if kind == 'register' and type(till) == 'table' and tonumber(till.x) and tonumber(till.y) and tonumber(till.z) then
+        local t = vector3(till.x + 0.0, till.y + 0.0, till.z + 0.0)
+        if #(t - s.register) <= 12.0 then pos = t end
+    end
+    if not near(src, pos, 3.5) then return Veyl.Err('TOO_FAR', 'Move closer') end
     if Player(src).state.medical or Player(src).state.cuffed then return Veyl.Err('INVALID_STATE', 'Not right now') end
     local pd = Veyl.GetPlayerData(src)
     for _, j in ipairs(C.PoliceJobs) do if pd.job.name == j and pd.job.onduty then return Veyl.Err('NO_PERMISSION', 'Not while on duty') end end
     if policeOnDuty() < C.MinPolice then return Veyl.Err('UNAVAILABLE', 'The store is too quiet right now. Come back later.') end
     local now = os.time()
-    local key = storeId .. ':' .. kind
-    if (storeCooldown[key] or 0) > now then return Veyl.Err('RATE_LIMITED', ('This %s was emptied recently'):format(kind)) end
-    if (playerCooldown[citizenid] or 0) > now then return Veyl.Err('RATE_LIMITED', 'Lie low for a while first') end
+    local key = kind == 'safe' and (storeId .. ':safe') or ('%s:till:%d:%d'):format(storeId, math.floor(pos.x), math.floor(pos.y))
+    if (storeCooldown[key] or 0) > now then return Veyl.Err('RATE_LIMITED', kind == 'safe' and 'This safe was emptied recently' or 'This till was emptied recently') end
+    if C.PlayerCooldownMinutes > 0 and (playerCooldown[citizenid] or 0) > now then return Veyl.Err('RATE_LIMITED', 'Lie low for a while first') end
     if kind == 'register' and (exports.veyl_inventory:GetItemCount(src, C.Register.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     if kind == 'safe' and (exports.veyl_inventory:GetItemCount(src, C.Safe.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     storeCooldown[key] = now + C.StoreCooldownMinutes * 60
     playerCooldown[citizenid] = now + C.PlayerCooldownMinutes * 60
     local token = Veyl.NewId()
     local seconds = kind == 'safe' and C.Safe.seconds or C.Register.seconds
-    jobs[src] = { store = storeId, kind = kind, at = GetGameTimer(), token = token, seconds = seconds }
-    alarm(s, kind)
+    jobs[src] = { store = storeId, kind = kind, at = GetGameTimer(), token = token, seconds = seconds, pos = pos }
+    -- One alarm per store visit: a second till right after the first does not call the police again.
+    local alarmKey = storeId .. ':alarm'
+    if (storeCooldown[alarmKey] or 0) <= now then alarm(s, kind) storeCooldown[alarmKey] = now + 120 end
     Veyl.Audit(src, 'robbery_start', { store = storeId, kind = kind })
     return Veyl.Ok({ token = token, seconds = seconds })
 end, { cooldown = 2000 })
@@ -95,7 +103,7 @@ Veyl.RegisterCallback('finish', function(src, citizenid, token)
     local s = stores[j.store]
     local cfg = j.kind == 'safe' and C.Safe or C.Register
     if GetGameTimer() - j.at < j.seconds * 1000 - 1000 then return refuse('TOO_FAST', 'You ran off too early') end
-    if not near(src, j.kind == 'safe' and s.safe or s.register, 5.0) then return refuse('TOO_FAR', 'You walked away') end
+    if not near(src, j.pos or (j.kind == 'safe' and s.safe or s.register), 5.0) then return refuse('TOO_FAR', 'You walked away') end
     if Player(src).state.medical or Player(src).state.cuffed then return refuse('INVALID_STATE', 'You were stopped') end
     if j.kind == 'safe' then
         if (exports.veyl_inventory:GetItemCount(src, C.Safe.item) or 0) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
