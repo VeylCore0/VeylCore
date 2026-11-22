@@ -21,21 +21,25 @@ end
 ---------------------------------------------------------------------------
 -- Trunks and gloveboxes: keyed stashes in veyl_inventory ('veh_trunk@<netId>', 'veh_glovebox@<netId>')
 ---------------------------------------------------------------------------
-CreateThread(function()
-    while GetResourceState('veyl_inventory') ~= 'started' do Wait(500) end
-    Wait(500)
+local function registerStorage()
     local auth = { resource = 'veyl_vehicles', export = 'StorageAccess' }
     exports.veyl_inventory:RegisterStash({ id = 'veh_trunk', label = 'Trunk', slots = C.Trunk.slots, maxWeight = C.Trunk.maxWeight, keyed = true, authorize = auth })
     exports.veyl_inventory:RegisterStash({ id = 'veh_glovebox', label = 'Glovebox', slots = C.Glovebox.slots, maxWeight = C.Glovebox.maxWeight, keyed = true, authorize = auth })
+end
+CreateThread(function()
+    while GetResourceState('veyl_inventory') ~= 'started' do Wait(500) end
+    Wait(500)
+    registerStorage()
 end)
+-- veyl_inventory forgets registrations when it restarts: register again.
+AddEventHandler('onResourceStart', function(res) if res == 'veyl_inventory' then SetTimeout(1500, registerStorage) end end)
 
 --- Called by veyl_inventory before every open and every move: (src, citizenid, stashId, key) -> allowed, code, storageKey.
---- Only vehicles spawned through veyl_vehicles have storage: owned ones keep it ('own<id>'), others last for the session.
+--- Owned vehicles keep their storage for good ('own<id>'); any other vehicle (dealer test cars, job vehicles, cars spawned
+--- by staff menus, NPC cars) uses its plate ('p<PLATE>').
 exports('StorageAccess', function(src, _, stashId, key)
     local entity = entityFromNet(key)
     if not entity then return false, 'NOT_FOUND' end
-    local vehicleId = exports.veyl_vehicles:GetVehicleIdFromEntity(entity)
-    if not vehicleId then return false, 'NO_PERMISSION' end
     local ped = GetPlayerPed(src)
     if stashId == 'veh_glovebox' then
         if GetVehiclePedIsIn(ped, false) ~= entity then return false, 'TOO_FAR' end
@@ -47,7 +51,11 @@ exports('StorageAccess', function(src, _, stashId, key)
         end
     end
     local ownedId = exports.veyl_vehicles:GetOwnedVehicleIdFromEntity(entity)
-    return true, nil, ownedId and ('own%d'):format(ownedId) or ('tmp%s'):format(vehicleId:gsub('[^%w]', ''))
+    if ownedId then return true, nil, ('own%d'):format(ownedId) end
+    -- A fake plate must not open someone else's trunk: use the real one.
+    local plate = (Entity(entity).state.realPlate or GetVehicleNumberPlateText(entity) or ''):gsub('[^%w]', ''):upper()
+    if plate == '' then return false, 'NOT_FOUND' end
+    return true, nil, 'p' .. plate
 end)
 
 ---------------------------------------------------------------------------

@@ -120,7 +120,10 @@ vlib.callback.register('veyl_inventory:open', function(src, stashId)
     if stashId ~= nil then
         if not vlib.validate.str(stashId, 1, 64) then return err('INVALID_INPUT', 'Bad stash') end
         local invId, def, owner = Stashes.Resolve(src, p.citizenid, stashId)
-        if not invId then return err(def, def == 'TOO_FAR' and 'You are too far away' or 'You cannot open that') end
+        if not invId then
+            local msgs = { TOO_FAR = 'You are too far away', LOCKED = 'It is locked', NOT_READY = 'Storage is starting up, try again in a moment', NO_PERMISSION = 'You cannot open that' }
+            return err(def, msgs[def] or 'You cannot open that')
+        end
         local sec = Store.Get(invId, { type = 'stash', owner = owner, label = def.label, slots = def.slots, maxWeight = def.maxWeight })
         if not sec then return err('NOT_READY', 'Stash unavailable') end
         sec.viewers[src] = 'secondary'
