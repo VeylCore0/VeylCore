@@ -48,6 +48,9 @@ end)
 
 RegisterNetEvent('veyl_prison:placeInside', function(p) CreateThread(function() teleport(p) end) end)
 
+-- Logging out / switching character: forget this character's prison state (the server sends it again on load).
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function() sentence = nil clearWork() end)
+
 RegisterNetEvent('veyl_prison:released', function(p)
     sentence = nil
     clearWork()

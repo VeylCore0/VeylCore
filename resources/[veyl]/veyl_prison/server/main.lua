@@ -94,12 +94,22 @@ local function finish(cid, by, failed)
     end
 end
 
+--- Not serving: clear any prison state the client still shows, and walk them out if they are still on the grounds.
+local function clearIfNotServing(src)
+    inmates[src] = nil
+    push(src)
+    local pc = Veyl.GetPlayerCoords(src)
+    if pc and #(vector2(pc.x, pc.y) - vector2(C.Grounds.center.x, C.Grounds.center.y)) <= C.Grounds.radius then
+        TriggerClientEvent('veyl_prison:released', src, C.Release)
+    end
+end
+
 function LoadInmate(src)
     local cid = src and Veyl.GetCitizenId(src)
     if not cid then return end
     local row = MySQL.single.await([[SELECT months, remaining, has_escaped, UNIX_TIMESTAMP(updated_at) AS updated FROM veyl_prison_sentences
         WHERE citizenid = ?]], { cid })
-    if not row then return end
+    if not row then clearIfNotServing(src) return end
     if row.has_escaped == 1 then
         Veyl.Notify(src, 'You escaped from Bolingbroke. The police are looking for you.', 'warning', 8000)
         return
@@ -117,6 +127,7 @@ function LoadInmate(src)
         -- Released (or served) while away: hand back what is owed.
         local failed = returnBelongings(src, cid)
         finish(cid, row.remaining > 0 and 'served offline' or nil, failed)
+        clearIfNotServing(src)
         if row.remaining > 0 then Veyl.Notify(src, 'Your sentence ended while you were away.', 'success', 8000) end
     end
 end
@@ -258,11 +269,13 @@ CreateThread(function()
                 end
                 if tick and inmates[src] then
                     i.remaining = math.max(0, i.remaining - 1)
-                    MySQL.update('UPDATE veyl_prison_sentences SET remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
                     if i.remaining == 0 then
-                        release(src, i.citizenid, 'served')
+                        -- Release first (it archives the still-open sentence), then it is cleared. Writing 0 first made
+                        -- release() think there was no sentence, so the prisoner was never let out.
+                        if not release(src, i.citizenid, 'served') then clearIfNotServing(src) end
                         Veyl.Notify(src, 'You have served your sentence. You are free to go.', 'success', 8000)
                     else
+                        MySQL.update('UPDATE veyl_prison_sentences SET remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
                         push(src)
                     end
                 end
