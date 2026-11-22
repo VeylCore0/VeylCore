@@ -64,16 +64,52 @@ CreateThread(function()
     pcall(function() exports.veyl_phone:RegisterApp({ id = 'boosting', label = 'Boosting', icon = 'car', color = '#3b1f4f', event = 'veyl_boosting:menu' }) end)
 end)
 
+local state = {} -- [netId] = { unlocked, hotwired } (display only; the server decides)
+local busy = false
+
+local function minigame()
+    if GetResourceState('veyl_minigames') ~= 'started' then return true end
+    local p = promise.new()
+    exports.veyl_minigames:Lockpick({ difficulty = BoostingConfig.LockpickDifficulty or 'medium', title = 'Pick the door lock' }, function(ok) p:resolve(ok) end)
+    return Citizen.Await(p) == true
+end
+
 local function act(kind, entity)
+    if busy then return end
+    busy = true
     local netId = NetworkGetNetworkIdFromEntity(entity)
+    if kind == 'lockpick' then
+        -- Check first (right car, lockpick in pockets), then the mini game, then the short timed pick.
+        if (exports.veyl_inventory:GetItemCount(BoostingConfig.HotwireItem) or 0) < 1 then busy = false return Veyl.Notify('You need a lockpick', 'error') end
+        TaskTurnPedToFaceEntity(PlayerPedId(), entity, 600)
+        Wait(600)
+        if Veyl.LoadAnimDict('mp_arresting') then TaskPlayAnim(PlayerPedId(), 'mp_arresting', 'a_uncuff', 3.0, 3.0, -1, 49, 0, false, false, false) end
+        local ok = minigame()
+        ClearPedTasks(PlayerPedId())
+        if not ok then
+            Veyl.NotifyResult(Veyl.Callback('veyl_boosting', 'pickFailed', netId))
+            busy = false
+            return
+        end
+    end
     local start = Veyl.CallbackTimeout('veyl_boosting', 'actStart', 10000, kind, netId)
-    if not start.ok then return Veyl.NotifyResult(start) end
-    local done = vlib.progress({ label = kind == 'hotwire' and 'Hotwiring' or 'Disabling the tracker', duration = start.data.seconds * 1000, canCancel = true,
-        disable = { move = true, car = false, combat = true }, anim = { dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@', clip = 'machinic_loop_mechandplayer', flag = 1 } })
+    if not start.ok then busy = false return Veyl.NotifyResult(start) end
+    local labels = { hotwire = 'Hotwiring', lockpick = 'Opening the door', tracker = 'Disabling the tracker' }
+    local anim = kind == 'hotwire' and { dict = 'veh@std@ds@base', clip = 'hotwire', flag = 1 }
+        or kind == 'lockpick' and { dict = 'mp_arresting', clip = 'a_uncuff', flag = 49 }
+        or { dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@', clip = 'machinic_loop_mechandplayer', flag = 1 }
+    local done = vlib.progress({ label = labels[kind], duration = start.data.seconds * 1000, canCancel = true,
+        disable = { move = true, car = kind == 'hotwire', combat = true }, anim = anim })
     ClearPedTasks(PlayerPedId())
+    busy = false
     if not done then return Veyl.Notify('Stopped', 'info') end
     local r = Veyl.CallbackTimeout('veyl_boosting', 'actFinish', 10000, start.data.token)
     Veyl.NotifyResult(r)
+    if r.ok then
+        state[netId] = state[netId] or {}
+        if kind == 'lockpick' then state[netId].unlocked = true end
+        if kind == 'hotwire' then state[netId].hotwired, state[netId].unlocked = true, true end
+    end
     if r.ok and r.data and r.data.drop then showDrop(r.data.drop.x, r.data.drop.y) end
 end
 
@@ -81,9 +117,36 @@ CreateThread(function()
     while GetResourceState('veyl_target') ~= 'started' do Wait(250) end
     local function isContract(entity) return (GetVehicleNumberPlateText(entity) or ''):find('BST', 1, true) ~= nil end
     exports.veyl_target:addGlobalVehicle({
-        { name = 'veyl_boost_hotwire', label = 'Hotwire (contract)', icon = 'key', distance = 2.5, priority = 3,
-          canInteract = function(e) return isContract(e) end, onSelect = function(d) CreateThread(function() act('hotwire', d.entity) end) end },
+        { name = 'veyl_boost_lockpick', label = 'Lockpick door', icon = 'lock', distance = 2.5, priority = 3,
+          canInteract = function(e)
+              local st = state[NetworkGetNetworkIdFromEntity(e)]
+              return isContract(e) and not busy and GetVehiclePedIsIn(PlayerPedId(), false) == 0 and not (st and st.unlocked) and GetVehicleDoorLockStatus(e) >= 2
+          end,
+          onSelect = function(d) CreateThread(function() act('lockpick', d.entity) end) end },
         { name = 'veyl_boost_tracker', label = 'Disable tracker', icon = 'gear', distance = 2.5, priority = 2,
           canInteract = function(e) return isContract(e) end, onSelect = function(d) CreateThread(function() act('tracker', d.entity) end) end },
     })
+end)
+
+-- Hotwire from the driver seat of the contract car (you cannot target the car you sit in): press H.
+CreateThread(function()
+    local shown = false
+    while true do
+        local sleep = 800
+        local ped = PlayerPedId()
+        local veh = GetVehiclePedIsIn(ped, false)
+        local want = false
+        if veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped and (GetVehicleNumberPlateText(veh) or ''):find('BST', 1, true) then
+            local st = state[NetworkGetNetworkIdFromEntity(veh)]
+            if not (st and st.hotwired) and not busy then
+                want, sleep = true, 0
+                if IsControlJustReleased(0, 74) then CreateThread(function() act('hotwire', veh) end) end
+            end
+        end
+        if want ~= shown then
+            if want then vlib.showTextUI('Hotwire', 'H') else vlib.hideTextUI() end
+            shown = want
+        end
+        Wait(sleep)
+    end
 end)

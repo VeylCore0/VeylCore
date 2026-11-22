@@ -77,8 +77,15 @@ end
 Veyl.RegisterCallback('actStart', function(src, citizenid, kind, netId)
     local c = contractVehicle(src, citizenid, netId)
     if not c then return Veyl.Err('NOT_FOUND', 'That is not your contract car') end
-    if kind == 'hotwire' then
+    if kind == 'lockpick' then
+        if c.unlocked or c.hotwired then return Veyl.Err('INVALID_STATE', 'The door is already open') end
+        if GetVehiclePedIsIn(GetPlayerPed(src), false) ~= 0 then return Veyl.Err('INVALID_STATE', 'Get out to pick the door') end
+        if count(src, C.HotwireItem) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
+    elseif kind == 'hotwire' then
         if c.hotwired then return Veyl.Err('INVALID_STATE', 'Already done') end
+        if not c.unlocked then return Veyl.Err('INVALID_STATE', 'Pick the door lock first') end
+        local _, ent = contractVehicle(src, citizenid, netId)
+        if not ent or GetPedInVehicleSeat(ent, -1) ~= GetPlayerPed(src) then return Veyl.Err('INVALID_STATE', 'Sit in the driver seat to hotwire it') end
         if count(src, C.HotwireItem) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
     elseif kind == 'tracker' then
         if not c.tracked then return Veyl.Err('INVALID_STATE', 'No tracker on this one') end
@@ -87,9 +94,20 @@ Veyl.RegisterCallback('actStart', function(src, citizenid, kind, netId)
         return Veyl.Err('INVALID_INPUT', 'Unknown action')
     end
     local token = Veyl.NewId()
-    acting[src] = { kind = kind, token = token, at = GetGameTimer(), seconds = kind == 'hotwire' and C.HotwireSeconds or C.TrackerSeconds, netId = netId }
+    acting[src] = { kind = kind, token = token, at = GetGameTimer(), netId = netId,
+        seconds = kind == 'hotwire' and C.HotwireSeconds or kind == 'lockpick' and (C.LockpickSeconds or 4) or C.TrackerSeconds }
     return Veyl.Ok({ token = token, seconds = acting[src].seconds })
 end, { cooldown = 1000 })
+
+--- The lockpick mini game failed at the contract car's door: the pick may snap.
+Veyl.RegisterCallback('pickFailed', function(src, citizenid, netId)
+    local c = contractVehicle(src, citizenid, netId)
+    if not c then return Veyl.Ok() end
+    if math.random() < (C.LockpickBreakChance or 0.35) and exports.veyl_inventory:RemoveItem(src, C.HotwireItem, 1) then
+        return Veyl.Ok({ broke = true }, 'Your lockpick snapped')
+    end
+    return Veyl.Ok({ broke = false }, 'You slipped. Try again.')
+end, { cooldown = 1500 })
 
 Veyl.RegisterCallback('actFinish', function(src, citizenid, token)
     local a = acting[src]
@@ -98,6 +116,11 @@ Veyl.RegisterCallback('actFinish', function(src, citizenid, token)
     local c, ent = contractVehicle(src, citizenid, a.netId)
     if not c then return Veyl.Err('NOT_FOUND', 'You moved away') end
     if GetGameTimer() - a.at < a.seconds * 1000 - 600 then return Veyl.Err('TOO_FAST', 'You stopped too early') end
+    if a.kind == 'lockpick' then
+        c.unlocked = true
+        SetVehicleDoorsLocked(ent, 1)
+        return Veyl.Ok({ unlocked = true }, 'Unlocked. Get in and hotwire it (H).')
+    end
     if a.kind == 'hotwire' then
         c.hotwired = true
         SetVehicleDoorsLocked(ent, 1)

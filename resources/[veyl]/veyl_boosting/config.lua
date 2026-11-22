@@ -5,6 +5,7 @@ BoostingConfig = {
     TimeLimitMinutes = 30,
     MinPolice = { D = 0, C = 1, B = 2, A = 2, S = 3 },
     HotwireSeconds = 15, HotwireItem = 'lockpick',
+    LockpickSeconds = 4, LockpickDifficulty = 'medium', LockpickBreakChance = 0.35, -- door: mini game, then this many seconds
     TrackerItem = 'hacking_device', TrackerSeconds = 20, TrackerPingSeconds = 20,
 
     -- Reputation needed for each class, and what a delivery pays (cash) and earns (rep).
