@@ -116,6 +116,7 @@ tasks:
       ensure veyl_cityhall
       ensure veyl_management
       ensure veyl_medical
+      ensure veyl_emotes
       ensure veyl_delivery
       ensure veyl_admin
       # ensure veyl_qbexample   # optional QBCore-style example resource

@@ -40,13 +40,13 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Door locks:** set up in game, access by job, gang, key or item, business hours, lockpicking and police rams.
 - **Growing:** weed, coca and mushrooms. Quality grades, a Grow Journal, supplier stores, and tables for rolling joints, bagging and processing.
 
-## 🛠️ Next up: closed city alpha
-- **City Hall:** ID replacement, licenses and the job board.
-- **Management and boss menus:** hire, fire, promote and employee lists.
-- **Medical:** being downed, EMS revives and hospital recovery.
+## 🧪 Built, now testing: closed city alpha
+- **City Hall:** ID and licence cards, licences, the job board and showing your ID.
+- **Management and boss menus:** hire, fire, promote and employee lists for jobs and gangs.
+- **Medical:** being downed, EMS revives, first aid kits and hospital recovery.
 - **Voice:** proximity voice and phone calls through pma-voice.
 - **Emotes:** search, favorites, props and shared emotes.
-- **In-game acceptance testing** with real players.
+- **Next:** in-game acceptance testing with real players.
 
 ## 🔜 Then: emergency services
 - **Dispatch:** calls, blips, unit status and a panic button.
