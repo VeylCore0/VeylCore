@@ -1,6 +1,6 @@
 # Notifications and progress
 
-Notifications, timed progress bars and hold-to-interact rings are drawn by **veyl_lib** (page: `packages/lib-ui`). Every existing call keeps working and gets the new look: `Veyl.Notify`, `Veyl.NotifyResult`, `Veyl.UI.Progress`, `vlib.notify`, `vlib.progress`, `exports.veyl_lib:Notify / StartProgress / CancelProgress / IsProgressActive`, and the `veyl_lib:notify` / `veyl_ui:notify` events.
+Notifications (middle of the right edge by default), timed progress bars and hold-to-interact rings are drawn by **veyl_lib** (page: `packages/lib-ui`). Every existing call keeps working and gets the new look: `Veyl.Notify`, `Veyl.NotifyResult`, `Veyl.UI.Progress`, `vlib.notify`, `vlib.progress`, `exports.veyl_lib:Notify / StartProgress / CancelProgress / IsProgressActive`, and the `veyl_lib:notify` / `veyl_ui:notify` events.
 
 Nothing here takes NUI focus: notifications and progress never grab the mouse or keyboard. Gameplay keys (cancel, hold) are read by the client with control natives.
 
@@ -11,7 +11,7 @@ Nothing here takes NUI focus: notifications and progress never grab the mouse or
 | Setting | Default | |
 |---|---|---|
 | `Theme` | background `#151D22` at 86 %, text `#F7FAFC` / `#AAB6BF`, success `#A5F3D0`, info `#8BD4EE`, warning `#F0C374`, error `#EF9298`, `scale` 1.0, `reducedMotion` false | the same colours as the Ocean Drive HUD |
-| `Notifications.position` | `top-right` (`top-left`, `top-center`) | `offsetX` 1.6 %, `offsetY` 3 % of the screen |
+| `Notifications.position` | `center-right` (also `center-left`, `top-right`, `top-left`, `top-center`) | `offsetX` 1.6 % from the edge; `offsetY` moves it up (−) / down (+) from the middle, or down from the top |
 | `Notifications.width` | 23 rem | |
 | `maxVisible` / `maxQueue` | 4 / 20 | extra messages wait; beyond 20 the oldest waiting one is dropped |
 | `defaultDuration` | 5000 ms (clamped 1.5–30 s) | |

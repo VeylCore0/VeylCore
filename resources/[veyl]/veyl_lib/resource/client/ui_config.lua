@@ -11,8 +11,8 @@ VlibUIConfig = {
     },
 
     Notifications = {
-        position = 'top-right',          -- 'top-right' | 'top-left' | 'top-center'
-        offsetX = 1.6, offsetY = 3.0,    -- % of the screen from that corner (keep clear of the HUD)
+        position = 'center-right',       -- 'center-right' | 'center-left' | 'top-right' | 'top-left' | 'top-center'
+        offsetX = 1.6, offsetY = 0.0,    -- % of the screen: from the edge, and (centre) up/down from the middle or (top) from the top
         width = 23,                      -- rem (about 370 px at 1080p)
         maxVisible = 4,                  -- more are queued
         maxQueue = 20,                   -- the oldest queued message is dropped beyond this

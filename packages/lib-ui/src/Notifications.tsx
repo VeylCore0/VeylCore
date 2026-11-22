@@ -89,7 +89,12 @@ export function Notifications({ cards, cfg, interactive, onClose }: { cards: Car
   if (!cards.length) return null;
   const pos = cfg?.position ?? 'top-right';
   const style: React.CSSProperties = { top: `${cfg?.offsetY ?? 3}vh`, width: `${cfg?.width ?? 23}rem` };
-  if (pos === 'top-left') style.left = `${cfg?.offsetX ?? 1.6}vw`;
+  if (pos === 'center-right' || pos === 'center-left') {
+    // Vertically centred on the screen edge (offsetY nudges it up / down from the middle).
+    style.top = `calc(50% + ${cfg?.offsetY ?? 0}vh)`;
+    style.transform = 'translateY(-50%)';
+    if (pos === 'center-left') style.left = `${cfg?.offsetX ?? 1.6}vw`; else style.right = `${cfg?.offsetX ?? 1.6}vw`;
+  } else if (pos === 'top-left') style.left = `${cfg?.offsetX ?? 1.6}vw`;
   else if (pos === 'top-center') { style.left = '50%'; style.transform = 'translateX(-50%)'; }
   else style.right = `${cfg?.offsetX ?? 1.6}vw`;
   return (
