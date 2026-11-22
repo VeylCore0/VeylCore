@@ -43,7 +43,9 @@ local function voiceState()
     if voiceProvider == 'pma-voice' then
         local prox = LocalPlayer.state.proximity
         local index = type(prox) == 'table' and tonumber(prox.index) or nil
-        return { talking = talking, range = index and math.min(4, index + 1) or nil, available = index ~= nil }
+        -- A custom range (e.g. veyl_medical while downed) shows as the lowest level.
+        local range = index and (prox.mode == 'Custom' and 1 or math.min(4, index + 1)) or nil
+        return { talking = talking, range = range, available = index ~= nil }
     end
     return { talking = talking, range = nil, available = false }
 end

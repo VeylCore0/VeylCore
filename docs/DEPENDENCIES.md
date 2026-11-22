@@ -10,6 +10,7 @@ Pin exact versions and never track moving branches on a live server.
 | FXServer artifact | Dev server artifact (bundled with txAdmin 8.1.2) | Record the exact artifact number on release |
 | Database | MariaDB 10.4.32 (XAMPP) | |
 | oxmysql | v2.14.3 | SQL driver only. Building a driver is outside the plan's scope |
+| pma-voice | commit 6c9d96e (main, Jun 2026; reports 7.0.1) | Proximity voice and phone calls. The last tagged release (v6.6.2) is from 2022. See [VOICE.md](VOICE.md) |
 | veyl_lib / veyl_target / veyl_inventory | 0.3.0 (this repo) | First sprint. See [API-STATUS.md](API-STATUS.md) |
 | UI build toolchain (build time only) | Node 18+, react 18.3.1, vite 5.4.11, typescript 5.6.3, @vitejs/plugin-react 4.3.4, @fontsource/inter 5.1.0 | Compiled output is committed in each resource's `web/dist` |
 

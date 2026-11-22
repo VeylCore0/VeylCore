@@ -9,7 +9,7 @@ version: 0.3.0
 author: VeylCore
 description: >-
   VeylCore roleplay framework: QB-style core (citizenid, PlayerData, multijob, ledger money), character select,
-  appearance, spawn, HUD, needs, banking, jobs, vehicles/keys/fuel, shops, GoPostal delivery job, staff tools,
+  appearance, spawn, HUD, needs, banking, jobs, vehicles/keys/fuel, shops, GoPostal delivery job, staff tools, pma-voice,
   an optional qb-core compatibility shim, and native veyl_lib / veyl_target / veyl_inventory.
   Database tables are created automatically on first boot.
 
@@ -20,13 +20,20 @@ tasks:
     subpath: resources
     dest: ./resources
 
-  # SQL driver (the only external runtime dependency).
+  # SQL driver.
   - action: download_file
     url: https://github.com/overextended/oxmysql/releases/download/v2.14.3/oxmysql.zip
     path: ./tmp/oxmysql.zip
   - action: unzip
     src: ./tmp/oxmysql.zip
     dest: ./resources/[standalone]
+
+  # Proximity voice and phone calls. The last tagged pma-voice release is from 2022, so this pins a commit of its
+  # maintained main branch. Must start before veyl_hud (the HUD detects it once at start).
+  - action: download_github
+    src: https://github.com/AvarianKnight/pma-voice
+    ref: 6c9d96ed7a02e30912f1a0ce92629bf9afbbca8c
+    dest: ./resources/[standalone]/pma-voice
 
   # VeylCore resources, pinned to a tested commit. Update `ref` when you release a new version.
   - action: download_github
@@ -75,6 +82,9 @@ tasks:
 
       ## VeylCore (native profile). Do NOT add ox_lib, ox_target, ox_inventory or upstream qb-core.
       ensure oxmysql
+      ensure pma-voice
+      setr voice_useNativeAudio true   # pma-voice: native 3D audio
+      setr voice_enableUi 0            # the VeylCore HUD shows talking and range
       ensure veyl_lib
       ensure veyl_core
       ensure qb-core

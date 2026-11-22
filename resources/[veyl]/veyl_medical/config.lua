@@ -22,6 +22,10 @@ MedicalConfig = {
     HealthAfterHelpUp = 130,         -- of 200
     HealthAfterRespawn = 200,
 
+    -- Voice (pma-voice only; ignored without it). Range in metres while downed / unconscious; nil = leave unchanged.
+    VoiceRangeDowned = 1.5,          -- badly hurt: a whisper
+    VoiceRangeUnconscious = 0.1,     -- cannot be heard
+
     CallCooldownSeconds = 60,        -- "call for help" (G) while downed
     AlertBlipSeconds = 90,
 

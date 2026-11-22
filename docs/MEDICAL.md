@@ -47,3 +47,7 @@ The player state bag `medical` holds the same value and is readable by every cli
 Staff `/vrevive` keeps working: clearing the metadata ends the medical state.
 
 Every revive, help-up, treatment, respawn and check-in is written to the audit log.
+
+## Voice
+
+With pma-voice running, a downed player can only whisper (`VoiceRangeDowned`, 1.5 m) and an unconscious player cannot be heard (`VoiceRangeUnconscious`). The normal range comes back when they are revived or respawn. The HUD shows one bar while the range is overridden.

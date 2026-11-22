@@ -114,6 +114,22 @@ local function fmt(ms)
     return ('%d:%02d'):format(s // 60, s % 60)
 end
 
+-- Voice: downed players whisper, unconscious players cannot be heard (pma-voice; restored when the state ends).
+CreateThread(function()
+    local applied = nil
+    while true do
+        Wait(500)
+        if GetResourceState('pma-voice') == 'started' and applied ~= state then
+            local range = state == 'down' and C.VoiceRangeDowned or state == 'dead' and C.VoiceRangeUnconscious or nil
+            local ok = pcall(function()
+                if range then exports['pma-voice']:overrideProximityRange(range + 0.0, true)
+                elseif applied then exports['pma-voice']:clearProximityOverride() end
+            end)
+            if ok then applied = state end
+        end
+    end
+end)
+
 -- While downed / unconscious: animation, blocked controls, help text, timers.
 local transitioning = false
 CreateThread(function()
@@ -206,6 +222,7 @@ AddEventHandler('onResourceStop', function(res)
     local ped = PlayerPedId()
     SetEntityInvincible(ped, false)
     SetPedCanRagdoll(ped, true)
+    if GetResourceState('pma-voice') == 'started' then pcall(function() exports['pma-voice']:clearProximityOverride() end) end
 end)
 
 -- Resource restart while this client was mid-state: ask the server.

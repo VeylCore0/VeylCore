@@ -15,6 +15,10 @@ set mysql_connection_string "mysql://user:password@localhost/veylcore?charset=ut
 
 # Native profile: no ox_lib / ox_target / ox_inventory. (Transitional ox profile: see docs/DEPENDENCIES.md.)
 ensure oxmysql
+# Voice (proximity + phone calls). Start before veyl_hud. See docs/VOICE.md.
+ensure pma-voice
+setr voice_useNativeAudio true
+setr voice_enableUi 0       # the VeylCore HUD shows talking and range
 ensure veyl_lib
 ensure veyl_core
 ensure qb-core              # optional QBCore compatibility shim
