@@ -94,3 +94,9 @@ Severity goes from 1 to 4 per part.
 ### Beds
 
 On-duty EMS near Pillbox can *Put in hospital bed* a patient: they lie in the first free bed (`Beds` in `config.lua`, set them to your hospital MLO). Check-in treatment also happens in a bed. Patients get up with **E** once they are conscious.
+
+## EMS pay and bills
+
+- Medics are paid to their bank for every finished revive ($150) and treatment ($50) (`Pay`).
+- **Send medical bill** (target a person): amount and reason, charged to the patient's bank; the medic keeps 25 % (`Bills.Commission`). Bills up to $5,000.
+- Ambulances and the medical supply cabinet are in [DEPARTMENTS.md](DEPARTMENTS.md).

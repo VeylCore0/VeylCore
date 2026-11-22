@@ -238,6 +238,11 @@ Veyl.RegisterCallback('actionFinish', function(src, citizenid, token)
     end
     Veyl.Notify(a.target, a.kind == 'treat' and 'Your injuries were treated.' or 'You were helped back on your feet.', 'success')
     Veyl.Audit(src, 'medical_' .. a.kind, { target = tcid })
+    local pay = C.Pay and C.Pay[a.kind]
+    if pay and pay > 0 then
+        local r = core('CreditOnce', citizenid, 'bank', pay, ('EMS: %s'):format(a.kind == 'revive' and 'revive' or 'treatment'), ('medical:pay:%s'):format(token))
+        if r.ok then Veyl.Notify(src, ('+$%d for the %s'):format(pay, a.kind == 'revive' and 'revive' or 'treatment'), 'success') end
+    end
     return Veyl.Ok(nil, a.kind == 'treat' and 'Treated' or 'They are back on their feet')
 end, { cooldown = 500 })
 
@@ -319,3 +324,30 @@ AddEventHandler('VeylCore:Server:OnPlayerUnload', function(src) states[src], act
 exports('IsDown', function(src) return states[tonumber(src)] ~= nil end)
 exports('GetState', function(src) local st = states[tonumber(src)] return st and st.state or nil end)
 exports('Revive', function(src, health) clear(tonumber(src), health) return true end)
+
+---------------------------------------------------------------------------
+-- Medical bills (EMS bill a patient; the medic keeps a share)
+---------------------------------------------------------------------------
+local billSeq = 0
+Veyl.RegisterCallback('bill', function(src, citizenid, target, amount, reason)
+    if not isEMS(src) then return Veyl.Err('NO_PERMISSION', 'Only on-duty EMS can send medical bills') end
+    target = tonumber(target)
+    local tcid = target and target ~= src and Veyl.GetCitizenId(target)
+    if not tcid then return Veyl.Err('NOT_FOUND', 'Nobody there') end
+    if not near(src, target, 5.0) then return Veyl.Err('TOO_FAR', 'Move closer') end
+    amount = math.floor(tonumber(amount) or 0)
+    if amount < 1 or amount > C.Bills.Max then return Veyl.Err('INVALID_INPUT', ('Bills are $1 - $%d'):format(C.Bills.Max)) end
+    reason = type(reason) == 'string' and reason:gsub('[%c]', ''):sub(1, 100) or ''
+    if #reason < 3 then return Veyl.Err('INVALID_INPUT', 'Say what the bill is for') end
+    billSeq = billSeq + 1
+    local op = ('medical:bill:%s:%d:%d'):format(citizenid, os.time(), billSeq)
+    local r = core('DebitOnce', tcid, 'bank', amount, ('Medical bill: %s'):format(reason), op)
+    if not r.ok and r.code ~= 'DUPLICATE_OPERATION' then
+        return Veyl.Err(r.code or 'INSUFFICIENT_FUNDS', r.code == 'INSUFFICIENT_FUNDS' and 'They cannot pay this bill' or (r.message or 'Payment failed'))
+    end
+    local share = math.floor(amount * (C.Bills.Commission or 0))
+    if share > 0 then core('CreditOnce', citizenid, 'bank', share, 'Medical bill commission', op .. ':share') end
+    Veyl.Notify(target, ('Medical bill: $%d for %s (paid from your bank).'):format(amount, reason), 'info', 8000)
+    Veyl.Audit(src, 'medical_bill', { target = tcid, amount = amount, reason = reason })
+    return Veyl.Ok(nil, share > 0 and ('Bill paid. Your share: $%d'):format(share) or 'Bill paid')
+end, { cooldown = 2000 })

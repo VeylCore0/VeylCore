@@ -68,3 +68,7 @@ MedicalConfig.Beds = {
     vector4(360.32, -587.19, 43.02, 152.0),
 }
 MedicalConfig.BedDistance = 40.0     -- how close to the beds EMS must be to put someone in one
+
+-- EMS pay and billing
+MedicalConfig.Pay = { revive = 150, treat = 50 }   -- paid to the medic's bank for each finished revive / treatment
+MedicalConfig.Bills = { Max = 5000, Commission = 0.25 } -- medical bills: largest bill, and the medic's share of each paid bill

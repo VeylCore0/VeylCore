@@ -202,6 +202,17 @@ CreateThread(function()
     exports.veyl_target:addGlobalPlayer({
         { name = 'veyl_medical_diagnose', label = 'Check injuries', icon = 'inspect', distance = C.ActionDistance, priority = 4,
           canInteract = function() return isEMS() and not LocalPlayer.state.medical end, onSelect = function(d) CreateThread(function() diagnose(d.entity) end) end },
+        { name = 'veyl_medical_bill', label = 'Send medical bill', icon = 'receipt', distance = C.ActionDistance, priority = 1,
+          canInteract = function() return isEMS() and not LocalPlayer.state.medical end,
+          onSelect = function(d) CreateThread(function()
+              local id = serverIdOf(d.entity)
+              if not id then return end
+              local v = vlib.inputDialog('Medical bill', {
+                  { name = 'amount', label = 'Amount ($)', type = 'number', required = true, min = 1, max = C.Bills.Max },
+                  { name = 'reason', label = 'For', type = 'text', required = true, maxLength = 100, placeholder = 'e.g. Gunshot treatment and transport' },
+              }, { submitLabel = 'Send bill' })
+              if v then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_medical', 'bill', 15000, id, math.floor(tonumber(v.amount) or 0), v.reason)) end
+          end) end },
         { name = 'veyl_medical_bed', label = 'Put in hospital bed', icon = 'heart', distance = C.ActionDistance, priority = 2,
           canInteract = function() return isEMS() and #C.Beds > 0 and #(GetEntityCoords(PlayerPedId()) - vector3(C.Beds[1].x, C.Beds[1].y, C.Beds[1].z)) < C.BedDistance end,
           onSelect = function(d) CreateThread(function() local id = serverIdOf(d.entity) if id then Veyl.NotifyResult(Veyl.Callback('veyl_medical', 'putInBed', id)) end end) end },
