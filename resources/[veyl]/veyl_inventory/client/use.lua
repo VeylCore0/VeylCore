@@ -14,6 +14,10 @@ function UseSlot(slot)
         return vlib.notify({ message = (start and start.message) or 'Could not use that', type = 'error' })
     end
     local d = start.data
+    -- Safety net: if the progress bar never answers, unlock item use again after its time plus a margin.
+    local token = {}
+    using = token
+    SetTimeout((d.durationMs or 0) + 8000, function() if using == token then using = false end end)
     local done = true
     if d.durationMs > 0 then
         done = vlib.progress({ label = d.label, duration = d.durationMs, canCancel = true,
@@ -25,7 +29,7 @@ function UseSlot(slot)
     else
         vlib.callback.await('veyl_inventory:useCancel', { timeoutMs = 5000 }, d.useId)
     end
-    using = false
+    if using == token then using = false end
 end
 
 exports('useSlot', function(slot) CreateThread(function() UseSlot(slot) end) end)

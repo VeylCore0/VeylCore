@@ -355,10 +355,13 @@ end
 
 --- StartProgress({ id?, label, icon?, duration, color?, canCancel = true, cancelControl?, cancelLabel?, disable = { move, car, combat },
 ---   anim = { dict, clip, flag }?, scenario?, prop = { model, bone, pos, rot } | { ... }?, completeLabel?, showComplete = true, replace? }, cb(completed, reason))
-exports('StartProgress', function(opts, cb) startAction('timed', opts, type(cb) == 'function' and cb or function() end, GetInvokingResource()) end)
+-- A callback passed from another resource arrives as a callable table (function reference), not a Lua function.
+local function callable(cb) return (type(cb) == 'function' or type(cb) == 'table') and cb or function() end end
+
+exports('StartProgress', function(opts, cb) startAction('timed', opts, callable(cb), GetInvokingResource()) end)
 
 --- StartHoldProgress({ id?, label, subLabel? | false, keyLabel?, control?, duration, decay? (0 = reset on release), disable?, anim?, replace? }, cb(completed, reason))
-exports('StartHoldProgress', function(opts, cb) startAction('hold', opts, type(cb) == 'function' and cb or function() end, GetInvokingResource()) end)
+exports('StartHoldProgress', function(opts, cb) startAction('hold', opts, callable(cb), GetInvokingResource()) end)
 
 --- CancelProgress(id?): cancels the running action (or only the one with that id).
 exports('CancelProgress', function(id)
