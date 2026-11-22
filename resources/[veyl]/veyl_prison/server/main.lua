@@ -34,7 +34,7 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
         } },
         { id = '002_belongings_escape', sql = {
             [[ALTER TABLE veyl_prison_sentences ADD COLUMN IF NOT EXISTS belongings LONGTEXT NULL,
-                ADD COLUMN IF NOT EXISTS escaped TINYINT(1) NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS has_escaped TINYINT(1) NOT NULL DEFAULT 0,
                 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP]],
         } },
     })
@@ -88,7 +88,7 @@ local function finish(cid, by, failed)
     MySQL.insert.await([[INSERT INTO veyl_prison_history (citizenid, months, reason, officer, sentenced_at, released_by)
         SELECT citizenid, months, reason, officer, created_at, ? FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0]], { tostring(by or ''):sub(1, 64), cid })
     if failed and #failed > 0 then
-        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, escaped = 0, belongings = ? WHERE citizenid = ?', { json.encode(failed), cid })
+        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, has_escaped = 0, belongings = ? WHERE citizenid = ?', { json.encode(failed), cid })
     else
         MySQL.update.await('DELETE FROM veyl_prison_sentences WHERE citizenid = ?', { cid })
     end
@@ -97,10 +97,10 @@ end
 function LoadInmate(src)
     local cid = src and Veyl.GetCitizenId(src)
     if not cid then return end
-    local row = MySQL.single.await([[SELECT months, remaining, escaped, UNIX_TIMESTAMP(updated_at) AS updated FROM veyl_prison_sentences
+    local row = MySQL.single.await([[SELECT months, remaining, has_escaped, UNIX_TIMESTAMP(updated_at) AS updated FROM veyl_prison_sentences
         WHERE citizenid = ?]], { cid })
     if not row then return end
-    if row.escaped == 1 then
+    if row.has_escaped == 1 then
         Veyl.Notify(src, 'You escaped from Bolingbroke. The police are looking for you.', 'warning', 8000)
         return
     end
@@ -127,7 +127,7 @@ local function release(src, cid, by)
         -- Offline: they collect their belongings when they next log in.
         MySQL.insert.await([[INSERT INTO veyl_prison_history (citizenid, months, reason, officer, sentenced_at, released_by)
             SELECT citizenid, months, reason, officer, created_at, ? FROM veyl_prison_sentences WHERE citizenid = ?]], { tostring(by or ''):sub(1, 64), cid })
-        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, escaped = 0 WHERE citizenid = ?', { cid })
+        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, has_escaped = 0 WHERE citizenid = ?', { cid })
         return true
     end
     inmates[src] = nil
@@ -173,7 +173,7 @@ local function sentence(officerSrc, citizenid, months, reason)
     MySQL.query.await([[INSERT INTO veyl_prison_sentences (citizenid, months, remaining, reason, officer) VALUES (?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE months = VALUES(months), remaining = VALUES(remaining), reason = VALUES(reason), officer = VALUES(officer), created_at = NOW()]],
         { citizenid, months, months, reason, officerName })
-    MySQL.update.await('UPDATE veyl_prison_sentences SET escaped = 0 WHERE citizenid = ?', { citizenid })
+    MySQL.update.await('UPDATE veyl_prison_sentences SET has_escaped = 0 WHERE citizenid = ?', { citizenid })
     if C.Confiscate then
         local taken = confiscate(target)
         if #taken > 0 then
@@ -196,8 +196,8 @@ end
 exports('Sentence', sentence)
 
 exports('GetSentence', function(citizenid)
-    local row = MySQL.single.await('SELECT months, remaining, reason, escaped FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0', { citizenid })
-    return row and { months = row.months, remaining = row.remaining, reason = row.reason, escaped = row.escaped == 1 } or nil
+    local row = MySQL.single.await('SELECT months, remaining, reason, has_escaped FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0', { citizenid })
+    return row and { months = row.months, remaining = row.remaining, reason = row.reason, escaped = row.has_escaped == 1 } or nil
 end)
 
 exports('Release', function(citizenid, by)
@@ -320,7 +320,7 @@ end)
 ---------------------------------------------------------------------------
 function Escape(src, i, pc)
     inmates[src] = nil
-    MySQL.update.await('UPDATE veyl_prison_sentences SET escaped = 1, remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
+    MySQL.update.await('UPDATE veyl_prison_sentences SET has_escaped = 1, remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
     push(src)
     local pd = Veyl.GetPlayerData(src)
     local who = charName(pd)
