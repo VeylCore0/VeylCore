@@ -15,6 +15,8 @@ function Stashes.Register(def, registrant)
         id = def.id, label = def.label or def.id, slots = def.slots, maxWeight = def.maxWeight, owner = def.owner,
         coords = def.coords and vector3(def.coords.x, def.coords.y, def.coords.z) or nil, radius = tonumber(def.radius) or 2.0,
         groups = def.groups, registrant = registrant,
+        -- Optional: show an existing player inventory (e.g. police searching someone). Requires an authorize export.
+        inventory = type(def.inventory) == 'string' and def.inventory:match('^player:[%w]+$') and def.authorize and def.inventory or nil,
         authorize = type(def.authorize) == 'table' and type(def.authorize.resource) == 'string' and type(def.authorize.export) == 'string'
             and { resource = def.authorize.resource, export = def.authorize.export } or nil,
     }
@@ -34,6 +36,7 @@ function Stashes.Resolve(src, citizenid, stashId)
         local ok, allowed, code = pcall(function() return exports[def.authorize.resource][def.authorize.export](nil, src, citizenid, stashId) end)
         if not ok or allowed ~= true then return nil, (ok and type(code) == 'string') and code or 'NO_PERMISSION' end
     end
+    if def.inventory then return def.inventory, def, nil end
     local owner
     if def.owner == true then owner = citizenid
     elseif type(def.owner) == 'string' then

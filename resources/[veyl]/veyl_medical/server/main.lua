@@ -85,6 +85,17 @@ local function alertEMS(src, street)
     local pc = Veyl.GetPlayerCoords(src)
     if not pc then return 0 end
     local list = emsOnDuty()
+    street = type(street) == 'string' and street:sub(1, 64) or nil
+    -- With veyl_dispatch running the alert becomes a dispatch call (card, blip, respond key, call list).
+    if GetResourceState('veyl_dispatch') == 'started' then
+        local pd = Veyl.GetPlayerData(src)
+        local ok = pcall(function()
+            exports.veyl_dispatch:Alert({ services = { 'ems' }, code = '10-52', title = 'Person down', priority = 1, coords = pc, street = street,
+                message = pd and ('%s %s needs medical attention'):format(pd.charinfo.firstname or '', pd.charinfo.lastname or '') or nil,
+                blip = { sprite = 153, colour = 1 } })
+        end)
+        if ok then return #list end
+    end
     for _, s in ipairs(list) do
         if s ~= src then
             TriggerClientEvent('veyl_medical:alert', s, { x = pc.x, y = pc.y, z = pc.z, street = type(street) == 'string' and street:sub(1, 64) or nil,
