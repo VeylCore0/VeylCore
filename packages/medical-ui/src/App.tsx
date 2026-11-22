@@ -49,8 +49,8 @@ export function App() {
   const helpFrac = live.helpedTotalMs ? 1 - helped / live.helpedTotalMs : 0;
   const down = live.state === 'down';
   const ready = !down && remaining <= 0;
-  // The heartbeat speeds up as you bleed out: 1.05 s per beat at first, 0.45 s at the end.
-  const beat = down ? 0.45 + 0.6 * frac : 2.6;
+  // The heartbeat speeds up in a few steps as you bleed out (changing it every tick would restart the animations).
+  const beat = !down ? 2.6 : frac > 0.6 ? 1.0 : frac > 0.35 ? 0.85 : frac > 0.2 ? 0.7 : 0.55;
   const style = { '--beat': `${beat}s` } as CSSProperties;
 
   return (
@@ -94,7 +94,7 @@ export function App() {
         {helped <= 0 && (
           <div className="ds-prompt">
             {down && (callIn > 0
-              ? <span className="ds-key muted"><kbd>G</kbd>Help called · again in {clock(callIn)}</span>
+              ? <span className="ds-key muted"><kbd>G</kbd>Call for help again in {clock(callIn)}</span>
               : <span className="ds-key"><kbd>G</kbd>Call for help</span>)}
             {!down && ready && (live.respawning
               ? <span className="ds-key big muted">Checking you in…</span>

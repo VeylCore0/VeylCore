@@ -23,12 +23,12 @@ html, body, #root { background: transparent !important; overflow: hidden; }
   background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.5) 0 1px, transparent 1px 3px); }
 
 /* Content: bottom centre, leaving the middle of the screen free to see what happened. */
-.ds-stack { position: absolute; left: 50%; bottom: 9vh; transform: translateX(-50%); width: min(42rem, 92vw);
-  display: flex; flex-direction: column; align-items: center; gap: 0.85rem; text-align: center; }
+.ds-stack { position: absolute; left: 50%; bottom: 5vh; transform: translateX(-50%); width: min(42rem, 92vw);
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem; text-align: center; }
 
 /* Heart monitor */
-.ds-ecg { position: relative; width: min(30rem, 80vw); height: 4.2rem; overflow: hidden; }
-.ds-ecg svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ds-ecg { position: relative; width: min(22rem, 70vw); height: 2.8rem; overflow: hidden; }
+.ds-ecg svg { width: 100%; height: 100%; display: block; }
 .ds-ecg .trace { fill: none; stroke: var(--blood); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
   filter: drop-shadow(0 0 6px rgba(224, 50, 63, 0.9)); animation: ds-scroll var(--beat) linear infinite; }
 .ds-ecg.steady .trace { stroke: #7fe0b0; filter: drop-shadow(0 0 6px rgba(127, 224, 176, 0.8)); animation-duration: 0.9s; }
@@ -38,29 +38,23 @@ html, body, #root { background: transparent !important; overflow: hidden; }
 @keyframes ds-flat { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
 
 /* Title with a slight chromatic split */
-.ds-title { position: relative; margin: 0; font-size: clamp(2.6rem, 5.6vw, 5rem); font-weight: 700; letter-spacing: 0.22em; line-height: 1;
+.ds-title { position: relative; margin: 0; font-size: clamp(1.9rem, 3.4vw, 3.2rem); font-weight: 700; letter-spacing: 0.2em; line-height: 1.05; white-space: nowrap;
   padding-left: 0.22em; /* balances the trailing letter-spacing */ }
-.down .ds-title { color: #fff; text-shadow: 0 0 18px rgba(224, 50, 63, 0.85), 0 0 46px rgba(224, 50, 63, 0.45); animation: ds-thump var(--beat) ease-out infinite; }
+.down .ds-title { color: #fff; text-shadow: 0 0 14px rgba(224, 50, 63, 0.8), 0 0 34px rgba(224, 50, 63, 0.35); }
 .dead .ds-title { color: var(--pale); text-shadow: 0 0 22px rgba(0, 0, 0, 0.9); letter-spacing: 0.3em; }
-.ds-title::before, .ds-title::after { content: attr(data-text); position: absolute; inset: 0; padding-left: inherit; pointer-events: none; }
-.down .ds-title::before { color: rgba(255, 40, 70, 0.55); transform: translate(-2px, 0); mix-blend-mode: screen; animation: ds-glitch 3.2s steps(1) infinite; }
-.down .ds-title::after { color: rgba(80, 200, 255, 0.35); transform: translate(2px, 0); mix-blend-mode: screen; animation: ds-glitch 2.7s steps(1) infinite reverse; }
-.dead .ds-title::before, .dead .ds-title::after { display: none; }
-@keyframes ds-thump { 0% { transform: scale(1.035); } 18% { transform: scale(1); } }
-@keyframes ds-glitch { 0%, 92%, 100% { clip-path: inset(0 0 0 0); } 93% { clip-path: inset(10% 0 60% 0); transform: translate(-5px, 0); } 95% { clip-path: inset(55% 0 20% 0); transform: translate(4px, 0); } 97% { clip-path: inset(30% 0 45% 0); } }
 
-.ds-sub { font-size: 1rem; letter-spacing: 0.32em; text-transform: uppercase; color: rgba(244, 241, 246, 0.72); }
+.ds-sub { font-size: 0.85rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(244, 241, 246, 0.72); }
 .dead .ds-sub { color: rgba(201, 198, 209, 0.6); }
 
 /* Countdown */
 .ds-timer { display: flex; align-items: center; gap: 1rem; margin-top: 0.3rem; }
-.ds-ring { width: 5.6rem; height: 5.6rem; }
+.ds-ring { width: 4rem; height: 4rem; }
 .ds-ring .track { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 5; }
 .ds-ring .fill { fill: none; stroke: var(--blood); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 120ms linear;
   filter: drop-shadow(0 0 5px rgba(224, 50, 63, 0.8)); }
 .dead .ds-ring .fill { stroke: var(--pale); filter: none; }
 .ds-timer-text { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
-.ds-timer-text strong { font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
+.ds-timer-text strong { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
 .down.critical .ds-timer-text strong { color: #ff5a66; animation: ds-blink 0.9s steps(1) infinite; }
 .ds-timer-text span { font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(244, 241, 246, 0.6); }
 @keyframes ds-blink { 50% { opacity: 0.45; } }
@@ -97,5 +91,5 @@ html, body, #root { background: transparent !important; overflow: hidden; }
 @keyframes ds-ready { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .ds-vignette, .ds-title, .ds-title::before, .ds-title::after, .ds-ecg .trace, .ds-key.big, .ds-timer-text strong { animation: none !important; }
+  .ds-vignette, .ds-ecg .trace, .ds-key.big, .ds-timer-text strong { animation: none !important; }
 }
