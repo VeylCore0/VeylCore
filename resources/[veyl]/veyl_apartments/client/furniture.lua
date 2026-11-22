@@ -1,10 +1,8 @@
--- Furniture on the client: local (non-networked) props spawned only for players inside that home, and the placement
--- editor. Positions are LOCAL to the room; the same AptGeometry checks run here (preview) and on the server (final say).
+-- Furniture on the client: local (non-networked) props per room, and the placement editor. Teleport mode shows a
+-- home's furniture to the people inside it; walk-in mode streams every leased room's furniture to players near the motel. Positions are LOCAL to the room; the same AptGeometry checks run here (preview) and on the server (final say).
 
 AptFurnitureClient = {}
-local spawned = {}   -- [id] = entity
-local current = {}   -- [id] = { id, item, model, x, y, z, heading }
-local unitRef = nil
+local rooms = {}     -- [unit] = { spawned = { [id] = entity }, current = { [id] = { id, item, model, x, y, z, heading } } }
 local editing = false
 
 local function loadModel(name)
@@ -20,30 +18,42 @@ local function worldOf(unit, f)
     return AptGeometry.ToWorld(unit, vector3(f.x, f.y, f.z)), (unit.yaw + f.heading) % 360.0
 end
 
-function AptFurnitureClient.Clear()
-    for id, e in pairs(spawned) do if DoesEntityExist(e) then DeleteEntity(e) end spawned[id] = nil end
-    current = {}
-    unitRef = nil
+local function room(unit)
+    rooms[unit] = rooms[unit] or { spawned = {}, current = {} }
+    return rooms[unit]
 end
+
+--- Removes one room's props, or every room's when no unit is given.
+function AptFurnitureClient.Clear(unit)
+    for u, r in pairs(rooms) do
+        if not unit or u == unit then
+            for id, e in pairs(r.spawned) do if DoesEntityExist(e) then DeleteEntity(e) end end
+            rooms[u] = nil
+        end
+    end
+end
+
+function AptFurnitureClient.Loaded(unit) return rooms[unit] ~= nil end
 
 --- Replaces the room's furniture with the given list (idempotent: same list -> same props, no duplicates).
 function AptFurnitureClient.Load(unit, list)
-    unitRef = unit
+    local r = room(unit)
+    local spawned = r.spawned
     local keep = {}
     for _, f in ipairs(list or {}) do keep[f.id] = f end
     for id, e in pairs(spawned) do
-        local f, old = keep[id], current[id]
+        local f, old = keep[id], r.current[id]
         if not f or not old or f.x ~= old.x or f.y ~= old.y or f.z ~= old.z or f.heading ~= old.heading then
             if DoesEntityExist(e) then DeleteEntity(e) end
             spawned[id] = nil
         end
     end
-    current = keep
+    r.current = keep
     CreateThread(function()
         for id, f in pairs(keep) do
             if not spawned[id] and f.model then
                 local hash = loadModel(f.model)
-                if hash and current[id] == f and unitRef == unit then
+                if hash and rooms[unit] == r and r.current[id] == f and not spawned[id] then
                     local pos, heading = worldOf(unit, f)
                     local e = CreateObjectNoOffset(hash, pos.x, pos.y, pos.z, false, false, false)
                     SetEntityHeading(e, heading)
@@ -56,7 +66,7 @@ function AptFurnitureClient.Load(unit, list)
     end)
 end
 
-function AptFurnitureClient.Placed() return current end
+function AptFurnitureClient.Placed(unit) return rooms[unit] and rooms[unit].current or {} end
 
 ---------------------------------------------------------------------------
 -- Placement editor
@@ -76,7 +86,7 @@ local function aim(ignore)
     return pos
 end
 
-local function problem(l, heading, ignoreId)
+local function problem(current, l, heading, ignoreId)
     local why = AptGeometry.FurnitureProblem(l, heading)
     if why then return why end
     for id, f in pairs(current) do
@@ -96,6 +106,8 @@ local function begin(data)
     local ctx = AptClient.context
     if not ctx or ctx.kind ~= 'home' or not ctx.perms.furniture or not ctx.unit then return Veyl.Notify('You need to be inside your home', 'error') end
     local unit = ctx.unit
+    local r = room(unit)
+    local current, spawned = r.current, r.spawned
     local def = data.item and AptFurniture[data.item]
     local model = def and def.model or data.model
     local moving = data.move and current[data.move]
@@ -153,7 +165,7 @@ local function begin(data)
         local pos, wh = worldOf(unit, { x = l.x, y = l.y, z = l.z, heading = heading })
         SetEntityCoordsNoOffset(ghost, pos.x, pos.y, pos.z, false, false, false)
         SetEntityHeading(ghost, wh)
-        local why = problem(l, heading, moving and moving.id or nil)
+        local why = problem(r.current, l, heading, moving and moving.id or nil)
         if why then SetEntityDrawOutlineColor(239, 143, 150, 255) else SetEntityDrawOutlineColor(152, 211, 174, 255) end
         if not last or last.reason ~= why then
             AptUI.Passive('apt:placement', { visible = true, valid = why == nil, reason = why, label = label, price = def and def.price or nil, moving = moving ~= nil })
@@ -173,7 +185,7 @@ local function begin(data)
     DeleteEntity(ghost)
     SetModelAsNoLongerNeeded(hash)
     AptUI.Passive('apt:placement', { visible = false })
-    if moving and spawned[data.move] then SetEntityVisible(spawned[data.move], true, false) end
+    if moving and spawned[data.move] and DoesEntityExist(spawned[data.move]) then SetEntityVisible(spawned[data.move], true, false) end
     if not confirmed then return Veyl.Notify('Placement cancelled. Nothing was charged.', 'info') end
     local res
     if moving then
@@ -192,7 +204,8 @@ AddEventHandler('veyl_apartments:furnitureMenu', function()
         local res = Veyl.Callback('veyl_apartments', 'furnitureCatalog')
         if not res.ok then return Veyl.NotifyResult(res) end
         local placed = {}
-        for _, f in pairs(current) do placed[#placed + 1] = f end
+        local ctx = AptClient.context
+        for _, f in pairs(ctx and ctx.unit and AptFurnitureClient.Placed(ctx.unit) or {}) do placed[#placed + 1] = f end
         table.sort(placed, function(a, b) return a.id < b.id end)
         res.data.placedList = placed
         -- Which models exist on this client's game build (the catalog greys out the rest).

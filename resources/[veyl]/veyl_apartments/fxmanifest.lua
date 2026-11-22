@@ -16,7 +16,7 @@ shared_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua',
     'server/core.lua', 'server/access.lua', 'server/storage.lua', 'server/leases.lua', 'server/presence.lua',
-    'server/people.lua', 'server/furniture.lua', 'server/community.lua', 'server/admin.lua',
+    'server/people.lua', 'server/furniture.lua', 'server/community.lua', 'server/admin.lua', 'server/walkin.lua',
 }
 client_scripts { '@veyl_core/lib/client.lua', 'client/ui.lua', 'client/main.lua', 'client/furniture.lua' }
 

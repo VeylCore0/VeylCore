@@ -4,6 +4,7 @@ AptClient = { context = nil }
 local units = {}          -- every room: { id?, number, building, origin, yaw }
 local buildings = {}      -- [id] = { desk = vector3?, deskPed, blip }
 local transitioning = false
+local WALK = AptConfig.Entry.Mode == 'walk' -- walk-in: unlock the real door and walk in (see config.lua)
 
 ---------------------------------------------------------------------------
 -- Units (client copy of the MLO data) and door locks
@@ -16,15 +17,20 @@ end
 
 local function doorHash(u) return joaat(('veyl_apt_%s_%d'):format(u.building, u.number)) end
 
---- Every room's real MLO door is locked on every client: rooms are entered only through the server-checked transition.
-local function lockDoors()
-    local model = joaat(AptGeometry.Door.model)
-    for _, u in ipairs(units) do
+--- Every room's real MLO door starts locked on every client. Teleport mode keeps it locked (rooms are entered through
+--- the server-checked transition); walk-in mode unlocks it only when the server says so (veyl_apartments:doorState).
+local doorUnlocked = {} -- [unit] = true (walk-in mode: doors the server has unlocked)
+local function registerDoor(u)
+    local h = doorHash(u)
+    if not IsDoorRegisteredWithSystem(h) then
         local p = AptGeometry.ToWorld(u, AptGeometry.Door.pos)
-        local h = doorHash(u)
-        if not IsDoorRegisteredWithSystem(h) then AddDoorToSystem(h, model, p.x, p.y, p.z, false, false, false) end
-        DoorSystemSetDoorState(h, 1, false, true)
+        AddDoorToSystem(h, joaat(AptGeometry.Door.model), p.x, p.y, p.z, false, false, false)
     end
+    return h
+end
+local function lockDoors()
+    -- Keeps doors the server already unlocked open (the walk-in thread may get door states before this runs).
+    for _, u in ipairs(units) do DoorSystemSetDoorState(registerDoor(u), doorUnlocked[u] and 0 or 1, false, true) end
 end
 
 ---------------------------------------------------------------------------
@@ -79,7 +85,7 @@ local insideZones = {}
 local function clearInside()
     for _, id in ipairs(insideZones) do exports.veyl_interact:Remove(id) end
     insideZones = {}
-    if AptFurnitureClient then AptFurnitureClient.Clear() end
+    if AptFurnitureClient and not WALK then AptFurnitureClient.Clear() end
     AptUI.Passive('apt:tour', nil)
     AptUI.Passive('apt:revoked', nil)
 end
@@ -94,18 +100,20 @@ function AptClient.SetContext(ctx)
     AptClient.context.unit = unit
     local exit = AptGeometry.Stand(unit, AptGeometry.Inside)
     local menu = AptGeometry.Stand(unit, AptGeometry.Menu)
-    insideZones[#insideZones + 1] = exports.veyl_interact:AddZone({ id = 'veyl_apt_exit', coords = exit, radius = 1.2, title = ctx.label,
-        options = { { label = 'Leave', icon = 'door', event = 'veyl_apartments:leave' } } })
+    if not WALK or ctx.kind == 'tour' then
+        insideZones[#insideZones + 1] = exports.veyl_interact:AddZone({ id = 'veyl_apt_exit', coords = exit, radius = 1.2, title = ctx.label,
+            options = { { label = 'Leave', icon = 'door', event = 'veyl_apartments:leave' } } })
+    end
     if ctx.kind == 'home' then
         local opts = {}
         if ctx.perms.storage then opts[#opts + 1] = { label = 'Storage', icon = 'box', event = 'veyl_apartments:storage' } end
         if ctx.perms.wardrobe then opts[#opts + 1] = { label = 'Wardrobe', icon = 'shirt', event = 'veyl_apartments:wardrobe' } end
         if ctx.perms.furniture then opts[#opts + 1] = { label = 'Furniture', icon = 'home', event = 'veyl_apartments:furnitureMenu' } end
-        if ctx.role ~= 'guest' then opts[#opts + 1] = { label = 'Home panel', icon = 'key', event = 'veyl_apartments:openPanel' } end
+        if ctx.role ~= 'guest' and ctx.role ~= 'visitor' then opts[#opts + 1] = { label = 'Home panel', icon = 'key', event = 'veyl_apartments:openPanel' } end
         if #opts > 0 then
             insideZones[#insideZones + 1] = exports.veyl_interact:AddZone({ id = 'veyl_apt_menu', coords = menu, radius = 1.4, title = ctx.label, options = opts })
         end
-        if AptFurnitureClient then AptFurnitureClient.Load(unit, ctx.furniture or {}) end
+        if AptFurnitureClient and not WALK then AptFurnitureClient.Load(unit, ctx.furniture or {}) end
     end
 end
 
@@ -164,15 +172,89 @@ RegisterCommand('aptstuck', function()
 end, false)
 
 --- Unit ids come from the server (stable DB ids); door options carry building + number.
-local unitIds = {}
+local unitIds, unitsById = {}, {}
+local function fetchUnitIds()
+    local res = Veyl.Callback('veyl_apartments', 'unitIds')
+    if not res.ok then return end
+    for k, v in pairs(res.data) do unitIds[k] = v end
+    for _, u in ipairs(units) do
+        local id = unitIds[u.building .. ':' .. u.number]
+        if id then u.id = id unitsById[id] = u end
+    end
+end
 local function unitId(building, number)
     local key = building .. ':' .. number
-    if unitIds[key] then return unitIds[key] end
-    local res = Veyl.Callback('veyl_apartments', 'unitIds')
-    if res.ok then for k, v in pairs(res.data) do unitIds[k] = v end end
+    if not unitIds[key] then fetchUnitIds() end
     return unitIds[key]
 end
+local function unitById(id)
+    if not unitsById[id] then fetchUnitIds() end
+    return unitsById[id]
+end
 AptClient.UnitId = unitId
+
+---------------------------------------------------------------------------
+-- Walk-in mode: door state, "which room am I in", furniture for everyone nearby
+---------------------------------------------------------------------------
+local function applyDoor(u, unlocked)
+    doorUnlocked[u] = unlocked or nil
+    DoorSystemSetDoorState(registerDoor(u), unlocked and 0 or 1, false, true)
+end
+AptClient.DoorUnlocked = function(u) return doorUnlocked[u] == true end
+
+RegisterNetEvent('veyl_apartments:doorState', function(id, locked)
+    CreateThread(function()
+        local u = unitById(id)
+        if u then applyDoor(u, not locked) end
+    end)
+end)
+
+local furnitureByUnit = {} -- [unit] = list (walk-in mode streams these to players within FURNITURE_RANGE)
+local FURNITURE_RANGE = 60.0
+RegisterNetEvent('veyl_apartments:unitFurniture', function(id, list)
+    CreateThread(function()
+        local u = unitById(id)
+        if not u or not AptFurnitureClient then return end
+        furnitureByUnit[u] = (list and #list > 0) and list or nil
+        if not furnitureByUnit[u] then AptFurnitureClient.Clear(u)
+        elseif AptFurnitureClient.Loaded(u) or #(GetEntityCoords(PlayerPedId()) - u.origin) < FURNITURE_RANGE then
+            AptFurnitureClient.Load(u, list)
+        end
+    end)
+end)
+
+local hereUnit = nil
+local function refreshHere(expected)
+    local res = Veyl.Callback('veyl_apartments', 'here')
+    if not res.ok then hereUnit = nil return end
+    local ctx = res.data
+    if ctx and ctx.kind == 'home' then
+        AptClient.SetContext(ctx)
+    else
+        if AptClient.context and AptClient.context.kind ~= 'tour' then AptClient.SetContext(nil) end
+        -- The server sees positions a moment after we do: ask again on the next tick.
+        if expected and not ctx then hereUnit = nil end
+    end
+end
+RegisterNetEvent('veyl_apartments:refreshHere', function() hereUnit = nil end)
+
+local function playKeyAnim()
+    local dict = 'anim@mp_player_intmenu@key_fob@'
+    RequestAnimDict(dict)
+    local t = GetGameTimer() + 1000
+    while not HasAnimDictLoaded(dict) and GetGameTimer() < t do Wait(10) end
+    if HasAnimDictLoaded(dict) then TaskPlayAnim(PlayerPedId(), dict, 'fob_click', 8.0, -8.0, 900, 48, 0, false, false, false) end
+end
+
+local function setDoor(id, lock)
+    if IsPedInAnyVehicle(PlayerPedId(), false) then return Veyl.Notify('Get out of the vehicle first', 'error') end
+    local res = Veyl.CallbackTimeout('veyl_apartments', 'door', 10000, id, lock)
+    if not res.ok then return Veyl.NotifyResult(res) end
+    playKeyAnim()
+    local u = unitById(id)
+    if u then applyDoor(u, not res.data.locked) end
+    PlaySoundFrontend(-1, res.data.locked and 'Remote_Control_Close' or 'Remote_Control_Open', 'PI_Menu_Sounds', true)
+end
 
 AddEventHandler('veyl_apartments:door', function(args)
     if type(args) ~= 'table' then return end
@@ -181,6 +263,8 @@ AddEventHandler('veyl_apartments:door', function(args)
         if not id then return Veyl.Notify('This door is unavailable right now', 'error') end
         if args.action == 'ring' then
             Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_apartments', 'ringDoor', 10000, id))
+        elseif args.action == 'unlock' or args.action == 'lock' then
+            setDoor(id, args.action == 'lock')
         else
             enterUnit(id)
         end
@@ -318,13 +402,32 @@ CreateThread(function()
         buildings[bid].pending = p
     end
     for _, u in ipairs(units) do
+        local function arg(action) return { action = action, building = u.building, number = u.number } end
+        local outside
+        if WALK then
+            outside = {
+                { label = 'Unlock door', icon = 'key', event = 'veyl_apartments:door', args = arg('unlock'), canInteract = function() return not doorUnlocked[u] end },
+                { label = 'Lock door', icon = 'lock', event = 'veyl_apartments:door', args = arg('lock'), canInteract = function() return doorUnlocked[u] == true end },
+                { label = 'Knock', icon = 'bell', event = 'veyl_apartments:door', args = arg('ring') },
+            }
+            -- From inside, anyone can open the door to leave (never trapped) and lock it behind them.
+            exports.veyl_interact:AddZone({
+                id = ('veyl_apt_doorin_%s_%d'):format(u.building, u.number), coords = AptGeometry.Stand(u, AptGeometry.Inside), radius = 1.1,
+                title = ('Room %d door'):format(u.number),
+                options = {
+                    { label = 'Open door', icon = 'door', event = 'veyl_apartments:door', args = arg('unlock'), canInteract = function() return not doorUnlocked[u] end },
+                    { label = 'Lock door', icon = 'lock', event = 'veyl_apartments:door', args = arg('lock'), canInteract = function() return doorUnlocked[u] == true end },
+                },
+            })
+        else
+            outside = {
+                { label = 'Enter', icon = 'door', event = 'veyl_apartments:door', args = arg('enter') },
+                { label = 'Knock', icon = 'bell', event = 'veyl_apartments:door', args = arg('ring') },
+            }
+        end
         exports.veyl_interact:AddZone({
             id = ('veyl_apt_door_%s_%d'):format(u.building, u.number), coords = AptGeometry.Stand(u, AptGeometry.Outside), radius = 1.3,
-            title = ('Room %d'):format(u.number),
-            options = {
-                { label = 'Enter', icon = 'door', event = 'veyl_apartments:door', args = { action = 'enter', building = u.building, number = u.number } },
-                { label = 'Knock', icon = 'bell', event = 'veyl_apartments:door', args = { action = 'ring', building = u.building, number = u.number } },
-            },
+            title = ('Room %d'):format(u.number), options = outside,
         })
     end
     -- Desks are placed once the player is close enough for the courtyard's collision to exist (ground probe).
@@ -338,6 +441,50 @@ CreateThread(function()
             end
         end
         Wait(2000)
+    end
+end)
+
+-- Walk-in mode: initial door states + furniture, then watch which room the player is standing in.
+CreateThread(function()
+    if not WALK then return end
+    while not Veyl.IsLoaded() do Wait(500) end
+    fetchUnitIds()
+    local st = Veyl.Callback('veyl_apartments', 'doorStates')
+    if st.ok then for _, id in ipairs(st.data.unlocked or {}) do local u = unitsById[id] if u then applyDoor(u, true) end end end
+    local fa = Veyl.Callback('veyl_apartments', 'furnitureAll')
+    if fa.ok then for _, r in ipairs(fa.data) do local u = unitsById[r.unitId] if u then furnitureByUnit[u] = r.items end end end
+    local lastStream = 0
+    while true do
+        local sleep = 1500
+        local pos = GetEntityCoords(PlayerPedId())
+        local near = false
+        for _, b in pairs(buildings) do
+            local p = b.desk or b.pending
+            if p and #(vector2(pos.x, pos.y) - vector2(p.x, p.y)) < 90.0 then near = true end
+        end
+        if near and Veyl.IsLoaded() and not transitioning and not (AptClient.context and AptClient.context.kind == 'tour') then
+            sleep = 500
+            local found = nil
+            for _, u in ipairs(units) do if AptGeometry.Contains(u, pos, 0.0) then found = u break end end
+            if found ~= hereUnit then
+                hereUnit = found
+                if found then refreshHere(found)
+                elseif AptClient.context and AptClient.context.kind ~= 'tour' then AptClient.SetContext(nil) end
+            end
+        elseif hereUnit and not near then
+            hereUnit = nil
+            if AptClient.context and AptClient.context.kind ~= 'tour' then AptClient.SetContext(nil) end
+        end
+        -- Furniture streaming (every ~2 s): props exist only while you are near the room.
+        if AptFurnitureClient and GetGameTimer() - lastStream > 2000 then
+            lastStream = GetGameTimer()
+            for u, list in pairs(furnitureByUnit) do
+                local d = #(pos - u.origin)
+                if d < FURNITURE_RANGE and not AptFurnitureClient.Loaded(u) then AptFurnitureClient.Load(u, list)
+                elseif d > FURNITURE_RANGE + 30.0 and AptFurnitureClient.Loaded(u) then AptFurnitureClient.Clear(u) end
+            end
+        end
+        Wait(sleep)
     end
 end)
 

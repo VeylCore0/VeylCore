@@ -11,6 +11,11 @@ AptConfig = {
 
     -- Entry rules (checked on the server).
     Entry = {
+        -- 'walk': residents unlock their real door and walk in (the door relocks itself after AutoLockSeconds).
+        -- 'teleport': the door stays locked and "Enter" moves you inside a private world (use this if the MLO door
+        -- does not respond to the game's door system on your build).
+        Mode = 'walk',
+        AutoLockSeconds = 8,
         Distance = 3.0,               -- how close to the door you must be
         AllowWhileDead = false,
         BlockedStateBags = { 'restrained', 'cuffed', 'handcuffed' }, -- player state bags that block entering

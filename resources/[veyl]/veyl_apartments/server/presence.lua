@@ -66,6 +66,7 @@ Presence.Context = context
 Veyl.RegisterCallback('enter', function(src, citizenid, unitId)
     local unit = Apt.Unit(unitId)
     if not unit then return Veyl.Err('NOT_FOUND', 'Unknown room') end
+    if E.Mode == 'walk' then return Veyl.Err('INVALID_STATE', 'Unlock the door and walk in') end
     if Presence.bySrc[src] then return Veyl.Err('INVALID_STATE', 'You are already inside') end
     if not nearDoor(src, unit) then return Veyl.Err('TOO_FAR', 'Stand at the door') end
     local why = blocked(src)
@@ -91,6 +92,8 @@ Veyl.RegisterCallback('enter', function(src, citizenid, unitId)
 end, { cooldown = 1500 })
 
 --- Leaving is ALWAYS allowed (even after access was revoked), so nobody can be trapped.
+function Presence.Blocked(src) return blocked(src) end
+
 local function exitNow(src, reason)
     local p = Presence.bySrc[src]
     if not p then return nil end
@@ -196,7 +199,9 @@ end
 -- Reconnect / spawn (called by veyl_spawn before it places the player)
 ---------------------------------------------------------------------------
 --- ResolveSpawn(src, position) -> nil (no change) or { x, y, z, heading, reason }
-exports('ResolveSpawn', function(src, position, mode)
+--- (Presence.ResolveSpawn can be extended by the walk-in module; the export always calls the current one.)
+exports('ResolveSpawn', function(...) return Presence.ResolveSpawn(...) end)
+function Presence.ResolveSpawn(src, position, mode)
     if not Apt.ready then return nil end
     local citizenid = Veyl.GetCitizenId(src)
     if not citizenid then return nil end
@@ -237,7 +242,7 @@ exports('ResolveSpawn', function(src, position, mode)
         end
     end
     return nil
-end)
+end
 
 AddEventHandler('VeylCore:Server:OnPlayerSpawned', function(src)
     local p = Presence.bySrc[src]
@@ -268,7 +273,9 @@ AddEventHandler('veyl_apartments:ready', function()
         src = tonumber(src)
         local cid = Veyl.GetCitizenId(src)
         local row = cid and MySQL.single.await('SELECT * FROM veyl_apartment_presence WHERE citizenid = ?', { cid })
-        if row then
+        if row and row.kind == 'home' and Walk then
+            Walk.Restore(src, cid, row) -- walk-in mode: no private world; only single-visit guests have a 'home' row
+        elseif row then
             local unit = Apt.Unit(row.unit_id)
             local lease = row.kind == 'home' and unit and Access.ActiveLeaseForUnit(unit.id)
             if row.kind == 'home' and lease and lease.id == row.lease_id and Access.Can(lease, cid, 'enter') then

@@ -25,12 +25,12 @@ function Furniture.PlacedFor(leaseId)
     return out
 end
 
---- Pushes the current furniture to everyone inside the home.
-local function broadcast(leaseId)
+--- Pushes the current furniture to everyone inside the home (teleport mode; the walk-in module replaces this).
+function Furniture.Broadcast(leaseId)
     local list = Furniture.PlacedFor(leaseId)
     for _, src in ipairs(Presence.Occupants(leaseId)) do TriggerClientEvent('veyl_apartments:furniture', src, list) end
 end
-Furniture.Broadcast = broadcast
+local function broadcast(leaseId) return Furniture.Broadcast(leaseId) end
 
 function Furniture.AttachStored(cid, leaseId)
     MySQL.update.await("UPDATE veyl_apartment_furniture SET lease_id = ? WHERE owner_cid = ? AND lease_id IS NULL AND state = 'stored'", { leaseId, cid })

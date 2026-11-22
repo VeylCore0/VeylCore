@@ -10,7 +10,7 @@ InventoryConfig = {
     GiveDistance = 3.0,
 
     -- Ground drops (the right-hand box when no stash is open). Cleared on restart.
-    DropSlots = 20,
+    DropSlots = 30,
     DropMaxWeight = 200000,         -- grams
     DropDistance = 2.5,             -- how close you must be to use a drop
     DropLifetimeMinutes = 30,       -- untouched drops disappear after this
