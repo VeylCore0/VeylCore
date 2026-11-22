@@ -60,7 +60,7 @@ local function whyBlocked()
     if IsEntityDead(ped) or LocalPlayer.state.medical then return 'Not while you are hurt' end
     if IsPedInAnyVehicle(ped, true) then return 'Not in a vehicle' end
     if IsPedSwimming(ped) or IsPedFalling(ped) or IsPedRagdoll(ped) or IsPedClimbing(ped) then return 'Not right now' end
-    if Veyl.PlayerData and Veyl.PlayerData.metadata and Veyl.PlayerData.metadata.ishandcuffed then return 'Not while restrained' end
+    if LocalPlayer.state.cuffed or (Veyl.PlayerData and Veyl.PlayerData.metadata and Veyl.PlayerData.metadata.ishandcuffed) then return 'Not while restrained' end
     return nil
 end
 

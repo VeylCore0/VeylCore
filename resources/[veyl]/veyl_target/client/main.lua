@@ -194,7 +194,7 @@ CreateThread(function()
             Wait(100)
         else
             local ped = PlayerPedId()
-            if disabled or IsEntityDead(ped) or LocalPlayer.state.medical or IsPauseMenuActive() or exports.veyl_lib:IsModalOpen() then
+            if disabled or IsEntityDead(ped) or LocalPlayer.state.medical or LocalPlayer.state.cuffed or IsPauseMenuActive() or exports.veyl_lib:IsModalOpen() then
                 setActive(false)
             else
                 DisableControlAction(0, 24, true)  -- attack

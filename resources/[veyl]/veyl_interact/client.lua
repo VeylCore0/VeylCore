@@ -192,7 +192,7 @@ if useEKey then
         while true do
             local sleep = 400
             local ped = PlayerPedId()
-            if Veyl.IsLoaded() and not IsEntityDead(ped) and not LocalPlayer.state.medical and not IsPauseMenuActive() then
+            if Veyl.IsLoaded() and not IsEntityDead(ped) and not LocalPlayer.state.medical and not LocalPlayer.state.cuffed and not IsPauseMenuActive() then
                 local pos = GetEntityCoords(ped)
                 local best, bestDist = nil, 1e9
                 local inVehicle = IsPedInAnyVehicle(ped, false)
