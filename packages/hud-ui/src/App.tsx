@@ -39,17 +39,24 @@ export function App() {
   });
 
   // Live preview: the draft is drawn at once; Lua cleans it, moves the native minimap and returns the new layout.
-  const timer = useRef<number>();
-  const preview = useCallback((draft: Settings) => {
-    setSettings(draft);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(async () => {
-      const r = await nui<{ settings: Settings; layout: Layout }>('menu:preview', { settings: draft });
-      if (r.ok && r.data) {
-        setFrame((f) => ({ ...f, layout: { ...(f.layout ?? r.data!.layout), ...r.data!.layout } }));
-      }
-    }, 120);
+  // Throttled, not debounced: one request in flight, always sending the newest draft, so the native map follows a drag.
+  const pending = useRef<{ draft: Settings; moving: boolean } | null>(null);
+  const busy = useRef(false);
+  const flush = useCallback(async () => {
+    if (busy.current || !pending.current) return;
+    const { draft, moving } = pending.current;
+    pending.current = null;
+    busy.current = true;
+    const r = await nui<{ settings: Settings; layout: Layout }>('menu:preview', { settings: draft, moving });
+    busy.current = false;
+    if (r.ok && r.data) setFrame((f) => ({ ...f, layout: { ...(f.layout ?? r.data!.layout), ...r.data!.layout } }));
+    if (pending.current) void flush();
   }, []);
+  const preview = useCallback((draft: Settings, moving = false) => {
+    setSettings(draft);
+    pending.current = { draft, moving };
+    void flush();
+  }, [flush]);
 
   if (!settings) return null;
   const show = frame.visible || !!menu;
@@ -92,8 +99,15 @@ export function defaults(l: Layout | undefined): Record<GroupKey, CSSProperties>
   };
 }
 
+/** The layout Lua returned, moved by any minimap offset change it has not answered yet (keeps the frame on the cursor). */
+function liveLayout(l: Layout | undefined, s: Settings): Layout | undefined {
+  if (!l || l.ox === undefined || l.oy === undefined) return l;
+  const xk = (16 / 9) / (window.innerWidth / window.innerHeight);
+  return { ...l, left: l.left + (s.minimap.offsetX - l.ox) * xk, bottom: l.bottom + (s.minimap.offsetY - l.oy) };
+}
+
 function Hud({ frame, s, caps, editing }: { frame: Frame; s: Settings; caps: Caps | null; editing: boolean }) {
-  const l = frame.layout;
+  const l = liveLayout(frame.layout, s);
   const d = defaults(l);
   const p = s.player;
   const veh = frame.vehicle || null;

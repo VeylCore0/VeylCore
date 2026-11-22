@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+
+type Live = { key: GroupKey | 'minimap'; left0: number; top0: number; left: number; top: number; w: number; h: number };
 import { Icon } from '@veyl/ui';
 import type { GroupKey, Layout, Settings } from './types';
 
@@ -9,12 +11,16 @@ const LABELS: Record<GroupKey | 'minimap', string> = {
 };
 const GRID = 0.005; // snap step (0.5 % of the screen)
 
-export function Editor({ s, layout, onPreview, onDone }: { s: Settings; layout: Layout; onPreview: (d: Settings) => void; onDone: (next: Settings | null) => void }) {
+export function Editor({ s, layout, onPreview, onDone }: { s: Settings; layout: Layout; onPreview: (d: Settings, moving?: boolean) => void; onDone: (next: Settings | null) => void }) {
   const [draft, setDraft] = useState<Settings>(() => JSON.parse(JSON.stringify(s)));
   const [snap, setSnap] = useState(s.snap);
   const [selected, setSelected] = useState<GroupKey | 'minimap' | null>(null);
   const drag = useRef<{ key: GroupKey | 'minimap'; dx: number; dy: number; startX: number; startY: number; base: { x: number; y: number } } | null>(null);
   const [, force] = useState(0);
+  const [live, setLive] = useState<Live | null>(null);
+  const frameReq = useRef<number | null>(null);
+  const lastEv = useRef<{ x: number; y: number } | null>(null);
+  const moving = useRef(false);
   const safe = layout.safe;
 
   useEffect(() => {
@@ -44,33 +50,56 @@ export function Editor({ s, layout, onPreview, onDone }: { s: Settings; layout: 
     setSelected(key);
     drag.current = { key, dx: e.clientX - b.left, dy: e.clientY - b.top, startX: e.clientX, startY: e.clientY,
       base: key === 'minimap' ? { x: draft.minimap.offsetX, y: draft.minimap.offsetY } : { x: b.left / window.innerWidth, y: b.top / window.innerHeight } };
+    setLive({ key, left0: b.left, top0: b.top, left: b.left, top: b.top, w: b.width, h: b.height });
   };
 
-  const onMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
+  // Pointer moves are coalesced to one update per animation frame; the dragged handle follows the pointer directly.
+  const step = () => {
+    frameReq.current = null;
+    const d = drag.current, ev = lastEv.current, l = live;
+    if (!d || !ev || !l) return;
     const W = window.innerWidth, H = window.innerHeight;
+    moving.current = true;
     if (d.key === 'minimap') {
       // Native radar offsets are in 16:9 screen units horizontally; vertical offset moves up.
       const xk = (16 / 9) / (W / H);
-      const ox = d.base.x + (e.clientX - d.startX) / W / xk;
-      const oy = d.base.y - (e.clientY - d.startY) / H;
       const r = (v: number) => (snap ? Math.round(v / GRID) * GRID : v);
-      setDraft((cur) => ({ ...cur, minimap: { ...cur.minimap, offsetX: Math.max(-0.3, Math.min(0.6, r(ox))), offsetY: Math.max(-0.6, Math.min(0.3, r(oy))) } }));
+      const ox = Math.max(-0.3, Math.min(0.6, r(d.base.x + (ev.x - d.startX) / W / xk)));
+      const oy = Math.max(-0.6, Math.min(0.3, r(d.base.y - (ev.y - d.startY) / H)));
+      setLive({ ...l, left: l.left0 + (ox - d.base.x) * xk * W, top: l.top0 - (oy - d.base.y) * H });
+      setDraft((cur) => ({ ...cur, minimap: { ...cur.minimap, offsetX: ox, offsetY: oy } }));
       return;
     }
-    const b = box(d.key);
-    const p = clampSnap((e.clientX - d.dx) / W, (e.clientY - d.dy) / H, b?.width ?? 0, b?.height ?? 0);
+    const p = clampSnap((ev.x - d.dx) / W, (ev.y - d.dy) / H, l.w, l.h);
+    setLive({ ...l, left: p.x * W, top: p.y * H });
     setDraft((cur) => ({ ...cur, positions: { ...cur.positions, [d.key]: p } }));
   };
+  const stepRef = useRef(step);
+  stepRef.current = step;
 
-  const onUp = () => { drag.current = null; force((n) => n + 1); };
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag.current) return;
+    lastEv.current = { x: e.clientX, y: e.clientY };
+    if (frameReq.current === null) frameReq.current = window.requestAnimationFrame(() => stepRef.current());
+  };
+
+  const onUp = () => {
+    if (!drag.current) return;
+    if (frameReq.current !== null) { window.cancelAnimationFrame(frameReq.current); stepRef.current(); }
+    drag.current = null;
+    lastEv.current = null;
+    moving.current = false;
+    setLive(null);
+    setDraft((cur) => ({ ...cur })); // one last preview that is not "moving": GTA does a full refresh at the resting place
+    force((n) => n + 1);
+  };
+  useEffect(() => () => { if (frameReq.current !== null) window.cancelAnimationFrame(frameReq.current); }, []);
 
   // Apply the draft live to the HUD underneath (and the native minimap, through the preview callback).
   const first = useRef(true);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
-    onPreview(draft);
+    onPreview(draft, moving.current);
   }, [draft, onPreview]);
 
   const resetSelected = () => {
@@ -84,10 +113,11 @@ export function Editor({ s, layout, onPreview, onDone }: { s: Settings; layout: 
     <div className="editor" onPointerMove={onMove} onPointerUp={onUp}>
       <div className="safe-guide" style={{ inset: `${safe * 100}vh ${safe * 100}vw` }} />
       {keys.map((k) => {
-        const b = box(k);
-        if (!b) return null;
+        const dom = box(k);
+        if (!dom) return null;
+        const b = live && live.key === k ? { left: live.left, top: live.top, width: live.w, height: live.h } : dom;
         return (
-          <div key={k} className={`handle${selected === k ? ' sel' : ''}`} style={{ left: b.left, top: b.top, width: Math.max(b.width, 40), height: Math.max(b.height, 24) }}
+          <div key={k} className={`handle${selected === k ? ' sel' : ''}${live?.key === k ? ' dragging' : ''}`} style={{ left: b.left, top: b.top, width: Math.max(b.width, 40), height: Math.max(b.height, 24) }}
             onPointerDown={(e) => onDown(k, e)}>
             <span>{LABELS[k]}</span>
           </div>

@@ -23,21 +23,49 @@ local CIRCLE = {
     { 'minimap_blur', -0.00, 0.015, 0.252, 0.338 },
 }
 
---- The circle works with GTA's circular clip alone; a streamed round mask (circlemap.ytd) just gives a cleaner edge.
+-- GTA's circular clip (type 1) only rounds the blips; the map picture itself is cut by the `radarmasksm` texture.
+-- A streamed circlemap.ytd is used when present, otherwise a round mask is drawn once at runtime (no download).
+local RT_DICT = 'veyl_hud_circle'
+local maskDict = nil
+
+local function buildRuntimeMask()
+    local size = 256
+    local txd = CreateRuntimeTxd(RT_DICT)
+    local tex = CreateRuntimeTexture(txd, 'radarmasksm', size, size)
+    local c, r = (size - 1) / 2, size / 2 - 1.5
+    for y = 0, size - 1 do
+        for x = 0, size - 1 do
+            local d = math.sqrt((x - c) ^ 2 + (y - c) ^ 2)
+            local a = math.floor(math.max(0.0, math.min(1.0, r - d + 0.5)) * 255) -- 1 px anti-aliased edge
+            SetRuntimeTexturePixel(tex, x, y, a, a, a, a)
+        end
+        if y % 32 == 0 then Wait(0) end
+    end
+    CommitRuntimeTexture(tex)
+    return RT_DICT
+end
+
 function Minimap.DetectCircle()
     Minimap.circleAvailable = true
     local dict = HudConfig.CircleTextureDict
-    if not dict or dict == '' then Minimap.circleTexture = false return end
-    RequestStreamedTextureDict(dict, false)
-    local t = GetGameTimer() + 2000
-    while not HasStreamedTextureDictLoaded(dict) and GetGameTimer() < t do Wait(50) end
-    Minimap.circleTexture = HasStreamedTextureDictLoaded(dict)
+    if dict and dict ~= '' then
+        RequestStreamedTextureDict(dict, false)
+        local t = GetGameTimer() + 2000
+        while not HasStreamedTextureDictLoaded(dict) and GetGameTimer() < t do Wait(50) end
+        if HasStreamedTextureDictLoaded(dict) then maskDict = dict end
+    end
+    if not maskDict then
+        local ok, res = pcall(buildRuntimeMask)
+        maskDict = ok and res or nil
+        if not ok then print(('^3[veyl_hud] could not build the circle mask: %s^7'):format(tostring(res))) end
+    end
+    Minimap.circleTexture = maskDict ~= nil
 end
 
 local function place(shape, scale, ox, oy)
     local layout = shape == 'circle' and CIRCLE or SQUARE
     if shape == 'circle' then
-        if Minimap.circleTexture then AddReplaceTexture('platform:/textures/graphics', 'radarmasksm', HudConfig.CircleTextureDict, 'radarmasksm') end
+        if maskDict then AddReplaceTexture('platform:/textures/graphics', 'radarmasksm', maskDict, 'radarmasksm') end
         SetMinimapClipType(1)
     else
         RemoveReplaceTexture('platform:/textures/graphics', 'radarmasksm')
@@ -53,12 +81,25 @@ local function place(shape, scale, ox, oy)
 end
 
 --- Applies the minimap part of the settings (only when it changed, or when forced after the pause map / a restart).
-function Minimap.Apply(s, force)
+--- While dragging (`moving`), only the positions are updated and GTA is refreshed at most every 50 ms.
+local lastRefresh = 0
+function Minimap.Apply(s, force, moving)
     local m = s.minimap
     local shape = (m.shape == 'circle' and Minimap.circleAvailable) and 'circle' or 'square'
-    local key = ('%s|%.3f|%.3f|%.3f'):format(shape, m.scale, m.offsetX, m.offsetY)
-    if not force and Minimap.applied == key then return end
+    local key = ('%s|%.4f|%.4f|%.4f'):format(shape, m.scale, m.offsetX, m.offsetY)
+    if not force and Minimap.applied == key and not Minimap.dirty then return end
+    local shapeKey = Minimap.applied and Minimap.applied:match('^[^|]+')
     Minimap.applied = key
+    if moving and shapeKey == shape and GetGameTimer() - lastRefresh < 50 then
+        local layout = shape == 'circle' and CIRCLE or SQUARE
+        for _, c in ipairs(layout) do
+            SetMinimapComponentPosition(c[1], 'L', 'B', c[2] * m.scale + m.offsetX, c[3] * m.scale - RAISE - m.offsetY, c[4] * m.scale, c[5] * m.scale)
+        end
+        Minimap.dirty = true -- the final position still gets a full refresh
+        return
+    end
+    Minimap.dirty = false
+    lastRefresh = GetGameTimer()
     place(shape, m.scale, m.offsetX, m.offsetY)
 end
 
@@ -83,12 +124,12 @@ function Minimap.Rect(s)
         -- and round in pixels (same pixel height as width).
         local w = width * 1.2 * m.scale
         local h = w * aspect
-        return { left = left + (m.offsetX - 0.0055) * xk, bottom = bottom + RAISE + m.offsetY - 0.012, width = w, height = h, shape = shape, safe = (1.0 - safezone) / 2 }
+        return { left = left + (m.offsetX - 0.0055) * xk, bottom = bottom + RAISE + m.offsetY - 0.012, width = w, height = h, shape = shape, safe = (1.0 - safezone) / 2, ox = m.offsetX, oy = m.offsetY }
     end
     return {
         left = left + m.offsetX * xk, bottom = bottom + RAISE + STRIP + m.offsetY,
         width = width * m.scale, height = (height - STRIP) * m.scale, shape = shape,
-        safe = (1.0 - safezone) / 2,
+        safe = (1.0 - safezone) / 2, ox = m.offsetX, oy = m.offsetY,
     }
 end
 

@@ -40,11 +40,11 @@ Values: health uses GTA's offset (100 = dead) and the ped's real maximum; stamin
 
 `/hud` (or a key bound in Settings → Key Bindings → FiveM → *Open HUD settings*). Changes preview live; **Save changes** stores them, **Cancel**, **Close** and **Escape** restore the last saved settings, **Reset defaults** previews the defaults until you save.
 
-**Edit HUD positions** (Overview or Minimap): drag the minimap, status, voice, vehicle instruments, top-right info and location strip. Safe-area guides, optional snapping, *Reset* for the selected group, *Save positions* / *Cancel*. Positions are fractions of the screen, clamped to the safe area, so they survive resolution changes. Dragging the minimap moves the real GTA radar.
+**Edit HUD positions** (Overview or Minimap): drag the minimap, status, voice, vehicle instruments, top-right info and location strip. Safe-area guides, optional snapping, *Reset* for the selected group, *Save positions* / *Cancel*. Positions are fractions of the screen, clamped to the safe area, so they survive resolution changes. Dragging the minimap moves the real GTA radar. Dragging is updated once per frame and the handle follows the mouse directly; the radar follows within about 50 ms and gets a full refresh where you let go.
 
 ## Circle minimap
 
-Choose *Circle* in the Minimap tab. It uses GTA's round clip (`SetMinimapClipType(1)`) and a larger circle layout. For a cleaner edge you can add a round mask texture: a `circlemap.ytd` with a texture named `radarmasksm` (the one shipped by the free "circle minimap" resources; check its licence) in `veyl_hud/stream/`. When it is there the HUD swaps it in automatically.
+Choose *Circle* in the Minimap tab. GTA's round clip (`SetMinimapClipType(1)`) only rounds the blips; the map picture is cut by the `radarmasksm` texture. The HUD draws a round mask once at startup (a runtime texture, nothing to download) and swaps it in. If you prefer your own, put a `circlemap.ytd` with a `radarmasksm` texture in `veyl_hud/stream/` and set `HudConfig.CircleTextureDict`; it is used instead.
 
 The outline around the map is square-cornered for the square map and round for the circle. If it is a few pixels off at your resolution, drag the map slightly in the position editor.
 

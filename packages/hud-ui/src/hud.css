@@ -163,3 +163,5 @@ button:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
 .editor-bar b { display: inline-flex; align-items: center; gap: 0.4em; margin-right: 0.4em; }
 .snap { display: inline-flex; align-items: center; gap: 0.3em; font-size: 0.9em; }
 .snap input { accent-color: var(--mint); }
+.handle.dragging { cursor: grabbing; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08), 0 10px 30px rgba(0, 0, 0, 0.35); }
+.hud-root.editing .g, .hud-root.editing .mm-frame { transition: none !important; }

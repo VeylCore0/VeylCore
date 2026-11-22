@@ -281,7 +281,7 @@ AddEventHandler('veyl_lib:brokerReset', function() focusToken = nil closeMenu(tr
 RegisterNUICallback('menu:preview', function(data, cb)
     if not menuOpen or type(data) ~= 'table' then return cb({ ok = false }) end
     Settings.current = Settings.Clean(data.settings)
-    Minimap.Apply(Settings.current)
+    Minimap.Apply(Settings.current, false, data.moving == true)
     layoutDirty = true
     local rect = Minimap.Rect(Settings.current)
     cb({ ok = true, settings = Settings.current, layout = rect })

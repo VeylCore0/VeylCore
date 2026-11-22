@@ -23,7 +23,7 @@ export interface Settings {
 
 export interface Caps { circle: boolean; postal: boolean; fuel: string; voice: string; seatbelt: boolean }
 
-export interface Layout { left: number; bottom: number; width: number; height: number; shape: 'square' | 'circle'; safe: number; shown?: boolean }
+export interface Layout { left: number; bottom: number; width: number; height: number; shape: 'square' | 'circle'; safe: number; shown?: boolean; ox?: number; oy?: number }
 export interface Status { health?: number; armor?: number; hunger?: number; thirst?: number; stress?: number; stamina?: number; oxygen?: number }
 export interface Voice { talking: boolean; mode?: string; level?: number; radio?: boolean; available: boolean }
 export interface Info { id: number; cash?: number; bank?: number; time: string }
