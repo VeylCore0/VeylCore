@@ -84,7 +84,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Bank app 2.0:** invoices and bills to pay, recurring payments and a credit score.
 - **Music:** Veyl Radio, playlists and a speaker you can play for people nearby.
 - **News app:** Weazel News articles and breaking alerts.
-- **Dark web:** a hidden app for black market orders, unlocked by a USB drive.
+- ✅ **Dark web:** the Silk Road app for black market orders, unlocked by a USB drive.
 - **Racing app:** street races, invites and leaderboards.
 - ✅ **Voicemail, call history and blocked numbers.**
 - ✅ **Phone looks:** wallpapers, ringtones, light and dark themes, and phone cases in your hand.
