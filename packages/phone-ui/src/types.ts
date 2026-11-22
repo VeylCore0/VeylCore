@@ -1,7 +1,7 @@
 // veyl_phone message and data types.
 
 export interface Settings {
-  wallpaper: string; accent: string; ringtone: string; notifySound: string; ringVolume: number; notifyVolume: number;
+  wallpaper: string; accent: string; ringtone: string; notifySound: string; ringVolume: number; notifyVolume: number; theme?: 'dark' | 'light'; phoneCase?: string;
   silent: boolean; dnd: boolean; lockPreview: 'full' | 'sender' | 'hidden'; readReceipts: boolean; showBank: boolean;
   widgets: { clock: boolean; recent: boolean; bank: boolean };
   scale: number; position: 'bottom-right' | 'bottom-left' | 'center-right'; reducedMotion: boolean;
@@ -19,7 +19,7 @@ export interface Session {
   external?: { id: string; label: string; icon: string; color: string }[];
   voice: { available: boolean; reason?: string; provider?: string };
   serverTime: number; unread: number; notificationsUnread: number; badges?: Record<string, number>;
-  presets: { wallpapers: string[]; accents: string[]; ringtones: string[]; notifySounds: string[] };
+  presets: { wallpapers: string[]; accents: string[]; ringtones: string[]; notifySounds: string[]; cases?: string[] };
   limits: { message: number; groupMembers: number };
   world?: World | null; money?: { bank: number } | null; open?: { app?: string; route?: string };
 }
@@ -56,6 +56,8 @@ export const APP_STYLE: Record<string, { icon: string; color: string }> = {
   settings: { icon: 'gear', color: '#5d5a6b' }, store: { icon: 'bag', color: '#5b8bd6' },
   flock: { icon: 'bird', color: '#3d9be0' }, bank: { icon: 'bank', color: '#3f9c6d' }, garage: { icon: 'car', color: '#d08b4f' },
   market: { icon: 'tag', color: '#c95d84' }, notes: { icon: 'note', color: '#d4a43c' }, calculator: { icon: 'calc', color: '#4b4a57' },
+  maps: { icon: 'pin', color: '#3fa06b' }, services: { icon: 'bell', color: '#d0584f' }, mail: { icon: 'send', color: '#4b7fd6' },
+  voicemail: { icon: 'call', color: '#7a5bc4' },
 };
 
 export const CONTACT_COLORS = ['#8b63d6', '#4aa39a', '#d08b4f', '#5b8bd6', '#c95d84', '#7aa34a', '#a07a5a', '#6a6a7a'];

@@ -4,6 +4,8 @@
 -- or a reconnect is picked up automatically. This file keeps only timers in memory and mirrors the state into the
 -- replicated player state bag 'medical' ('down' | 'dead' | nil) so other clients can show the right target options.
 
+-- Mail to the phone (veyl_phone SendMail); skipped when the phone is not running.
+local function mail(cid, from, subject, body) if GetResourceState('veyl_phone') == 'started' then pcall(function() exports.veyl_phone:SendMail(cid, from, subject, body) end) end end
 local C = MedicalConfig
 local states = {}  -- [src] = { state = 'down'|'dead', at = os.time(), respawnAt, lastCall, id }
 local actions = {} -- [src] = { kind, target, token, at, seconds }
@@ -349,5 +351,6 @@ Veyl.RegisterCallback('bill', function(src, citizenid, target, amount, reason)
     if share > 0 then core('CreditOnce', citizenid, 'bank', share, 'Medical bill commission', op .. ':share') end
     Veyl.Notify(target, ('Medical bill: $%d for %s (paid from your bank).'):format(amount, reason), 'info', 8000)
     Veyl.Audit(src, 'medical_bill', { target = tcid, amount = amount, reason = reason })
+    mail(tcid, 'Pillbox Hill Medical Center', ('Medical bill: $%d'):format(amount), ('Treatment: %s\nAmount: $%d (paid from your bank)'):format(reason, amount))
     return Veyl.Ok(nil, share > 0 and ('Bill paid. Your share: $%d'):format(share) or 'Bill paid')
 end, { cooldown = 2000 })

@@ -176,6 +176,42 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        {
+            -- Phone 2.0, phase 1: maps, services, email, voicemail
+            id = '003_phone2',
+            sql = {
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_places (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, label VARCHAR(40) NOT NULL,
+                    x FLOAT NOT NULL, y FLOAT NOT NULL, z FLOAT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_shared_locations (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, from_cid VARCHAR(16) NOT NULL, from_name VARCHAR(64) NOT NULL,
+                    to_cid VARCHAR(16) NOT NULL, x FLOAT NOT NULL, y FLOAT NOT NULL, live TINYINT(1) NOT NULL DEFAULT 0,
+                    expires_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_to (to_cid, expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_service_requests (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, service VARCHAR(32) NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    caller_name VARCHAR(64) NOT NULL, caller_number VARCHAR(16) NULL, message VARCHAR(240) NOT NULL,
+                    x FLOAT NOT NULL, y FLOAT NOT NULL, status ENUM('open','taken','closed') NOT NULL DEFAULT 'open',
+                    taken_by VARCHAR(64) NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_service (service, status), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_mail (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, sender VARCHAR(64) NOT NULL,
+                    subject VARCHAR(120) NOT NULL, body TEXT NOT NULL, is_read TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_cid (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_voicemail (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, from_number VARCHAR(16) NOT NULL,
+                    from_name VARCHAR(64) NULL, body VARCHAR(500) NOT NULL, is_read TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_cid (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            },
+        },
     })
     if not ok then return false end
     -- Calls that were live when the server stopped have ended.
@@ -286,6 +322,8 @@ function Phone.CleanSettings(s)
         wallpaper = oneOf(s.wallpaper, PhoneConfig.Wallpapers, PhoneConfig.Wallpapers[1]),
         accent = oneOf(s.accent, PhoneConfig.Accents, PhoneConfig.Accents[1]),
         ringtone = oneOf(s.ringtone, PhoneConfig.Ringtones, PhoneConfig.Ringtones[1]),
+        theme = oneOf(s.theme, { 'dark', 'light' }, 'dark'),
+        phoneCase = oneOf(s.phoneCase, PhoneConfig.Cases, PhoneConfig.Cases[1]),
         notifySound = oneOf(s.notifySound, PhoneConfig.NotificationSounds, PhoneConfig.NotificationSounds[1]),
         ringVolume = num(s.ringVolume, 0, 100, 70),
         notifyVolume = num(s.notifyVolume, 0, 100, 60),
@@ -396,6 +434,7 @@ Veyl.RegisterCallback('hello', function(src, citizenid)
     local acc = Phone.Account(citizenid, name)
     if not acc then return Veyl.Err('DATABASE_ERROR', 'Could not set up your phone') end
     local settings = Phone.CleanSettings(Phone.Decode(acc.settings, {}))
+    Player(src).state:set('phoneCase', settings.phoneCase, false)
     local old = Phone.sessions[src]
     if old and old.cid ~= citizenid then Phone.EndSession(src, 'character_changed') end
     local s = { src = src, cid = citizenid, number = acc.number, name = acc.display_name, settings = settings }
@@ -418,7 +457,7 @@ Veyl.RegisterCallback('hello', function(src, citizenid)
         notificationsUnread = Notify and Notify.UnreadCount(citizenid) or 0,
         badges = Notify and Notify.Badges(citizenid) or {},
         presets = { wallpapers = PhoneConfig.Wallpapers, accents = PhoneConfig.Accents, ringtones = PhoneConfig.Ringtones,
-            notifySounds = PhoneConfig.NotificationSounds },
+            notifySounds = PhoneConfig.NotificationSounds, cases = PhoneConfig.Cases },
         limits = { message = L.MessageLength, groupMembers = L.GroupMembers },
     })
 end, { cooldown = 1000 })
@@ -430,6 +469,7 @@ Veyl.RegisterCallback('saveSettings', function(src, citizenid, input)
     local clean = Phone.CleanSettings(input)
     MySQL.update.await('UPDATE veyl_phone_accounts SET settings = ? WHERE citizenid = ?', { json.encode(clean), citizenid })
     s.settings = clean
+    Player(src).state:set('phoneCase', clean.phoneCase, false)
     return Veyl.Ok(clean)
 end)
 

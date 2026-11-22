@@ -13,6 +13,10 @@ import { GarageApp } from './apps/Garage';
 import { MarketApp } from './apps/Market';
 import { NotesApp } from './apps/Notes';
 import { CalculatorApp } from './apps/Calculator';
+import { MapsApp } from './apps/Maps';
+import { ServicesApp } from './apps/Services';
+import { MailApp } from './apps/Mail';
+import { VoicemailApp } from './apps/Voicemail';
 
 // ---------------------------------------------------------------------------
 // Context shared by every app
@@ -222,7 +226,7 @@ export function App() {
   return (
     <PhoneCtx.Provider value={ctx}>
       <div className={`ph-stage ${posClass}${reduced ? ' ph-reduced' : ''}`} style={style}>
-        <div className="ph-device" role="dialog" aria-label="Phone">
+        <div className={`ph-device${settings.theme === 'light' ? ' light' : ''}`} role="dialog" aria-label="Phone">
           <div className="ph-screen" style={{ background: WALLPAPERS[settings.wallpaper] ?? WALLPAPERS.aurora }}>
             <StatusBar />
             {call && call.state !== 'ended' && nav.app !== 'phone' && !(call.state === 'incoming') && (
@@ -496,6 +500,10 @@ function AppHost({ app }: { app: string }) {
     case 'market': return <MarketApp />;
     case 'notes': return <NotesApp />;
     case 'calculator': return <CalculatorApp />;
+    case 'maps': return <MapsApp />;
+    case 'services': return <ServicesApp />;
+    case 'mail': return <MailApp />;
+    case 'voicemail': return <VoicemailApp />;
     default: return <div className="ph-empty">This app is not available.</div>;
   }
 }

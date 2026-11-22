@@ -5,6 +5,8 @@
 --   if the card could not be delivered, the fee is refunded once with CreditOnce(op..':refund').
 -- A repeated request with the same op id never charges twice (the core and the inventory both refuse repeats).
 
+-- Mail to the phone (veyl_phone SendMail); skipped when the phone is not running.
+local function mail(cid, from, subject, body) if GetResourceState('veyl_phone') == 'started' then pcall(function() exports.veyl_phone:SendMail(cid, from, subject, body) end) end end
 local C = CityHallConfig
 local deskPos = vector3(C.Desk.coords.x, C.Desk.coords.y, C.Desk.coords.z)
 
@@ -161,6 +163,7 @@ Veyl.RegisterCallback('buy', function(src, citizenid, req)
         end
     end
     Veyl.Audit(src, 'cityhall_buy', { kind = kind, key = key, price = price, method = method, op = op })
+    mail(citizenid, 'City of Los Santos', ('Receipt: %s'):format(def.label), ('%s\nPaid: $%d by %s'):format(def.label, price, method))
     return Veyl.Ok(overview(src), kind == 'document' and (def.label .. ' printed') or (def.label .. ' issued'))
 end, { cooldown = 1500 })
 

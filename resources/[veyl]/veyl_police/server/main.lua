@@ -4,6 +4,8 @@
 -- Restraint state: core metadata 'ishandcuffed' (persists across logout) mirrored to the replicated player state bag
 -- 'cuffed'. Escorting: state bag 'escortedBy' (the officer's server id).
 
+-- Mail to the phone (veyl_phone SendMail); skipped when the phone is not running.
+local function mail(cid, from, subject, body) if GetResourceState('veyl_phone') == 'started' then pcall(function() exports.veyl_phone:SendMail(cid, from, subject, body) end) end end
 local C = PoliceConfig
 local escorts = {} -- [target] = officer
 
@@ -230,6 +232,7 @@ Veyl.RegisterCallback('cite', function(src, _, target, amount, reason)
     Veyl.Notify(tonumber(target), paid and ('Citation #%d: $%d for %s. Paid from your bank.'):format(id, amount, reason)
         or ('Citation #%d: $%d for %s. Unpaid: use /citations to pay.'):format(id, amount, reason), 'warning', 9000)
     Veyl.Audit(src, 'police_citation', { id = id, target = tpd.citizenid, amount = amount, paid = paid })
+    mail(tpd.citizenid, 'Los Santos Police Department', ('Citation #%d: $%d'):format(id, amount), ('You were cited for: %s\nAmount: $%d\nOfficer: %s\nStatus: %s'):format(reason, amount, name(pd), paid and 'paid from your bank' or 'unpaid (use /citations to pay)'))
     return Veyl.Ok({ id = id, paid = paid }, ('Citation #%d written (%s)'):format(id, paid and 'paid' or 'unpaid'))
 end, { cooldown = 2000 })
 
@@ -359,6 +362,7 @@ exports('RecordCitation', function(officerSrc, citizenid, amount, reason)
     local tsrc = exports.veyl_core:GetSourceByCitizenId(citizenid)
     if tsrc then Veyl.Notify(tsrc, ('Citation #%d: $%d for %s. %s'):format(id, amount, reason, paid and 'Paid from your bank.' or 'Unpaid: use /citations to pay.'), 'warning', 9000) end
     Veyl.Audit(officerSrc, 'police_citation', { id = id, target = citizenid, amount = amount, paid = paid, via = 'mdt' })
+    mail(citizenid, 'Los Santos Police Department', ('Citation #%d: $%d'):format(id, amount), ('You were cited for: %s\nAmount: $%d\nOfficer: %s\nStatus: %s'):format(reason, amount, name(pd), paid and 'paid from your bank' or 'unpaid (use /citations to pay)'))
     return Veyl.Ok({ id = id, paid = paid }, ('Citation #%d written (%s)'):format(id, paid and 'paid' or 'unpaid'))
 end)
 

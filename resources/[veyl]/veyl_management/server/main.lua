@@ -6,6 +6,8 @@
 --   * you can only act on members whose grade is BELOW yours, and only assign grades below yours;
 --   * hiring sends an offer that the other person must accept within OfferSeconds.
 
+-- Mail to the phone (veyl_phone SendMail); skipped when the phone is not running.
+local function mail(cid, from, subject, body) if GetResourceState('veyl_phone') == 'started' then pcall(function() exports.veyl_phone:SendMail(cid, from, subject, body) end) end end
 local C = ManagementConfig
 local offers = {} -- [token] = { from, fromCid, target, targetCid, kind, name, grade, expires }
 
@@ -219,6 +221,7 @@ Veyl.RegisterCallback('answerOffer', function(src, citizenid, token, accept)
     if not ok then return Veyl.Err('INTERNAL', 'Could not sign you on') end
     if bossSrc then Veyl.Notify(bossSrc, ('%s accepted. Welcome aboard.'):format(('%s %s'):format(pd.charinfo.firstname or '', pd.charinfo.lastname or '')), 'success') end
     Veyl.Audit(src, 'management_hired', { kind = o.kind, group = o.name, grade = o.grade, by = o.fromCid })
+    mail(citizenid, def.label, ('Welcome to %s'):format(def.label), ('You joined %s as %s. Your boss can promote you from the boss menu.'):format(def.label, gradeDef(def, o.grade).name))
     local switchHint = o.kind == 'job' and pd.job.name ~= defaultOf('job') and ' Use /jobs to make it your main job.' or ''
     return Veyl.Ok(nil, ('You joined %s.%s'):format(def.label, switchHint))
 end, { cooldown = 500 })

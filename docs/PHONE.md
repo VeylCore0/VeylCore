@@ -191,3 +191,24 @@ ensure veyl_phone
 ```
 
 The model welds to the right hand (bone 28422) at zero offset, like GTA's own phone. If the pack is not running, the base-game `prop_npc_phone_02` is used (`Animations.prop` / `fallbackProp` in `config.lua`). Other colours from the pack (`sd_phone_blue`, `sd_phone_red`, …) work the same way.
+
+## Phone 2.0, phase 1
+
+New apps (preinstalled):
+
+| App | What it does |
+|---|---|
+| **Maps** | City places (City Hall, hospital, police, LS Customs, impound, Bean Machine, Burger Shot…, `MapPlaces`), your saved places (save where you stand), and locations shared with you. *Share* sends your location (or live location, which follows you) to a phone number for 15 / 30 / 60 min. Tap anything to set GPS |
+| **Services** | Request Police, EMS, Mechanic, Taxi, Bean Machine or Burger Shot (`Services`) with a message: police / EMS requests also become dispatch calls; every on-duty member gets a notification. On duty yourself? The **Queue** tab lists open requests: *Take it* (GPS + tells the caller you are coming), *Close* |
+| **Mail** | Inbox. Citations, medical bills, City Hall receipts and job offers arrive here |
+| **Voicemail** | Messages left for you, and leaving one for any number (blocked numbers are silently ignored) |
+
+Settings → Wallpaper & colour also has **Theme** (dark / light) and **Phone case**, the colour of the `sd_phone_<colour>` prop in your hand.
+
+Other resources can send mail, also to offline characters:
+
+```lua
+exports.veyl_phone:SendMail(citizenid, 'Sender name', 'Subject', 'Body text')
+```
+
+Tables: `veyl_phone_places`, `veyl_phone_shared_locations`, `veyl_phone_service_requests`, `veyl_phone_mail`, `veyl_phone_voicemail` (migration `003_phone2`).

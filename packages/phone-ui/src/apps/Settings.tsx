@@ -71,6 +71,10 @@ export function SettingsApp() {
               render={(v) => <span className={`ph-wall-swatch w-${v}`}>{WALLPAPER_LABEL[v] ?? v}</span>} />
             <Choice label="Accent colour" value={settings.accent} options={session.presets.accents} onChange={(v) => set({ accent: v })}
               render={(v) => <span className="ph-accent" style={{ background: v }} aria-label={v} />} />
+            <Choice label="Theme" value={settings.theme ?? 'dark'} options={['dark', 'light']} onChange={(v) => set({ theme: v as 'dark' | 'light' })}
+              render={(v) => <span>{v === 'dark' ? 'Dark' : 'Light'}</span>} />
+            {session.presets.cases && <Choice label="Phone case (in your hand)" value={settings.phoneCase ?? 'black'} options={session.presets.cases} onChange={(v) => set({ phoneCase: v })}
+              render={(v) => <span className="ph-accent" style={{ background: CASE_COLOR[v] ?? '#222' }} aria-label={v} title={v} />} />}
           </>
         )}
         {page === 'home' && (
@@ -152,3 +156,5 @@ function Profile() {
     </div>
   );
 }
+
+const CASE_COLOR: Record<string, string> = { black: '#1c1c21', blue: '#2f5fd0', green: '#2f9a5c', orange: '#e0782f', pink: '#e47aa8', purple: '#7a4fc9', red: '#c93a3a', yellow: '#e5c33a' };

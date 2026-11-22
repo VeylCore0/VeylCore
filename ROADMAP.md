@@ -73,11 +73,11 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Crafting:** benches, recipes and materials from the new jobs.
 - **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
 
-## 🔜 Then: phone 2.0
+## 🛠️ In progress: phone 2.0
 - **Camera and gallery:** photos and selfies, albums, and sharing photos in messages and on Flock.
-- **Maps:** set GPS to contacts, businesses and saved places, and share your live location.
-- **Services:** call or message the police, EMS, mechanics, taxis and businesses, with a queue for whoever is on duty.
-- **Email:** receipts, bills, job offers and messages from businesses and the city.
+- ✅ **Maps:** GPS to city places, businesses and saved places, and sharing your live location.
+- ✅ **Services:** request police, EMS, mechanics, taxis and businesses, with a queue for whoever is on duty.
+- ✅ **Email:** citations, bills, receipts and job offers from businesses and the city.
 - **Jobs app:** job listings, applications and shift clock-in for the job you work.
 - **Property app:** listings, your keys, rent due and roommates.
 - **Garage app 2.0:** vehicle tracking, insurance and valet delivery.
@@ -86,8 +86,8 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **News app:** Weazel News articles and breaking alerts.
 - **Dark web:** a hidden app for black market orders, unlocked by a USB drive.
 - **Racing app:** street races, invites and leaderboards.
-- **Voicemail, call history and blocked numbers.**
-- **Phone looks:** wallpapers, ringtones, cases and dark mode.
+- ✅ **Voicemail, call history and blocked numbers.**
+- ✅ **Phone looks:** wallpapers, ringtones, light and dark themes, and phone cases in your hand.
 - **Tablet:** a bigger screen for the MDT, business management and real estate.
 
 ## 🔜 Then: housing and justice

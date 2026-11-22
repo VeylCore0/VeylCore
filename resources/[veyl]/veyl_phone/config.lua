@@ -30,6 +30,14 @@ PhoneConfig = {
           description = 'Private notes saved to your phone.' },
         { id = 'calculator', label = 'Calculator', enabled = true, preinstalled = true, category = 'Utilities',
           description = 'A simple calculator.' },
+        { id = 'maps', label = 'Maps', enabled = true, preinstalled = true, category = 'Navigation',
+          description = 'Saved places, businesses and services, GPS, and sharing your live location.' },
+        { id = 'services', label = 'Services', enabled = true, preinstalled = true, category = 'Utilities',
+          description = 'Call police, EMS, mechanics, taxis and businesses. On duty? See the queue.' },
+        { id = 'mail', label = 'Mail', enabled = true, preinstalled = true, category = 'Utilities',
+          description = 'Receipts, bills, job offers and messages from businesses and the city.' },
+        { id = 'voicemail', label = 'Voicemail', enabled = true, preinstalled = true, category = 'Utilities',
+          description = 'Messages people left when you could not answer, and leaving your own.' },
     },
 
     Flock = { PostLength = 280, PageSize = 20, PostCooldownMs = 5000, MaxMentions = 5 },
@@ -39,6 +47,38 @@ PhoneConfig = {
         Categories = { 'vehicles', 'items', 'services', 'property', 'other' },
     },
     Notes = { Max = 100, TitleLength = 48, BodyLength = 2000 },
+
+    -- Phone cases: the colour of the in-hand sd-phone prop (sd_phone_<colour>).
+    Cases = { 'black', 'blue', 'green', 'orange', 'pink', 'purple', 'red', 'yellow' },
+
+    -- Services app. dispatch = goes to veyl_dispatch as a call; otherwise on-duty members of the jobs get the request.
+    Services = {
+        { id = 'police', label = 'Police', jobs = { 'police' }, dispatch = 'police', icon = 'shield' },
+        { id = 'ems', label = 'EMS', jobs = { 'ambulance' }, dispatch = 'ems', icon = 'heart' },
+        { id = 'mechanic', label = 'Mechanic', jobs = { 'mechanic' }, icon = 'wrench' },
+        { id = 'taxi', label = 'Taxi', jobs = { 'taxi' }, icon = 'car' },
+        { id = 'beanmachine', label = 'Bean Machine', jobs = { 'beanmachine' }, icon = 'burger' },
+        { id = 'burgershot', label = 'Burger Shot', jobs = { 'burgershot' }, icon = 'burger' },
+    },
+    ServiceCooldownSeconds = 60,
+
+    -- Maps app: places everyone sees (label, category, coords). Saved places are per character.
+    MapPlaces = {
+        { label = 'City Hall', category = 'City', x = -265.0, y = -963.6 },
+        { label = 'Pillbox Hill Medical Center', category = 'Services', x = 308.2, y = -595.4 },
+        { label = 'Mission Row Police', category = 'Services', x = 441.8, y = -982.0 },
+        { label = 'LS Customs', category = 'Services', x = -347.3, y = -133.3 },
+        { label = 'Impound Lot', category = 'Services', x = 400.5, y = -1630.9 },
+        { label = 'Bean Machine', category = 'Food', x = -631.2, y = 233.5 },
+        { label = 'Burger Shot', category = 'Food', x = -1194.9, y = -893.9 },
+        { label = 'Premium Deluxe Motorsport', category = 'Vehicles', x = -56.5, y = -1096.6 },
+        { label = 'Starlite Motel', category = 'Housing', x = 319.0, y = -195.0 },
+        { label = 'Fish market', category = 'Jobs', x = -1612.5, y = -1028.8 },
+    },
+    ShareMinutes = { 15, 30, 60 },
+
+    Mail = { Max = 200 },
+    Voicemail = { Max = 50, Length = 500 },
 
     Wallpapers = { 'aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono' },
     Accents = { '#b892f4', '#7aa7ff', '#5fd3a5', '#f2c66d', '#ef8f96', '#e3e3ea' },

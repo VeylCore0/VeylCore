@@ -20,7 +20,9 @@ end
 
 local function attachProp(ped)
     if prop and DoesEntityExist(prop) then return end
-    local hash = joaat(A.prop)
+    -- The case colour chosen in Settings picks the sd-phone model (sd_phone_<colour>).
+    local case = LocalPlayer.state.phoneCase
+    local hash = joaat(case and ('sd_phone_%s'):format(case) or A.prop)
     if not IsModelInCdimage(hash) and A.fallbackProp then hash = joaat(A.fallbackProp) end
     RequestModel(hash)
     local deadline = GetGameTimer() + 2000
@@ -165,6 +167,10 @@ local ALLOWED = {
     flockDelete = true, flockFollow = true,
     bankOverview = true, bankHistory = true, bankResolve = true, bankSend = true, bankStatus = true,
     garageList = true, garageLocate = true, marketList = true, marketPost = true, marketDelete = true,
+    mapsData = true, placeSave = true, placeDelete = true, shareLocation = true,
+    servicesData = true, serviceRequest = true, serviceTake = true, serviceClose = true,
+    mailList = true, mailRead = true, mailDelete = true,
+    voicemailList = true, voicemailLeave = true, voicemailRead = true, voicemailDelete = true,
 }
 
 RegisterNUICallback('api', function(data, cb)
