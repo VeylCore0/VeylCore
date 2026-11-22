@@ -42,13 +42,11 @@ Values: health uses GTA's offset (100 = dead) and the ped's real maximum; stamin
 
 **Edit HUD positions** (Overview or Minimap): drag the minimap, status, voice, vehicle instruments, top-right info and location strip. Safe-area guides, optional snapping, *Reset* for the selected group, *Save positions* / *Cancel*. Positions are fractions of the screen, clamped to the safe area, so they survive resolution changes. Dragging the minimap moves the real GTA radar.
 
-## Circle minimap (asset needed)
+## Circle minimap
 
-GTA has no native for a round radar. The standard technique replaces the radar mask texture `radarmasksm` with a round one and sets `SetMinimapClipType(1)`. That needs a texture dictionary file this repository does not include:
+Choose *Circle* in the Minimap tab. It uses GTA's round clip (`SetMinimapClipType(1)`) and a larger circle layout. For a cleaner edge you can add a round mask texture: a `circlemap.ytd` with a texture named `radarmasksm` (the one shipped by the free "circle minimap" resources; check its licence) in `veyl_hud/stream/`. When it is there the HUD swaps it in automatically.
 
-1. Get a `circlemap.ytd` containing a texture named `radarmasksm` (a white circle on transparent, as used by the many free "circle minimap" resources; check its licence), or make one with OpenIV / CodeWalker from a 256×256 circular mask.
-2. Put it in `resources/[veyl]/veyl_hud/stream/circlemap.ytd`.
-3. Restart the resource. The *Circle* option becomes available (until then it is shown disabled with this explanation).
+The outline around the map is square-cornered for the square map and round for the circle. If it is a few pixels off at your resolution, drag the map slightly in the position editor.
 
 ## Postal codes (optional)
 

@@ -5,7 +5,7 @@
 -- RemoveReplaceTexture (circle mask), SetRadarBigmapEnabled (makes GTA re-read component positions), DisplayRadar,
 -- LockMinimapAngle / UnlockMinimapAngle, GetSafeZoneSize, GetAspectRatio, GetActiveScreenResolution.
 
-Minimap = { applied = nil, circleAvailable = false }
+Minimap = { applied = nil, circleAvailable = true, circleTexture = false }
 
 local RAISE = 0.045 -- room under the map for GTA's (hidden) bar strip
 local STRIP = 0.014
@@ -23,19 +23,21 @@ local CIRCLE = {
     { 'minimap_blur', -0.00, 0.015, 0.252, 0.338 },
 }
 
+--- The circle works with GTA's circular clip alone; a streamed round mask (circlemap.ytd) just gives a cleaner edge.
 function Minimap.DetectCircle()
+    Minimap.circleAvailable = true
     local dict = HudConfig.CircleTextureDict
-    if not dict or dict == '' then Minimap.circleAvailable = false return end
+    if not dict or dict == '' then Minimap.circleTexture = false return end
     RequestStreamedTextureDict(dict, false)
-    local t = GetGameTimer() + 3000
+    local t = GetGameTimer() + 2000
     while not HasStreamedTextureDictLoaded(dict) and GetGameTimer() < t do Wait(50) end
-    Minimap.circleAvailable = HasStreamedTextureDictLoaded(dict)
+    Minimap.circleTexture = HasStreamedTextureDictLoaded(dict)
 end
 
 local function place(shape, scale, ox, oy)
     local layout = shape == 'circle' and CIRCLE or SQUARE
     if shape == 'circle' then
-        AddReplaceTexture('platform:/textures/graphics', 'radarmasksm', HudConfig.CircleTextureDict, 'radarmasksm')
+        if Minimap.circleTexture then AddReplaceTexture('platform:/textures/graphics', 'radarmasksm', HudConfig.CircleTextureDict, 'radarmasksm') end
         SetMinimapClipType(1)
     else
         RemoveReplaceTexture('platform:/textures/graphics', 'radarmasksm')
@@ -76,6 +78,13 @@ function Minimap.Rect(s)
     -- Component offsets are in 16:9 screen units; convert x to the real aspect.
     local xk = (16 / 9) / aspect
     local shape = (m.shape == 'circle' and Minimap.circleAvailable) and 'circle' or 'square'
+    if shape == 'circle' then
+        -- The circle layout is a larger map moved down; the visible disc is about 1.2x the square map's width,
+        -- and round in pixels (same pixel height as width).
+        local w = width * 1.2 * m.scale
+        local h = w * aspect
+        return { left = left + (m.offsetX - 0.0055) * xk, bottom = bottom + RAISE + m.offsetY - 0.012, width = w, height = h, shape = shape, safe = (1.0 - safezone) / 2 }
+    end
     return {
         left = left + m.offsetX * xk, bottom = bottom + RAISE + STRIP + m.offsetY,
         width = width * m.scale, height = (height - STRIP) * m.scale, shape = shape,

@@ -92,7 +92,7 @@ export function Menu({ draft, saved, defaults, caps, onChange, onEdit }: {
                 <Pane title="Minimap" icon="pin">
                   <Seg label="Map shape" value={draft.minimap.shape} options={[['square', 'Square'], ['circle', 'Circle']]}
                     disabled={caps.circle ? [] : ['circle']} onChange={(v) => up('minimap.shape', v)} />
-                  {!caps.circle && <p className="hint">Circle needs stream/circlemap.ytd on the server (see docs/HUD.md).</p>}
+                  {draft.minimap.shape === 'circle' && <p className="hint">Circle uses GTA's round clip. A round mask texture (docs/HUD.md) gives a cleaner edge.</p>}
                   <Seg label="Show the map" value={draft.minimap.mode} options={[['always', 'Always'], ['vehicle', 'In vehicles'], ['never', 'Never']]} onChange={(v) => up('minimap.mode', v)} />
                   {T('North up (do not rotate)', 'minimap.northUp', draft.minimap.northUp)}
                   <Slider label="Map size" value={draft.minimap.scale} min={0.75} max={1.4} step={0.05} fmt={(v) => `${Math.round(v * 100)}%`} onChange={(v) => up('minimap.scale', v)} />

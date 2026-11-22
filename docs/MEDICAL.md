@@ -77,8 +77,7 @@ Every hit of 5+ damage is recorded on the body part it landed on (head, torso, a
 | Burn | Fire, explosions | — |
 
 Severity goes from 1 to 4 per part.
-- **Legs at 2+:** you limp and cannot sprint.
-- **Head at 2+:** your view shakes now and then.
+- Injuries do not make you limp or shake the screen.
 - **Bleeding (1–4):** you lose 2 health every 30 s at level 1, faster at higher levels, until treated.
 
 `/injuries` lists your own. **EMS:** *Check injuries* on a person shows health, bleeding and every injury; *Treat injuries* (and a revive) heals all of them. A hospital respawn or check-in also clears them.
@@ -88,7 +87,7 @@ Severity goes from 1 to 4 per part.
 | Item | Effect |
 |---|---|
 | Gauze ($40) | Bleeding −2 |
-| Painkillers ($60) | +10 health, hides the limp and shake for 5 min (not the bleeding) |
+| Painkillers ($60) | +10 health |
 | Medkit ($450) | +60 health and stops bleeding. Does not fix fractures |
 
 ### Beds

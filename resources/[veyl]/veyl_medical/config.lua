@@ -47,8 +47,7 @@ MedicalConfig.Injuries = {
     MinDamage = 5,                   -- hits smaller than this are ignored
     BleedSecondsPerLevel = 30,       -- bleeding level 1 loses health every 30 s, level 4 every 7.5 s
     BleedDamage = 2,
-    LimpAt = 2,                      -- leg severity that makes you limp and stops sprinting
-    ShakeAt = 2,                     -- head severity that shakes your view
+    -- (Limp and camera shake were removed: injuries only bleed and are shown to EMS.)
     PainkillerSeconds = 300,
 }
 

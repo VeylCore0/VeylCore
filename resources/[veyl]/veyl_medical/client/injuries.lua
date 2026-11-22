@@ -84,23 +84,8 @@ CreateThread(function()
         local now = GetGameTimer()
         local masked = now < painkillersUntil
         local down = LocalPlayer.state.medical ~= nil
-        local legs = math.max(severity('lleg'), severity('rleg'))
-        local wantLimp = not masked and not down and legs >= I.LimpAt
-        if wantLimp ~= limping then
-            if wantLimp then
-                RequestAnimSet('move_m@injured')
-                local t = GetGameTimer() + 1000
-                while not HasAnimSetLoaded('move_m@injured') and GetGameTimer() < t do Wait(10) end
-                SetPedMovementClipset(ped, 'move_m@injured', 0.5)
-            else
-                ResetPedMovementClipset(ped, 0.5)
-            end
-            limping = wantLimp
-        end
-        if not masked and not down and severity('head') >= I.ShakeAt and now >= nextShake then
-            ShakeGameplayCam('DRUNK_SHAKE', 0.25 * severity('head'))
-            nextShake = now + 20000
-        end
+        -- No limp and no camera shake: injuries only bleed (and show in /injuries and to EMS).
+        if limping then ResetPedMovementClipset(ped, 0.5) limping = false end
         if injuries.bleeding > 0 and not down and now >= nextBleed then
             if nextBleed > 0 then
                 SetEntityHealth(ped, math.max(0, GetEntityHealth(ped) - I.BleedDamage))
@@ -223,4 +208,10 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     ResetPedMovementClipset(PlayerPedId(), 0.0)
     if inBed then FreezeEntityPosition(PlayerPedId(), false) end
+end)
+
+-- Clear any camera shake or limp left over from the old injury effects.
+CreateThread(function()
+    StopGameplayCamShaking(true)
+    ResetPedMovementClipset(PlayerPedId(), 0.0)
 end)

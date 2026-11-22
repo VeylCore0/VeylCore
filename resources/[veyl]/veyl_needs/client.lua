@@ -10,7 +10,7 @@ CreateThread(function()
                 SetEntityHealth(ped, math.max(0, GetEntityHealth(ped) - NeedsConfig.StarvingDamage))
                 Veyl.Notify((m.hunger or 100) <= 0 and 'You are starving.' or 'You are dehydrated.', 'warning', 3000)
             end
-            if (m.stress or 0) >= 80 then ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.04) end
+
         end
     end
 end)
