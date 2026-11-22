@@ -16,23 +16,15 @@ local function work(kind, index, animKey, label)
     working = true
     local start = cb('begin', kind, index)
     if not start.ok then working = false return Veyl.NotifyResult(start) end
-    local ped, a, prop = PlayerPedId(), ANIMS[animKey], nil
-    if a.scenario then
-        TaskStartScenarioInPlace(ped, a.scenario, 0, true)
-    elseif Veyl.LoadAnimDict(a.dict) then
-        TaskPlayAnim(ped, a.dict, a.clip, 3.0, 3.0, -1, a.flag, 0, false, false, false)
-        if a.prop then
-            local hash = Veyl.LoadModel(a.prop, 3000)
-            if hash then
-                prop = CreateObject(hash, 0.0, 0.0, 0.0, true, true, false)
-                AttachEntityToEntity(prop, ped, GetPedBoneIndex(ped, 57005), 0.10, -0.1, -0.02, 80.0, 0.0, 170.0, true, true, false, true, 1, true)
-                SetModelAsNoLongerNeeded(hash)
-            end
-        end
-    end
-    local ok = vlib.progress({ label = label, duration = start.data.seconds * 1000, canCancel = true, disable = { move = true, car = true, combat = true } })
+    local ped, a = PlayerPedId(), ANIMS[animKey]
+    -- The progress bar owns the animation / scenario and the pickaxe: it removes them on every ending (done, cancel,
+    -- death, logout, restart). A stop afterwards makes sure nothing keeps looping.
+    local ok = vlib.progress({ label = label, duration = start.data.seconds * 1000, canCancel = true, icon = animKey == 'mining' and 'wrench' or 'hand',
+        disable = { move = true, car = true, combat = true },
+        scenario = a.scenario, anim = not a.scenario and { dict = a.dict, clip = a.clip, flag = a.flag } or nil,
+        prop = a.prop and { model = a.prop, bone = 57005, pos = vector3(0.10, -0.1, -0.02), rot = vector3(80.0, 0.0, 170.0) } or nil })
+    if a.dict then StopAnimTask(ped, a.dict, a.clip, 1.0) end
     ClearPedTasks(ped)
-    if prop then DeleteEntity(prop) end
     if ok then Veyl.NotifyResult(cb('complete', start.data.token)) end
     working = false
 end
