@@ -52,7 +52,8 @@ CustomsConfig = {
     -- Shops ---------------------------------------------------------------------------------------------------
     -- mode: 'self' (customers buy directly), 'mechanic' (staff quote, customer approves), or 'both'.
     -- selfFallback: in a 'mechanic' shop, customers may self-serve while no staff member is on duty.
-    -- preview: where the local preview copy of the vehicle is placed (needs open floor; the real car is untouched).
+    -- preview (optional): a separate floor point for the local preview copy. Without it (default) the copy stands exactly
+    --   where the real car is, and the real car is hidden on the customer's screen only while they customise.
     -- business: veyl_business id whose account receives the money (nil = the money is not credited anywhere).
     -- stock: true = mechanic installs use the shop's part stock (Parts above).
     Shops = {
@@ -61,7 +62,6 @@ CustomsConfig = {
             coords = vector3(-337.39, -136.92, 39.01), radius = 25.0,
             entry = vector3(-337.4, -136.9, 39.0),        -- self-service entrance (drive in, press E)
             desk = vector3(-347.29, -133.27, 39.01),       -- dashboard / requests
-            preview = vector4(-337.4, -136.9, 38.6, 90.0),
             bays = {
                 { id = '01', coords = vector3(-326.1, -144.0, 39.0) },
                 { id = '02', coords = vector3(-321.7, -132.5, 39.0) },
@@ -77,7 +77,6 @@ CustomsConfig = {
             coords = vector3(-205.9, -1312.7, 31.3), radius = 25.0,
             entry = vector3(-212.7, -1324.0, 30.9),
             desk = vector3(-196.6, -1318.3, 31.1),
-            preview = vector4(-212.7, -1324.0, 30.5, 0.0),
             bays = { { id = '01', coords = vector3(-212.7, -1324.0, 30.9) }, { id = '02', coords = vector3(-222.4, -1329.4, 30.9) } },
             selfFallback = false, laborRate = 0.12, taxRate = 0.0, priceMultiplier = 1.15, stock = true,
             business = 'tunershop',
@@ -88,7 +87,6 @@ CustomsConfig = {
             id = 'bennys_self', label = "Benny's Self-Service", sub = 'Strawberry', mode = 'self',
             coords = vector3(-1155.0, -2007.0, 13.2), radius = 15.0,
             entry = vector3(-1155.0, -2007.0, 13.2),
-            preview = vector4(-1155.0, -2007.0, 12.8, 315.0),
             bays = {}, laborRate = 0.0, taxRate = 0.05, priceMultiplier = 1.25, stock = false,
             categories = { performance = false, bodywork = true, wheels = true, paint = true, lighting = true, details = true },
             blip = { sprite = 72, colour = 3 },

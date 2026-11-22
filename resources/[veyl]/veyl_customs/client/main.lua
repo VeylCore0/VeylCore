@@ -168,8 +168,13 @@ local function openSession(shop, veh, mode, orderId)
     local deadline = GetGameTimer() + 5000
     while not HasModelLoaded(model) and GetGameTimer() < deadline do Wait(20) end
     if not HasModelLoaded(model) then cb('close', d.session) return Veyl.Notify('Could not load the vehicle model', 'error') end
-    local p = shop.preview
-    local clone = CreateVehicle(model, p.x, p.y, p.z, p.w, false, false) -- local only: other players never see it
+    -- The copy stands exactly where the real car is (or at the shop's optional preview point). Local only: other players
+    -- never see it; the real car (and you, if seated) are hidden on your screen only while the session is open.
+    local rc, rh = GetEntityCoords(veh), GetEntityHeading(veh)
+    local p = shop.preview or vector4(rc.x, rc.y, rc.z, rh)
+    local clone = CreateVehicle(model, p.x, p.y, p.z, p.w, false, false)
+    SetEntityNoCollisionEntity(clone, veh, true)
+    SetEntityNoCollisionEntity(veh, clone, true)
     SetModelAsNoLongerNeeded(model)
     SetEntityAsMissionEntity(clone, true, true)
     SetVehicleOnGroundProperly(clone)
@@ -212,6 +217,10 @@ local function openSession(shop, veh, mode, orderId)
         while session and session.id == d.session do
             camTick()
             DisableAllControlActions(0)
+            if not session.data.shop.preview then
+                SetEntityLocallyInvisible(session.real)
+                if GetVehiclePedIsIn(PlayerPedId(), false) == session.real then SetEntityLocallyInvisible(PlayerPedId()) end
+            end
             -- Pause/cancel on: death, the real vehicle disappearing, the preview copy disappearing.
             if IsEntityDead(PlayerPedId()) or not DoesEntityExist(session.real) or not DoesEntityExist(session.clone) then
                 Veyl.Notify('Customisation closed', 'warning')
