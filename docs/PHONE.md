@@ -248,7 +248,7 @@ Same resource, same data, same server APIs and exports: only the shell and the h
 - **Icons:** squircle icons with a soft gradient from each app's colour. Apartments, Boosting, Silk Road and Invoices (registered by veyl_apartments, veyl_boosting, veyl_crime and veyl_mechanic) now have matching icons.
 - **Wallpaper:** new default **Sunset** (purple to peach with an original hills-and-towers silhouette). Existing phones keep the wallpaper they chose.
 
-Settings added (validated on the server with safe defaults for older phones): , , , .
+Settings added (validated on the server with safe defaults for older phones): textSize, offsetX, offsetY, widgets.weather.
 
 **Not in this pass** (listed so nothing pretends to work): photo / location messages and Flock images (no image sharing yet), recorded voicemail audio (Voicemail holds written messages, not recordings), a drawn map in Maps (it lists places and sets GPS), direct purchases in Marketplace (listings are classified ads), contact avatars and favourites. These need new work or a media/voice recording provider.
 
