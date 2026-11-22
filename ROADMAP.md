@@ -59,13 +59,13 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Performance pass:** client and server timings on a full server.
 - **Clean install** from the txAdmin recipe, start to finish.
 
-## 🔜 Then: crime expansion
-- **Bigger robberies:** Fleeca banks, the jewelry store and the Paleto bank.
-- **Drug dealing:** corner selling, buyers who call the police, and turf.
-- **More drugs:** branding, meth, ecstasy, LSD and Veyl-X.
-- **Boosting** and a **black market** with a dark web phone app.
-- **Gangs:** turf, graffiti, gang stashes and money laundering.
-- **Weapons:** serial numbers, attachments and illegal weapon dealers.
+## ✅ Built, now testing: crime expansion
+- **Heists:** six Fleeca banks, the Paleto bank and Vangelico, with thermite, hacking, drills and marked bills.
+- **Drug dealing:** corner selling, buyers who call the police, and turf your gang controls for better prices.
+- **Labs:** meth, ecstasy, LSD and Veyl-X with quality and your own brand.
+- **Boosting** contracts with trackers and reputation, and a **black market** in a dark web phone app with dead drops.
+- **Gangs:** turf, tags, gang stashes, a fence and money laundering.
+- **Weapons:** registered serial numbers, attachments and unregistered guns on the black market.
 
 ## 🔜 Then: more jobs and city life
 - **New jobs:** trucking, taxi, tow truck, garbage, mining, hunting and farming.

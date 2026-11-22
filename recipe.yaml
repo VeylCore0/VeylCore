@@ -126,6 +126,9 @@ tasks:
       ensure veyl_robbery
       ensure veyl_fishing
       ensure veyl_business
+      ensure veyl_crime
+      ensure veyl_heists
+      ensure veyl_boosting
       ensure veyl_doctor
       ensure veyl_delivery
       ensure veyl_admin
