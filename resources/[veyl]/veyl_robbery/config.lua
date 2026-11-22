@@ -6,7 +6,7 @@ RobberyConfig = {
     PoliceJobs = { 'police' },
     MinPolice = 0,                 -- on-duty officers needed before a store can be robbed
     StoreCooldownMinutes = 30,     -- per till and per safe, after a robbery starts (each till in a store is separate)
-    PlayerCooldownMinutes = 10,     -- per robber between robberies (0 = rob every till in a store back to back)
+    PlayerCooldownMinutes = 0,     -- per robber between robberies (0 = rob every till in a store back to back)
 
     -- Till props: every one inside a robbable store can be picked on its own. Stores whose interior has no till prop
     -- fall back to a target zone at the counter.
