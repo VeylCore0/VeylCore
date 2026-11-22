@@ -91,7 +91,7 @@ end)
 --- Preview only: the mutating operation re-checks capacity under the lock.
 exports('CanCarryItem', function(target, item, count, metadata)
     local inv = resolve(target)
-    if not inv or not ItemDefs[item] or not vlib.validate.int(count, 1, 100000) then return false end
+    if not inv or not ItemDefs[item] or not vlib.validate.int(count, 1, InventoryConfig.MaxCount or 1000000000) then return false end
     local items = Store.PlanAdd(inv, Store.CopyItems(inv), item, count, metadata or {})
     return items ~= nil and Store.ComputeWeight(items) <= inv.maxWeight
 end)
@@ -140,7 +140,7 @@ end
 asyncExport('CanCarry', function(_, citizenid, item, count, metadata)
     local inv = playerInv(citizenid)
     if not inv then return Ops.err('NOT_FOUND', 'Unknown character') end
-    if not ItemDefs[item] or not vlib.validate.int(count, 1, 100000) then return Ops.err('INVALID_INPUT', 'Unknown item') end
+    if not ItemDefs[item] or not vlib.validate.int(count, 1, InventoryConfig.MaxCount or 1000000000) then return Ops.err('INVALID_INPUT', 'Unknown item') end
     local items = Store.PlanAdd(inv, Store.CopyItems(inv), item, count, metadata or {})
     if not items or Store.ComputeWeight(items) > inv.maxWeight then return Ops.err('INVENTORY_FULL', 'Not enough space') end
     return Ops.ok(true)

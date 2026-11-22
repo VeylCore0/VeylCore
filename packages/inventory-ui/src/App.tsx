@@ -25,7 +25,7 @@ export function App() {
   const [imagePath, setImagePath] = useState('');
   const [hotbar, setHotbar] = useState(5);
   const [selected, setSelected] = useState<SlotAddress | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(0); // 0 = the whole stack
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [drag, setDrag] = useState<{ from: SlotAddress; x: number; y: number; moved: boolean } | null>(null);
@@ -52,7 +52,7 @@ export function App() {
     setImagePath(d.imagePath);
     setHotbar(d.hotbarSlots ?? 5);
     setSelected(null);
-    setQuantity(1);
+    setQuantity(0);
     setPending(new Set());
     setMenu(null); setQty(null); setGive(null);
     setOpen(true);
@@ -73,7 +73,8 @@ export function App() {
   const key = (a: SlotAddress) => `${a.ref}:${a.slot}`;
   const selectedItem = itemAt(selected);
   const selectedDef = selectedItem ? defs[selectedItem.name] : undefined;
-  const amountFor = useCallback((item: SlotItem) => Math.max(1, Math.min(item.count, Math.floor(quantity) || 1)), [quantity]);
+  /** Quantity 0 (the default) means the whole stack. */
+  const amountFor = useCallback((item: SlotItem) => (quantity > 0 ? Math.min(item.count, Math.floor(quantity)) : item.count), [quantity]);
 
   /** Every mutation is a server request; the grid only changes when the server's delta arrives. */
   const move = useCallback(async (from: SlotAddress, to: SlotAddress, count?: number) => {
@@ -139,7 +140,7 @@ export function App() {
     setPending((p) => new Set([...p, k]));
     const res = await nui('drop', { opId: newOpId(), slot: a.slot, count: amountFor(item), revision: views.primary?.revision });
     setPending((p) => { const n = new Set(p); n.delete(k); return n; });
-    if (res.ok) { say('success', res.message ?? 'Dropped'); setQuantity(1); } else say('error', res.message ?? res.code ?? 'Could not drop that');
+    if (res.ok) { say('success', res.message ?? 'Dropped'); setQuantity(0); } else say('error', res.message ?? res.code ?? 'Could not drop that');
   }, [itemAt, pending, amountFor, views, say]);
 
   const close = useCallback(() => { void nui('close'); }, []);
@@ -152,11 +153,12 @@ export function App() {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-slot]');
       const d = drag; setDrag(null);
       if (!el || !d.moved) return;
-      void move(d.from, { ref: el.dataset.ref as Ref, slot: Number(el.dataset.slot) });
+      const it = itemAt(d.from);
+      void move(d.from, { ref: el.dataset.ref as Ref, slot: Number(el.dataset.slot) }, it && quantity > 0 ? amountFor(it) : undefined);
     };
     window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [drag, move]);
+  }, [drag, move, itemAt, quantity, amountFor]);
 
   // Keyboard alternatives.
   useEffect(() => {
@@ -179,7 +181,7 @@ export function App() {
   }, [open, selected, views, qty, give, menu, use, drop, quickTransfer, itemAt, amountFor, close]);
 
   const panelHandlers = useMemo(() => ({
-    onSelect: (a: SlotAddress) => { setSelected(a); setQuantity(1); },
+    onSelect: (a: SlotAddress) => { setSelected(a); setQuantity(0); },
     onDragStart: (a: SlotAddress, x: number, y: number) => setDrag({ from: a, x, y, moved: false }),
     onShiftClick: (a: SlotAddress) => { const it = itemAt(a); if (it) quickTransfer(a, amountFor(it)); },
     onContext: (a: SlotAddress, x: number, y: number) => { if (itemAt(a)) { setSelected(a); setMenu({ at: a, x, y }); } },
@@ -214,8 +216,9 @@ export function App() {
         <div className="inv-center v-panel">
           <div className="v-label">{t('inv.quantity')}</div>
           <input
-            className="v-input qty-input" type="number" min={1} max={maxQty} value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value) || 1))))}
+            className="v-input qty-input" type="number" min={0} max={maxQty} value={quantity}
+            onChange={(e) => setQuantity(Math.max(0, Math.min(maxQty, Math.floor(Number(e.target.value) || 0))))}
+            title="0 = the whole stack"
             aria-label={t('inv.quantity')}
           />
           <button className="v-btn primary block" disabled={!canUse} title={useReason ?? undefined} onClick={() => use(selected)}>{t('inv.use').toUpperCase()}</button>

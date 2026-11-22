@@ -8,6 +8,6 @@ Cash shows in your pockets as the **Cash** item (`money`, the cash-roll picture)
 So you can hand someone cash by giving them the item, stash cash in a trunk or apartment, and drop it on the ground; police and robbers searching pockets see it.
 
 Details:
-- The item weighs nothing. One drag moves at most 100,000.
+- The item weighs nothing. Any amount can be moved in one go.
 - If your pockets have no free slot when your cash goes up, the item catches up on the next cash change (your balance is still right).
 - Change the item name with `InventoryConfig.CashItem` (default `money`).

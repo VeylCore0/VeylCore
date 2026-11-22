@@ -25,7 +25,9 @@ local function dedupe(opId, actor, fp)
     return ok(okDecode and stored or nil, 'Already processed')
 end
 
-local function validCount(c) return vlib.validate.int(c, 1, 100000) end
+-- Large enough for a cash stack (the money item); stacks are still limited by each item's maxStack.
+local MAX_COUNT = InventoryConfig.MaxCount or 1000000000
+local function validCount(c) return vlib.validate.int(c, 1, MAX_COUNT) end
 local function validOp(id) return vlib.validate.str(id, 6, 90, '^[%w%-_:.]+$') end
 
 ---------------------------------------------------------------------------
