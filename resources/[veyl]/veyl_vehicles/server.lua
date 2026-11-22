@@ -45,6 +45,10 @@ Veyl.Startup({ 'veyl_core' }, function()
                 [[CREATE UNIQUE INDEX IF NOT EXISTS uq_created_op ON veyl_player_vehicles (created_op)]],
             },
         },
+        {
+            id = '003_insurance',
+            sql = { [[ALTER TABLE veyl_player_vehicles ADD COLUMN IF NOT EXISTS insured_until DATETIME NULL]] },
+        },
     })
 end)
 
@@ -58,6 +62,13 @@ end)
 local ownedActive = {} -- [ownedId] = vehicleId (at most one live instance per owned vehicle)
 
 local function impoundRow(ownedId, reason, fee)
+    -- Insured vehicles that were wrecked or abandoned are recovered and repaired for free (services.lua sells cover).
+    local insured = MySQL.scalar.await('SELECT 1 FROM veyl_player_vehicles WHERE id = ? AND insured_until > NOW()', { ownedId })
+    if insured then
+        MySQL.update.await([[UPDATE veyl_player_vehicles SET state = 'impound', impound_reason = ?, impound_fee = 0, engine = 1000, body = 1000
+            WHERE id = ? AND state = 'out']], { ('%s (insured)'):format(reason):sub(1, 64), ownedId })
+        return
+    end
     MySQL.update.await("UPDATE veyl_player_vehicles SET state = 'impound', impound_reason = ?, impound_fee = ? WHERE id = ? AND state = 'out'",
         { reason, fee, ownedId })
 end
@@ -144,6 +155,9 @@ exports('GetVehicle', function(id)
 end)
 
 exports('GetVehicleIdFromEntity', function(entity) return byEntity[entity] end)
+--- Used by services.lua after a plate change or an ownership transfer.
+exports('SetTrackedPlate', function(id, plate) local v = vehicles[id] if v then v.plate = plate end return v ~= nil end)
+exports('SetTrackedOwner', function(id, citizenid) local v = vehicles[id] if v then v.citizenid = citizenid end return v ~= nil end)
 exports('GetEntity', function(id) local v = vehicles[id]; return v and v.entity or nil end)
 
 ---------------------------------------------------------------------------

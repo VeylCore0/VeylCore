@@ -23,3 +23,14 @@ Hire, promote and fire staff at the same spot with the boss menu (`veyl_manageme
 | **Register** | On-duty staff | Charge a customer at the counter: they choose card, cash or decline. The sale goes to the business account; the employee earns 10 % commission |
 
 Every account change is in `veyl_business_ledger`. Locations, prices, ingredients and recipes are in `config.lua`; move the points to your MLOs.
+
+## More businesses
+
+| Business | Job | Price | Special |
+|---|---|---|---|
+| **Hands On Car Wash** (Strawberry) | `carwash` | $60,000 | Two wash bays: drive in, pay $60 (card or cash), the vehicle is cleaned. The money goes to the business account |
+| **Bahama Mamas** nightclub | `nightclub` | $150,000 | Bar station mixes cocktails (orange + Sprunk); beer and whiskey are ordered; $50 cover at the door goes to the account |
+| **Pawn & Jewelry** (Strawberry) | `pawnshop` | $85,000 | Anyone sells valuables at the counter for cash. With an owner, the account pays the full price and the goods go to the stockroom to resell; with no owner the city pays 60 % and keeps them |
+| **Tuner Shop** | `tunershop` | $175,000 | On-duty tuners install performance kits (engine, brakes, transmission, suspension, turbo) on the vehicle in the bay, then charge at the register. Kits are ordered or made at the LS Customs parts bench. The upgrade is saved when the owner parks the vehicle in a garage |
+
+Services are a `services` list in each business's config (`wash`, `cover`, `pawn`, `tune`).

@@ -95,7 +95,7 @@ local function officeView(src, id)
     return {
         id = id, label = b.label, price = b.price, owned = r.owner_cid ~= nil, owner = owner, isOwner = r.owner_cid == pd.citizenid,
         staff = grade ~= nil, boss = boss, grade = grade, balance = (grade ~= nil) and r.balance or nil, ledger = ledger,
-        canOrder = grade ~= nil and grade >= C.OrderGrade, supplies = b.supplies, sellBack = math.floor(b.price * C.SellBackShare),
+        canOrder = grade ~= nil and grade >= C.OrderGrade and #(b.supplies or {}) > 0, supplies = b.supplies, sellBack = math.floor(b.price * C.SellBackShare),
     }
 end
 
@@ -275,5 +275,70 @@ Veyl.RegisterCallback('payBill', function(src, citizenid, token, method)
     end
     return Veyl.Ok(nil, ('Paid $%d to %s'):format(bl.amount, b.label))
 end, { cooldown = 800 })
+
+---------------------------------------------------------------------------
+-- Services: car wash bays, nightclub cover, pawn counter, tuning bay (config: services = { { kind, ... } })
+---------------------------------------------------------------------------
+local function owned(id) local r = row(id) return r and r.owner_cid ~= nil end
+
+Veyl.RegisterCallback('service', function(src, citizenid, id, index, a1, a2)
+    local b = biz(id)
+    local sv = b and b.services and b.services[tonumber(index) or 0]
+    if not sv then return Veyl.Err('NOT_FOUND', 'Unknown service') end
+    if not near(src, sv.coords, (sv.radius or 2.5) + 2.0) then return Veyl.Err('TOO_FAR', 'Move closer') end
+    local pd = Veyl.GetPlayerData(src)
+
+    if sv.kind == 'wash' or sv.kind == 'cover' then
+        local veh = GetVehiclePedIsIn(GetPlayerPed(src), false)
+        if sv.kind == 'wash' and (veh == 0 or GetPedInVehicleSeat(veh, -1) ~= GetPlayerPed(src)) then return Veyl.Err('INVALID_STATE', 'Drive your vehicle into the bay') end
+        local method = a1 == 'cash' and 'cash' or 'bank'
+        local token = Veyl.NewId()
+        local r = core('DebitOnce', citizenid, method, sv.price, ('%s: %s'):format(b.label, sv.kind == 'wash' and 'car wash' or 'entry'), 'biz:svc:' .. token)
+        if not r.ok then return Veyl.Err(r.code or 'INSUFFICIENT_FUNDS', ('It costs $%d'):format(sv.price)) end
+        if owned(id) then credit(id, sv.price, sv.kind == 'wash' and 'Car wash' or 'Cover charge', charName(pd)) end
+        if sv.kind == 'wash' then
+            TriggerClientEvent('veyl_business:washed', src, NetworkGetNetworkIdFromEntity(veh))
+            return Veyl.Ok(nil, ('Washed for $%d'):format(sv.price))
+        end
+        return Veyl.Ok(nil, 'Enjoy your night')
+    end
+
+    if sv.kind == 'pawn' then
+        local item, count = a1, math.floor(tonumber(a2) or 0)
+        local price = type(item) == 'string' and sv.prices[item]
+        if not price or count < 1 or count > 50 then return Veyl.Err('INVALID_INPUT', 'They do not buy that') end
+        if (exports.veyl_inventory:GetItemCount(src, item) or 0) < count then return Veyl.Err('NO_ITEM', 'You do not have that many') end
+        local isOwned = owned(id)
+        local total = isOwned and price * count or math.floor(price * count * (sv.cityRate or 0.5))
+        if isOwned and not debit(id, total, ('Bought %dx %s'):format(count, item), charName(pd)) then
+            return Veyl.Err('INSUFFICIENT_FUNDS', 'The shop cannot afford that right now')
+        end
+        if not exports.veyl_inventory:RemoveItem(src, item, count) then
+            if isOwned then credit(id, total, 'Purchase cancelled', 'system') end
+            return Veyl.Err('NO_ITEM', 'Could not hand it over')
+        end
+        local token = Veyl.NewId()
+        core('CreditOnce', citizenid, 'cash', total, ('%s: sold %dx %s'):format(b.label, count, item), 'biz:pawn:' .. token)
+        if isOwned then Veyl.Await('veyl_inventory', 'GiveToStash', 15000, 'biz_' .. id, item, count, nil, 'biz:pawn:' .. token .. ':stock') end
+        Veyl.Audit(src, 'pawn_sell', { business = id, item = item, count = count, total = total })
+        return Veyl.Ok(nil, ('Sold %dx %s for $%d cash'):format(count, item:gsub('_', ' '), total))
+    end
+
+    if sv.kind == 'tune' then
+        local grade = staff(src, b)
+        if grade == nil or pd.job.name ~= b.job or not pd.job.onduty then return Veyl.Err('NO_PERMISSION', 'Clock in to use the bay') end
+        local kit = type(a1) == 'string' and sv.kits[a1]
+        if not kit then return Veyl.Err('INVALID_INPUT', 'Unknown kit') end
+        local veh = NetworkGetEntityFromNetworkId(tonumber(a2) or 0)
+        if not veh or veh == 0 or not DoesEntityExist(veh) or GetEntityType(veh) ~= 2 then return Veyl.Err('NOT_FOUND', 'No vehicle') end
+        if #(GetEntityCoords(veh) - sv.coords) > sv.radius or not near(src, GetEntityCoords(veh), 5.0) then return Veyl.Err('TOO_FAR', 'The vehicle must be in the bay') end
+        if not exports.veyl_inventory:RemoveItem(src, a1, 1) then return Veyl.Err('NO_ITEM', 'You do not have that kit') end
+        local owner = NetworkGetEntityOwner(veh)
+        TriggerClientEvent('veyl_business:tuned', owner and owner > 0 and owner or src, a2, kit)
+        Veyl.Audit(src, 'tune_install', { business = id, kit = a1 })
+        return Veyl.Ok(nil, 'Installed. Charge the customer at the register. It saves when they park it in a garage.')
+    end
+    return Veyl.Err('INVALID_INPUT', 'Unknown service')
+end, { cooldown = 1500 })
 
 AddEventHandler('playerDropped', function() crafting[source] = nil end)

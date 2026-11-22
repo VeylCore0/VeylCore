@@ -17,6 +17,7 @@ CityHallConfig = {
         driver   = { label = "Driver's licence", description = 'Lets you drive on public roads.', price = 500, order = 1 },
         weapon   = { label = 'Weapon licence', description = 'Issued by the police after a background check.', price = nil, order = 2 },
         business = { label = 'Business licence', description = 'Needed to own and run a registered business.', price = 2500, order = 3 },
+        hunting  = { label = 'Hunting licence', description = 'Lets you buy hunting rifles and hunt in the wild.', price = 750, order = 4 },
     },
 
     -- Printed documents (inventory items). requires = the licence you must hold to get the card.
@@ -47,6 +48,14 @@ CityHallConfig = {
           location = vector3(298.6, -584.5, 43.3), locationLabel = 'Pillbox Hill Medical Center' },
         { job = 'mechanic', description = 'Repair and customise vehicles at LS Customs.', apply = 'Ask the shop owner for an interview.',
           location = vector3(-347.3, -133.5, 39.0), locationLabel = 'LS Customs, Burton' },
+        { job = 'trucker', description = 'Haul loads across the state. Paid by distance.', apply = 'Sign on at the Port of LS truck depot.',
+          location = vector3(1197.0, -3253.6, 7.1), locationLabel = 'Port of Los Santos' },
+        { job = 'taxi', description = 'Drive fares around the city for Downtown Cab Co.', apply = 'Sign on at the cab depot.',
+          location = vector3(895.4, -179.3, 74.7), locationLabel = 'Downtown Cab Co., Mirror Park' },
+        { job = 'tow', description = 'Tow broken-down vehicles to the yard.', apply = 'Sign on at the tow yard.',
+          location = vector3(409.4, -1622.8, 29.3), locationLabel = 'Davis tow yard' },
+        { job = 'garbage', description = 'Empty bins around the city. Recyclables are yours to keep.', apply = 'Sign on at the sanitation depot.',
+          location = vector3(-321.7, -1545.8, 31.0), locationLabel = 'LS Sanitation, Strawberry' },
         { job = 'weazel', description = 'Report on the city for Weazel News and publish to every phone.', apply = 'Apply through the Jobs app on your phone.',
           location = vector3(-598.9, -929.9, 23.9), locationLabel = 'Weazel Plaza, Little Seoul' },
     },

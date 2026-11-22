@@ -147,4 +147,57 @@ return {
         label = 'QB Example Token', description = 'Demonstrates QB CreateUseableItem on VeylCore.', image = 'token.png',
         weight = 10, stack = true, maxStack = 50, usable = true, -- no use.handler: dispatched to the legacy usable-item registry
     },
+
+    -- City life: materials (garbage, mining, crafting) -------------------------------------------------
+    stone = { label = 'Stone', image = 'stone.png', weight = 1000, stack = true, maxStack = 50, description = 'Rough stone from the quarry.' },
+    coal = { label = 'Coal', image = 'coal.png', weight = 500, stack = true, maxStack = 50, description = 'Fuel for the foundry.' },
+    iron_ore = { label = 'Iron Ore', image = 'iron_ore.png', weight = 800, stack = true, maxStack = 50, description = 'Smelt it at the foundry.' },
+    copper_ore = { label = 'Copper Ore', image = 'copper_ore.png', weight = 800, stack = true, maxStack = 50, description = 'Smelt it at the foundry.' },
+    gold_ore = { label = 'Gold Ore', image = 'gold_ore.png', weight = 900, stack = true, maxStack = 50, description = 'Rare. Smelt it into a gold bar.' },
+    iron_ingot = { label = 'Iron Ingot', image = 'iron_ingot.png', weight = 600, stack = true, maxStack = 50, description = 'A crafting material.' },
+    copper_ingot = { label = 'Copper Ingot', image = 'copper_ingot.png', weight = 600, stack = true, maxStack = 50, description = 'A crafting material.' },
+    gold_bar = { label = 'Gold Bar', image = 'gold_bar.png', weight = 1000, stack = true, maxStack = 20, description = 'Worth a lot at the pawn shop.' },
+    plastic = { label = 'Plastic', image = 'plastic.png', weight = 100, stack = true, maxStack = 50, description = 'Recycled plastic. A crafting material.' },
+    glass = { label = 'Glass', image = 'glass.png', weight = 200, stack = true, maxStack = 50, description = 'Recycled glass. A crafting material.' },
+    rubber = { label = 'Rubber', image = 'rubber.png', weight = 150, stack = true, maxStack = 50, description = 'Recycled rubber. A crafting material.' },
+    pickaxe = { label = 'Pickaxe', image = 'pickaxe.png', weight = 2500, stack = false, description = 'For mining at the quarry.' },
+    -- Hunting and farming
+    raw_meat = { label = 'Raw Meat', image = 'raw_meat.png', weight = 500, stack = true, maxStack = 30, description = 'Sell it to the butcher.' },
+    deer_hide = { label = 'Deer Hide', image = 'deer_hide.png', weight = 1500, stack = true, maxStack = 10, description = 'A good-quality hide.' },
+    boar_hide = { label = 'Boar Hide', image = 'boar_hide.png', weight = 1500, stack = true, maxStack = 10, description = 'A tough hide.' },
+    coyote_pelt = { label = 'Coyote Pelt', image = 'coyote_pelt.png', weight = 900, stack = true, maxStack = 10, description = 'A small pelt.' },
+    deer_antlers = { label = 'Deer Antlers', image = 'deer_antlers.png', weight = 1200, stack = true, maxStack = 10, description = 'A trophy. Collectors pay well.' },
+    tomato = { label = 'Tomato', image = 'tomato.png', weight = 150, stack = true, maxStack = 50, description = 'Fresh from the farm.' },
+    wheat = { label = 'Wheat', image = 'wheat.png', weight = 200, stack = true, maxStack = 50, description = 'A bundle of wheat.' },
+    orange = { label = 'Orange', image = 'orange.png', weight = 150, stack = true, maxStack = 50, description = 'Fresh from the orchard.' },
+    -- Crafted gear
+    fake_plate = { label = 'Fake Plate', image = 'fake_plate.png', weight = 800, stack = true, maxStack = 5, description = 'Hides a vehicle\'s registration. Use it at the back of a vehicle you have keys to.',
+        use = { handler = 'fake_plate', durationMs = 0, consumeCount = 0 } },
+    armor_vest = { label = 'Body Armour', image = 'armor_vest.png', weight = 3000, stack = true, maxStack = 3, description = 'Full body armour.',
+        use = { handler = 'crafting_armor', durationMs = 4000, consumeCount = 1, anim = { dict = 'clothingtie', clip = 'try_tie_negative_a', flag = 49 } } },
+    perf_engine = { label = 'Engine Upgrade Kit', image = 'perf_engine.png', weight = 4000, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
+    perf_brakes = { label = 'Brake Upgrade Kit', image = 'perf_brakes.png', weight = 3000, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
+    perf_transmission = { label = 'Transmission Kit', image = 'perf_transmission.png', weight = 3500, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
+    perf_suspension = { label = 'Suspension Kit', image = 'perf_suspension.png', weight = 3000, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
+    perf_turbo = { label = 'Turbo Kit', image = 'perf_turbo.png', weight = 3500, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
+    -- Nightclub
+    beer = {
+        label = 'Beer', description = 'A cold beer.', image = 'beer.png', weight = 400, stack = true, maxStack = 10,
+        use = { handler = 'consume', durationMs = 3000, consumeCount = 1, effects = { thirst = 15, stress = -8 },
+                anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle', flag = 49 },
+                prop = { model = 'prop_amb_beer_bottle', bone = 60309, pos = vec3(0.0, 0.0, 0.05), rot = vec3(0.0, 0.0, 0.0) } },
+    },
+    whiskey = {
+        label = 'Whiskey', description = 'A glass of whiskey.', image = 'whiskey.png', weight = 400, stack = true, maxStack = 10,
+        use = { handler = 'consume', durationMs = 3000, consumeCount = 1, effects = { thirst = 10, stress = -15 },
+                anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle', flag = 49 },
+                prop = { model = 'prop_amb_beer_bottle', bone = 60309, pos = vec3(0.0, 0.0, 0.05), rot = vec3(0.0, 0.0, 0.0) } },
+    },
+    cocktail = {
+        label = 'Cocktail', description = 'Something colourful.', image = 'cocktail.png', weight = 400, stack = true, maxStack = 10,
+        use = { handler = 'consume', durationMs = 3000, consumeCount = 1, effects = { thirst = 20, stress = -12 },
+                anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle', flag = 49 },
+                prop = { model = 'prop_amb_beer_bottle', bone = 60309, pos = vec3(0.0, 0.0, 0.05), rot = vec3(0.0, 0.0, 0.0) } },
+    },
+
 }

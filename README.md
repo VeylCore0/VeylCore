@@ -56,6 +56,9 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_doorlocks` | In-game door setup (`/doorlock`: aim and press E), job/grade/gang/person/item/key access, synced lock state, business controls (open hours, temporary access, keys, change locks), lockpick and ram breaching ([docs/DOORLOCKS.md](docs/DOORLOCKS.md)) |
 | `veyl_loadscreen` | Loading screen: real load progress and status, live player count, city updates, rotating tips, Discord/rules links and Veyl Radio (original generated music or your own files). Edit `config.lua` |
 | `veyl_delivery` | GoPostal route: depot NPC, assigned van and key, server-validated stops, one-time payout |
+| `veyl_citizenjobs` | Trucking, garbage (with recyclables), taxi fares and tow calls; server-run routes and pay |
+| `veyl_gathering` | Mining, hunting and farming with skills and buyers |
+| `veyl_crafting` | Crafting benches and recipes using job materials, with crafting levels |
 | `veyl_world` | Synced clock and weather, population settings |
 | `veyl_admin` | Staff tools with ACE checks and audit records, `/report` |
 | `[examples]/veyl_qbexample` | A QBCore-style resource running on VeylCore through the shim |

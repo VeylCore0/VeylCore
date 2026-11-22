@@ -131,6 +131,9 @@ tasks:
       ensure veyl_boosting
       ensure veyl_doctor
       ensure veyl_delivery
+      ensure veyl_citizenjobs
+      ensure veyl_gathering
+      ensure veyl_crafting
       ensure veyl_admin
       # ensure veyl_qbexample   # optional QBCore-style example resource
 

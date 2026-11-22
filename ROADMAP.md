@@ -67,11 +67,11 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Gangs:** turf, tags, gang stashes, a fence and money laundering.
 - **Weapons:** registered serial numbers, attachments and unregistered guns on the black market.
 
-## 🔜 Then: more jobs and city life
-- **New jobs:** trucking, taxi, tow truck, garbage, mining, hunting and farming.
-- **Vehicles:** trunks and gloveboxes, plates you can change, ownership transfers and insurance.
-- **Crafting:** benches, recipes and materials from the new jobs.
-- **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
+## ✅ Built, now testing: more jobs and city life
+- ✅ **New jobs:** trucking, taxi, tow truck and garbage (with recyclables), plus mining, hunting and farming with skills and buyers.
+- ✅ **Vehicles:** trunks and gloveboxes, custom and fake plates, selling or giving vehicles, and insurance.
+- ✅ **Crafting:** a foundry, a public workshop, a parts bench and a hidden backroom bench, with crafting levels.
+- ✅ **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
 
 ## ✅ Built, now testing: phone 2.0
 - ✅ **Camera and gallery:** take photos and keep them in a gallery (needs the free screenshot-basic resource). Still to come: selfies, and sending photos in messages and on Flock.

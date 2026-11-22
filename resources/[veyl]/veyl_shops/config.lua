@@ -123,6 +123,34 @@ ShopsConfig = {
         ammunation('chumash', 'Chumash', vector4(-3173.31, 1088.85, 20.84, 244.18)),
 
         {
+            -- Hunting supplies (Paleto). Rifles need a hunting licence from City Hall.
+            id = 'hunting_store', label = 'Hunting Supplies', subtitle = 'Rifles need a hunting licence.',
+            ped = { model = 's_m_m_ammucountry', coords = vector4(-679.4, 5838.9, 17.3, 225.0) },
+            blip = { sprite = 141, colour = 25, name = 'Hunting Supplies' },
+            licence = 'hunting', licenceMessage = 'You need a hunting licence (City Hall).',
+            methods = { 'cash', 'bank' },
+            categories = { { id = 'gear', label = 'Gear' } },
+            catalog = {
+                { item = 'weapon_musket', price = 3500, category = 'gear' },
+                { item = 'ammo_shotgun', price = 6, category = 'gear' },
+                { item = 'weapon_knife', price = 200, category = 'gear' },
+            },
+        },
+        {
+            -- Hardware: tools for the new jobs and crafting.
+            id = 'hardware', label = 'YouTool', subtitle = 'Tools and supplies.',
+            ped = { model = 's_m_m_lathandy_01', coords = vector4(2748.5, 3468.9, 55.7, 250.0) },
+            blip = { sprite = 566, colour = 5, name = 'YouTool' },
+            methods = { 'cash', 'bank' },
+            categories = { { id = 'tools', label = 'Tools' } },
+            catalog = {
+                { item = 'pickaxe', price = 350, category = 'tools' },
+                { item = 'weapon_knife', price = 250, category = 'tools' },
+                { item = 'flashlight', price = 60, category = 'tools' },
+                { item = 'plant_pot', price = 25, category = 'tools' },
+            },
+        },
+        {
             -- Mechanic parts counter at LS Customs (Burton). Only members of the mechanic job can buy here.
             id = 'mechanic_parts', label = 'Parts Counter', subtitle = 'Mechanics only.',
             ped = { model = 's_m_m_autoshop_01', coords = vector4(-345.17, -128.75, 39.01, 162.0) },

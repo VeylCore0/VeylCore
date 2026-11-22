@@ -65,6 +65,97 @@ return {
             ['2'] = { name = 'Editor in Chief', payment = 100, isboss = true },
         },
     },
+    -- City jobs (veyl_citizenjobs): sign on at the depot; paid per run, not by the paycheck.
+    trucker = {
+        label = 'Trucking',
+        type = 'civilian',
+        open = true,
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Driver', payment = 0 },
+            ['1'] = { name = 'Senior Driver', payment = 0 },
+        },
+    },
+    taxi = {
+        label = 'Downtown Cab Co.',
+        type = 'civilian',
+        open = true,
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Driver', payment = 0 },
+            ['1'] = { name = 'Senior Driver', payment = 0 },
+        },
+    },
+    tow = {
+        label = 'Tow Truck',
+        type = 'civilian',
+        open = true,
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Driver', payment = 0 },
+            ['1'] = { name = 'Senior Driver', payment = 0 },
+        },
+    },
+    garbage = {
+        label = 'Sanitation',
+        type = 'civilian',
+        open = true,
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Collector', payment = 0 },
+            ['1'] = { name = 'Senior Collector', payment = 0 },
+        },
+    },
+    -- More businesses (veyl_business)
+    carwash = {
+        label = 'Car Wash',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Attendant', payment = 25 },
+            ['1'] = { name = 'Manager', payment = 45, isboss = true },
+            ['2'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
+    nightclub = {
+        label = 'Nightclub',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Bartender', payment = 35 },
+            ['1'] = { name = 'Bouncer', payment = 35 },
+            ['2'] = { name = 'Manager', payment = 60, isboss = true },
+            ['3'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
+    pawnshop = {
+        label = 'Pawn Shop',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Clerk', payment = 30 },
+            ['1'] = { name = 'Manager', payment = 55, isboss = true },
+            ['2'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
+    tunershop = {
+        label = 'Tuner Shop',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Tuner', payment = 40 },
+            ['1'] = { name = 'Lead Tuner', payment = 65, isboss = true },
+            ['2'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
     -- Player-owned businesses (veyl_business): the owner holds the top (boss) grade.
     beanmachine = {
         label = 'Bean Machine',

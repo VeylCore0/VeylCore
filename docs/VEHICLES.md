@@ -103,5 +103,13 @@ The workshop is LS Customs (Burton). The parts counter there is restricted to th
 - **Client-reported looks:** saved vehicle looks (mods, colours) are reported by the owner's client when parking. They
   are bounded and type-checked but not verified.
 - **Invoice payee:** invoices pay the mechanic personally, because business accounts don't exist yet.
-- **Not built yet:** the plan's later items (test drives, financing, trade-ins, shared/job garages, tuning, towing).
+- **Not built yet:** the plan's later items (test drives, financing, trade-ins, shared/job garages). Tuning is done by the tuner shop and towing by the tow job (see BUSINESS.md and CITYLIFE.md).
   The dealership catalog shows a category icon rather than a picture of each vehicle.
+
+## Trunks, gloveboxes, plates, transfers and insurance
+
+- **Trunk:** look at a vehicle (target) → *Open trunk* (30 slots, 120 kg). It must be unlocked, unless you are inside. Motorcycles and bicycles have none. **Glovebox:** `/glovebox` (or a key in Settings → Key Bindings → FiveM) while seated (6 slots, 8 kg). Owned vehicles keep their trunk and glovebox for good (`stash:veh_trunk:own<id>`); other vehicles' storage lasts while the vehicle exists. Only vehicles spawned through `veyl_vehicles` have storage. This uses a new *keyed stash* in `veyl_inventory`: `RegisterStash({ keyed = true, authorize = ... })`, opened as `<id>@<key>`; the authorize export returns the storage key.
+- **Custom plates:** drive into the **plate shop** (Legion, `PlateShop`) and stay seated: 2–8 letters / numbers, $5,000 from the bank, unique. Some words are blocked (`PlateShop.blocked`).
+- **Fake plates:** the `fake_plate` item (backroom bench) is used at the back of a vehicle you have keys to; the registered plate is hidden. *Remove fake plate* on the vehicle puts the real one back and returns the item. `exports.veyl_vehicles:GetRealPlate(entity)` gives the real plate.
+- **Sell / give:** target your own vehicle → *Sell / give vehicle*, pick a player standing next to it and a price (0 = gift). The buyer confirms and pays from the bank; ownership and keys move to them. Insurance does not transfer.
+- **Insurance:** the insurance office (Rockford Hills, `Insurance`) sells cover at $350 a week (up to 8 weeks at a time). An insured vehicle that is wrecked or abandoned goes to the impound **with no fee and fully repaired**. Police impounds are still charged. Column `insured_until` (migration `003_insurance`).

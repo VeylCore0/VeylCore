@@ -153,6 +153,16 @@ asyncExport('GiveItem', function(invoker, citizenid, item, count, metadata, opId
     return Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
 end)
 
+--- GiveToStash(stashId, item, count, metadata, opId) — into a registered shared stash (no owner, not keyed), loading it
+--- if nobody has opened it yet. Used e.g. by the pawn shop to put bought goods in its stockroom.
+asyncExport('GiveToStash', function(invoker, stashId, item, count, metadata, opId)
+    local def = type(stashId) == 'string' and Stashes[stashId]
+    if not def or def.owner or def.keyed or def.inventory then return Ops.err('NOT_FOUND', 'Unknown stash') end
+    local inv = Store.Get('stash:' .. stashId, { type = 'stash', label = def.label, slots = def.slots, maxWeight = def.maxWeight })
+    if not inv then return Ops.err('NOT_READY', 'Stash unavailable') end
+    return Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+end)
+
 --- TakeItem(citizenid, item, count, metadata, opId)
 asyncExport('TakeItem', function(invoker, citizenid, item, count, metadata, opId)
     local inv = playerInv(citizenid)

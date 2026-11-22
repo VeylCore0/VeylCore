@@ -99,6 +99,65 @@ RegisterNetEvent('veyl_business:bill', function(token, info)
     end)
 end)
 
+-- Services ----------------------------------------------------------------
+local function service(id, index)
+    local b = C.Businesses[id]
+    local sv = b.services[index]
+    if sv.kind == 'wash' or sv.kind == 'cover' then
+        local choice = Veyl.UI.Menu({ title = sv.label, subtitle = money(sv.price), items = { { label = 'Pay by card', value = 'bank' }, { label = 'Pay in cash', value = 'cash' } } })
+        if choice then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_business', 'service', 15000, id, index, choice)) end
+    elseif sv.kind == 'pawn' then
+        local defs = exports.veyl_inventory:Items() or {}
+        local items = {}
+        for item, price in pairs(sv.prices) do
+            local n = exports.veyl_inventory:GetItemCount(item) or 0
+            if n > 0 then items[#items + 1] = { label = ('%s × %d'):format(defs[item] and defs[item].label or item, n), right = money(price) .. ' each', value = item } end
+        end
+        if #items == 0 then return Veyl.Notify('You have nothing they buy', 'info') end
+        local pick = Veyl.UI.Menu({ title = sv.label, subtitle = 'Paid in cash (the city pays less when the shop has no owner)', items = items })
+        if not pick then return end
+        local have = exports.veyl_inventory:GetItemCount(pick) or 1
+        local v = vlib.inputDialog('How many?', { { name = 'n', label = 'Amount', type = 'number', required = true, min = 1, max = have, default = have } }, { submitLabel = 'Sell' })
+        if v then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_business', 'service', 15000, id, index, pick, tonumber(v.n))) end
+    elseif sv.kind == 'tune' then
+        local veh, best = nil, 6.0
+        local pc = GetEntityCoords(PlayerPedId())
+        for _, v in ipairs(GetGamePool('CVehicle')) do
+            local d = #(GetEntityCoords(v) - pc)
+            if d < best then veh, best = v, d end
+        end
+        if not veh then return Veyl.Notify('Bring the vehicle into the bay', 'error') end
+        local defs = exports.veyl_inventory:Items() or {}
+        local items = {}
+        for kit in pairs(sv.kits) do
+            local n = exports.veyl_inventory:GetItemCount(kit) or 0
+            items[#items + 1] = { label = defs[kit] and defs[kit].label or kit, value = kit, disabled = n == 0, right = n > 0 and ('%d in pockets'):format(n) or 'None' }
+        end
+        local pick = Veyl.UI.Menu({ title = 'Install a kit', subtitle = GetDisplayNameFromVehicleModel(GetEntityModel(veh)), items = items })
+        if not pick then return end
+        TaskStartScenarioInPlace(PlayerPedId(), 'PROP_HUMAN_BUM_BIN', 0, true)
+        local ok = vlib.progress({ label = 'Installing', duration = 10000, canCancel = true, disable = { move = true, car = true, combat = true } })
+        ClearPedTasks(PlayerPedId())
+        if ok then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_business', 'service', 15000, id, index, pick, NetworkGetNetworkIdFromEntity(veh))) end
+    end
+end
+
+RegisterNetEvent('veyl_business:washed', function(netId)
+    local veh = NetworkDoesEntityExistWithNetworkId(netId) and NetToVeh(netId) or 0
+    if veh == 0 then return end
+    SetVehicleDirtLevel(veh, 0.0)
+    WashDecalsFromVehicle(veh, 1.0)
+end)
+
+RegisterNetEvent('veyl_business:tuned', function(netId, kit)
+    local veh = NetworkDoesEntityExistWithNetworkId(netId) and NetToVeh(netId) or 0
+    if veh == 0 or type(kit) ~= 'table' then return end
+    SetVehicleModKit(veh, 0)
+    if kit.toggle then ToggleVehicleMod(veh, kit.toggle, true)
+    elseif kit.mod then SetVehicleMod(veh, kit.mod, GetNumVehicleMods(veh, kit.mod) - 1, false) end
+end)
+
+AddEventHandler('veyl_business:service', function(a) CreateThread(function() service(a.id, a.i) end) end)
 AddEventHandler('veyl_business:office', function(a) CreateThread(function() office(a.id) end) end)
 AddEventHandler('veyl_business:craft', function(a) CreateThread(function() craft(a.id, a.si, a.ri) end) end)
 AddEventHandler('veyl_business:charge', function(a) CreateThread(function() charge(a.id) end) end)
@@ -114,6 +173,12 @@ CreateThread(function()
             options = { { label = 'Open stockroom', icon = 'box', event = 'veyl_business:stash', args = { id = id }, groups = { [b.job] = 0 } } } })
         exports.veyl_interact:AddZone({ id = 'veyl_biz_register_' .. id, coords = b.register, radius = 1.5, title = 'Register',
             options = { { label = 'Charge a customer', icon = 'money', event = 'veyl_business:charge', args = { id = id }, groups = { [b.job] = 0 } } } })
+        for i, sv in ipairs(b.services or {}) do
+            exports.veyl_interact:AddZone({ id = ('veyl_biz_service_%s_%d'):format(id, i), coords = sv.coords, radius = sv.radius or 2.0, title = sv.label,
+                options = { { label = ({ wash = ('Wash vehicle (%s)'):format(money(sv.price or 0)), cover = ('Pay entry (%s)'):format(money(sv.price or 0)),
+                    pawn = 'Sell valuables', tune = 'Install a performance kit' })[sv.kind], icon = sv.kind == 'pawn' and 'money' or 'car',
+                    event = 'veyl_business:service', args = { id = id, i = i }, groups = sv.kind == 'tune' and { [b.job] = 0 } or nil } } })
+        end
         for si, st in ipairs(b.stations) do
             local opts = {}
             for ri, rc in ipairs(st.recipes) do
