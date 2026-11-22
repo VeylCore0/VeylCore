@@ -55,7 +55,7 @@ CreateThread(function()
     while GetResourceState('veyl_target') ~= 'started' do Wait(500) end
     exports.veyl_target:addGlobalVehicle({
         { name = 'veyl_veh_trunk', label = 'Open trunk', icon = 'trunk', distance = 2.5, priority = 3,
-          canInteract = function(entity) return GetVehicleClass(entity) ~= 8 and GetVehicleClass(entity) ~= 13 and GetVehicleDoorLockStatus(entity) < 2 end,
+          canInteract = function(entity) return GetVehicleClass(entity) ~= 8 and GetVehicleClass(entity) ~= 13 end, -- locked: the server checks keys
           onSelect = function(d) openTrunk(d.entity) end },
         { name = 'veyl_veh_fakeplate', label = 'Remove fake plate', icon = 'tag', distance = 2.5, priority = 1,
           canInteract = function(entity) return Entity(entity).state.realPlate ~= nil end,

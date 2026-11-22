@@ -34,28 +34,34 @@ end)
 -- veyl_inventory forgets registrations when it restarts: register again.
 AddEventHandler('onResourceStart', function(res) if res == 'veyl_inventory' then SetTimeout(1500, registerStorage) end end)
 
---- Called by veyl_inventory before every open and every move: (src, citizenid, stashId, key) -> allowed, code, storageKey.
+--- Called by veyl_inventory before every open and every move: (src, citizenid, stashId, key) -> storageKey (string) when
+--- allowed, or false, code when refused.
 --- Owned vehicles keep their storage for good ('own<id>'); any other vehicle (dealer test cars, job vehicles, cars spawned
 --- by staff menus, NPC cars) uses its plate ('p<PLATE>').
-exports('StorageAccess', function(src, _, stashId, key)
+exports('StorageAccess', function(src, citizenid, stashId, key)
     local entity = entityFromNet(key)
-    if not entity then return false, 'NOT_FOUND' end
+    if not entity then return '!NOT_FOUND' end
     local ped = GetPlayerPed(src)
     if stashId == 'veh_glovebox' then
-        if GetVehiclePedIsIn(ped, false) ~= entity then return false, 'TOO_FAR' end
+        if GetVehiclePedIsIn(ped, false) ~= entity then return '!TOO_FAR' end
     else
-        if GetVehicleType(entity) == 'bike' then return false, 'NO_PERMISSION' end
+        if GetVehicleType(entity) == 'bike' then return '!NO_PERMISSION' end
         if GetVehiclePedIsIn(ped, false) ~= entity then
-            if distTo(src, entity) > C.Trunk.distance then return false, 'TOO_FAR' end
-            if GetVehicleDoorLockStatus(entity) >= 2 then return false, 'LOCKED' end
+            if distTo(src, entity) > C.Trunk.distance then return '!TOO_FAR' end
+            -- Locked: only someone with the keys can open it.
+            if GetVehicleDoorLockStatus(entity) >= 2 then
+                local vid = exports.veyl_vehicles:GetVehicleIdFromEntity(entity)
+                local hasKey = vid and GetResourceState('veyl_vehiclekeys') == 'started' and exports.veyl_vehiclekeys:HasKey(vid, citizenid)
+                if not hasKey then return '!LOCKED' end
+            end
         end
     end
     local ownedId = exports.veyl_vehicles:GetOwnedVehicleIdFromEntity(entity)
-    if ownedId then return true, nil, ('own%d'):format(ownedId) end
+    if ownedId then return ('own%d'):format(ownedId) end
     -- A fake plate must not open someone else's trunk: use the real one.
     local plate = (Entity(entity).state.realPlate or GetVehicleNumberPlateText(entity) or ''):gsub('[^%w]', ''):upper()
-    if plate == '' then return false, 'NOT_FOUND' end
-    return true, nil, 'p' .. plate
+    if plate == '' then return '!NOT_FOUND' end
+    return 'p' .. plate
 end)
 
 ---------------------------------------------------------------------------

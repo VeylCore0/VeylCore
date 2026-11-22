@@ -40,7 +40,15 @@ function Stashes.Resolve(src, citizenid, stashId)
     if def.authorize then
         if GetResourceState(def.authorize.resource) ~= 'started' then return nil, 'NOT_READY' end
         local ok, allowed, code, storeKey = pcall(function() return exports[def.authorize.resource][def.authorize.export](nil, src, citizenid, baseId, key) end)
-        if not ok or allowed ~= true then return nil, (ok and type(code) == 'string') and code or 'NO_PERMISSION' end
+        -- Keyed stashes: the export returns the storage key itself (a string) as its first value, so nothing depends on
+        -- extra return values surviving the call between resources. A refusal is false / nil (optionally with a code).
+        if ok and type(allowed) == 'string' and allowed:sub(1, 1) == '!' then code, allowed = allowed:sub(2), false end -- '!CODE' = refused
+        if ok and def.keyed and type(allowed) == 'string' then storeKey, allowed = allowed, true end
+        if ok and type(allowed) == 'string' and allowed ~= '' and not def.keyed then code, allowed = allowed, false end
+        if not ok or allowed ~= true then
+            if not ok then print(('^3[veyl_inventory] stash %s: authorize export %s.%s failed: %s^7'):format(baseId, def.authorize.resource, def.authorize.export, tostring(allowed))) end
+            return nil, (ok and type(code) == 'string') and code or 'NO_PERMISSION'
+        end
         if def.keyed then
             if type(storeKey) ~= 'string' or not storeKey:match('^[%w_%-]+$') or #storeKey > 32 then return nil, 'NOT_FOUND' end
             return ('stash:%s:%s'):format(def.id, storeKey), def, nil
