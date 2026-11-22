@@ -5,10 +5,34 @@ local C = RobberyConfig
 local storeCooldown, playerCooldown, jobs = {}, {}, {} -- jobs[src] = { store, kind, at, token }
 
 local function core(name, ...) return Veyl.Await('veyl_core', name, 15000, ...) end
-Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function() return true end)
+local stores = {} -- [shop id] = { id, label, register = vector3, safe = vector3? }
 
-local stores = {}
-for _, s in ipairs(C.Stores) do stores[s.id] = s end
+--- Every robbable shop from veyl_shops: the register is where the clerk stands.
+local function loadStores()
+    stores = {}
+    for _, s in ipairs(exports.veyl_shops:GetShops() or {}) do
+        if s.robbable and s.ped and s.ped.coords then
+            local c = s.ped.coords
+            local name = (s.blip and s.blip.name) or s.label
+            stores[s.id] = { id = s.id, label = ('%s (%s)'):format(name, s.id), register = vector3(c.x, c.y, c.z), safe = C.Safes[s.id] }
+        end
+    end
+end
+
+Veyl.Startup({ 'veyl_core', 'veyl_inventory', 'veyl_shops' }, function()
+    loadStores()
+    local n = 0
+    for _ in pairs(stores) do n = n + 1 end
+    print(('^5[veyl_robbery] %d robbable stores^7'):format(n))
+    return true
+end)
+
+--- The client asks for the list once (the shop list lives in veyl_shops).
+Veyl.RegisterCallback('stores', function()
+    local out = {}
+    for id, s in pairs(stores) do out[#out + 1] = { id = id, label = s.label, register = s.register, safe = s.safe } end
+    return Veyl.Ok(out)
+end, { cooldown = 5000, requireCharacter = false })
 
 local function policeOnDuty()
     local n = 0

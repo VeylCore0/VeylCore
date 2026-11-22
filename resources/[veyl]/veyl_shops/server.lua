@@ -260,3 +260,6 @@ Veyl.RegisterCallback('status', function(src, citizenid, clientOpId)
     if not row then return Veyl.Err('NOT_FOUND', 'No such payment') end
     return storedResult(src, row)
 end, { cooldown = 500 })
+
+--- GetShops() -> every shop definition (used by veyl_robbery to find the registers).
+exports('GetShops', function() return ShopsConfig.Shops end)

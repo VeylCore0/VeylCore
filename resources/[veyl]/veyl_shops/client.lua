@@ -54,3 +54,6 @@ CreateThread(function()
         end
     end
 end)
+
+--- GetShops() -> every shop definition (used by veyl_robbery to find the registers).
+exports('GetShops', function() return ShopsConfig.Shops end)

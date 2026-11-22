@@ -64,6 +64,7 @@ local function market(id, label, name, coords, sprite, colour, catalog)
         ped = { model = 'mp_m_shopkeep_01', coords = coords },
         blip = { sprite = sprite, colour = colour, name = name },
         methods = { 'cash', 'bank' }, categories = MARKET_CATEGORIES, catalog = catalog or MARKET,
+        robbable = true, -- veyl_robbery: the register (and the safe in RobberyConfig.Safes) can be robbed
     }
 end
 
