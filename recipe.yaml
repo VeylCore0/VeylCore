@@ -122,6 +122,7 @@ tasks:
       ensure veyl_police
       ensure veyl_mdt
       ensure veyl_prison
+      ensure veyl_departments
       ensure veyl_delivery
       ensure veyl_admin
       # ensure veyl_qbexample   # optional QBCore-style example resource
