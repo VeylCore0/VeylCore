@@ -211,6 +211,8 @@ function ShowDocument(src, item, meta)
     local card = {
         kind = item, title = TITLES[item], firstname = meta.firstname, lastname = meta.lastname,
         birthdate = meta.birthdate, citizenid = meta.citizenid, issued = meta.issued,
+        -- The photo is the face of the person showing it, but only on their own card (a stolen ID shows no photo).
+        photoOf = meta.citizenid == Veyl.GetCitizenId(src) and src or nil,
     }
     local shownTo = 0
     for _, s in ipairs(GetPlayers()) do

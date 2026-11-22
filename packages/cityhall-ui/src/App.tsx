@@ -6,7 +6,7 @@ import { BrandHeader, CloseHint, Icon, RadioCard, StateView, Tabs, announceReady
 // ---------------------------------------------------------------------------
 interface Person {
   firstname?: string; lastname?: string; birthdate?: string; gender?: number | string; nationality?: string; phone?: string;
-  citizenid: string; job?: string; grade?: string;
+  citizenid: string; job?: string; grade?: string; photo?: string;
 }
 interface Licence { key: string; label: string; description?: string; price?: number; held: boolean }
 interface Doc { key: string; label: string; description?: string; price?: number; requires?: string; requiresLabel?: string; allowed: boolean }
@@ -14,7 +14,7 @@ interface Grade { grade: number; name: string; pay: number }
 interface Job { job: string; label: string; description?: string; open: boolean; apply?: string; locationLabel?: string; hasLocation: boolean; grades: Grade[]; member: boolean; current: boolean }
 type Method = 'cash' | 'bank';
 interface Overview { person: Person; licences: Licence[]; documents: Doc[]; jobs: Job[]; methods: Method[]; balances: Record<Method, number> }
-interface Card { kind: string; title: string; firstname?: string; lastname?: string; birthdate?: string; citizenid?: string; issued?: string; self?: boolean }
+interface Card { kind: string; title: string; firstname?: string; lastname?: string; birthdate?: string; citizenid?: string; issued?: string; self?: boolean; photo?: string }
 type Tab = 'identity' | 'licences' | 'jobs';
 
 const api = <T,>(name: string, ...args: unknown[]) => nui<T>('api', { name, args }) as Promise<NuiResponse<T>>;
@@ -79,7 +79,7 @@ export function App() {
             <div className="ch-body v-scroll">
               {tab === 'identity' && (
                 <div className="ch-identity">
-                  <IdCard card={{ kind: 'identity_card', title: 'Identity card', firstname: data.person.firstname, lastname: data.person.lastname, birthdate: data.person.birthdate, citizenid: data.person.citizenid }} />
+                  <IdCard card={{ kind: 'identity_card', title: 'Identity card', firstname: data.person.firstname, lastname: data.person.lastname, birthdate: data.person.birthdate, citizenid: data.person.citizenid, photo: data.person.photo }} />
                   <div className="ch-facts">
                     <Fact label="Gender" value={gender(data.person.gender)} />
                     <Fact label="Nationality" value={data.person.nationality || '—'} />
@@ -169,7 +169,7 @@ function IdCard({ card, floating }: { card: Card; floating?: boolean }) {
         <span>{card.title.toUpperCase()}</span>
       </div>
       <div className="ch-card-body">
-        <div className="ch-card-photo"><Icon name="user" size="2.6rem" /></div>
+        <div className="ch-card-photo"><Photo src={card.photo} /></div>
         <div className="ch-card-fields">
           <div><label>Name</label><strong>{name}</strong></div>
           <div><label>Date of birth</label><strong>{card.birthdate || '—'}</strong></div>
@@ -180,4 +180,12 @@ function IdCard({ card, floating }: { card: Card; floating?: boolean }) {
       {floating && card.self && <div className="ch-card-note">You are showing this card</div>}
     </div>
   );
+}
+
+/** The character's face (a live in-game headshot), or a silhouette when there is none or it fails to load. */
+function Photo({ src }: { src?: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) return <Icon name="user" size="2.6rem" />;
+  return <img src={src} alt="" draggable={false} onError={() => setFailed(true)} />;
 }

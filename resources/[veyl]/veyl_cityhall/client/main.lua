@@ -1,14 +1,38 @@
 -- veyl_cityhall client: the desk clerk, the City Hall screen and cards shown by nearby players.
 
 local C = CityHallConfig
-local screen = vlib.createScreen({ name = 'cityhall' })
+local releaseDeskPhoto -- set below; frees the City Hall screen's photo when it closes
+local screen = vlib.createScreen({ name = 'cityhall', onClose = function() if releaseDeskPhoto then releaseDeskPhoto() end end })
 
 local function reply(cb, res) cb({ ok = res.ok, code = res.code, message = res.message, data = res.data }) end
+
+---------------------------------------------------------------------------
+-- Photos: a live headshot of a ped, shown in the page as https://nui-img/<txd>/<txd>
+---------------------------------------------------------------------------
+local photos = {} -- [key] = headshot handle
+
+local function takePhoto(key, ped)
+    if photos[key] then UnregisterPedheadshot(photos[key]) photos[key] = nil end
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return nil end
+    local h = RegisterPedheadshot(ped)
+    local t = GetGameTimer() + 3000
+    while not (IsPedheadshotReady(h) and IsPedheadshotValid(h)) and GetGameTimer() < t do Wait(25) end
+    if not (IsPedheadshotReady(h) and IsPedheadshotValid(h)) then UnregisterPedheadshot(h) return nil end
+    photos[key] = h
+    local txd = GetPedheadshotTxdString(h)
+    return ('https://nui-img/%s/%s'):format(txd, txd)
+end
+
+local function dropPhoto(key)
+    if photos[key] then UnregisterPedheadshot(photos[key]) photos[key] = nil end
+end
+releaseDeskPhoto = function() dropPhoto('desk') end
 
 local function open()
     if screen:isOpen() or not Veyl.IsLoaded() then return end
     local res = Veyl.Callback('veyl_cityhall', 'overview')
     if not res.ok then return Veyl.NotifyResult(res) end
+    res.data.person.photo = takePhoto('desk', PlayerPedId())
     local ok, reason = screen:open('cityhall:open', res.data)
     if not ok then Veyl.Notify(reason == 'busy' and 'Close the open menu first.' or 'City Hall is unavailable right now.', 'warning') end
 end
@@ -36,11 +60,25 @@ end)
 ---------------------------------------------------------------------------
 local shownSeq = 0
 RegisterNetEvent('veyl_cityhall:showCard', function(card, seconds)
+    if type(card) ~= 'table' then return end
     shownSeq = shownSeq + 1
     local mine = shownSeq
-    screen:send('cityhall:card', card)
-    SetTimeout((tonumber(seconds) or 8) * 1000, function()
-        if mine == shownSeq then screen:send('cityhall:card', nil) end
+    CreateThread(function()
+        if card.photoOf then
+            local pid = not card.self and GetPlayerFromServerId(card.photoOf) or nil
+            local ped = card.self and PlayerPedId() or (pid and pid ~= -1 and GetPlayerPed(pid)) or nil
+            card.photo = takePhoto('card', ped)
+        end
+        card.photoOf = nil
+        if mine ~= shownSeq then return end
+        screen:send('cityhall:card', card)
+        SetTimeout((tonumber(seconds) or 8) * 1000, function()
+            if mine == shownSeq then
+                screen:send('cityhall:card', nil)
+                Wait(500) -- let the card fade before its photo is released
+                if mine == shownSeq then dropPhoto('card') end
+            end
+        end)
     end)
 end)
 

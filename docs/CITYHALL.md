@@ -18,6 +18,8 @@ The desk is at the Alta Street civic offices by default (`Desk.coords` in `confi
 
 Using a card from the inventory shows it to everyone within `ShowDistance` (3 m) for `ShowSeconds` (8 s). The card appears on the right of their screen and never takes focus.
 
+The card shows a live photo of the character's face (an in-game headshot taken when the card is shown). The photo only appears when the card belongs to the person showing it; someone else's card shows a silhouette. The Identity tab at the desk shows your own photo.
+
 ## Payments
 
 Each purchase is one core `DebitOnce` keyed `cityhall:<citizenid>:<op id>`. The card is then given with `GiveItem` using the same id plus `:item`. If the card cannot be delivered, the fee is refunded once (`:refund`). Pressing a button twice, or a timeout followed by a retry, never charges twice.
