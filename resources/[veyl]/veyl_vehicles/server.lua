@@ -380,15 +380,39 @@ end)
 CreateThread(function()
     while true do
         Wait(3000)
+        local now = GetGameTimer()
         for id, v in pairs(vehicles) do
+            v.born = v.born or now
             if not DoesEntityExist(v.entity) then
-                removeTracking(id, 'missing', false)
-            elseif not v.destroyed and (GetVehicleEngineHealth(v.entity) <= -3900.0 or GetEntityHealth(v.entity) <= 0) then
+                -- Gone twice in a row (not a one-off blip) before it counts as abandoned.
+                v.missing = (v.missing or 0) + 1
+                if v.missing >= 2 then removeTracking(id, 'missing', false) end
+            else
+                v.missing = 0
+                -- A wreck needs real evidence: the server's GetEntityHealth reads 0 for a vehicle no client has synced
+                -- yet (fresh spawns), so it is not used. Only an exploded engine (<= -3900) reported by an owning client,
+                -- on a vehicle older than 15 s, two checks in a row.
+                local owner = NetworkGetEntityOwner(v.entity)
+                if not v.destroyed and now - v.born > 15000 and owner and owner > 0 and GetVehicleEngineHealth(v.entity) <= -3900.0 then
+                    v.wreckHits = (v.wreckHits or 0) + 1
+                else
+                    v.wreckHits = 0
+                end
+            end
+            if v.wreckHits and v.wreckHits >= 2 and not v.destroyed and vehicles[id] then
                 v.destroyed = true
                 TriggerEvent('veyl_vehicles:destroyed', id)
                 if v.ownedId then
                     -- Wrecked owned vehicles are towed to the impound lot; the wreck is cleared after a short delay.
-                    SetTimeout(VehiclesConfig.WreckClearMs, function() removeTracking(id, 'destroyed', true) end)
+                    SetTimeout(VehiclesConfig.WreckClearMs, function()
+                        local cur = vehicles[id]
+                        -- Repaired in the meantime (or not really a wreck): keep it.
+                        if cur and DoesEntityExist(cur.entity) and GetVehicleEngineHealth(cur.entity) > -3900.0 then
+                            cur.destroyed, cur.wreckHits = false, 0
+                            return
+                        end
+                        removeTracking(id, 'destroyed', true)
+                    end)
                 end
             end
         end
