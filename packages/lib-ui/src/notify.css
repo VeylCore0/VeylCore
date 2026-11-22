@@ -1,0 +1,79 @@
+/* Notifications and progress (VeylCore). Colours come from resource/client/ui_config.lua via CSS variables. */
+.vn-root { --vn-bg: 21, 29, 34; --vn-alpha: 0.86; --vn-text: #F7FAFC; --vn-text-2: #AAB6BF; --vn-success: #A5F3D0; --vn-info: #8BD4EE;
+  --vn-warning: #F0C374; --vn-error: #EF9298; --vn-scale: 1; --vn-accent: var(--vn-success);
+  position: fixed; inset: 0; pointer-events: none; font-size: calc(clamp(12px, 0.74vw, 17px) * var(--vn-scale)); color: var(--vn-text); }
+
+/* ---- Notification cards ---- */
+.vn-stack { position: absolute; display: flex; flex-direction: column; gap: 0.6em; max-width: 92vw; }
+.vn-card { --tone: var(--vn-info); position: relative; display: flex; align-items: flex-start; gap: 0.85em; padding: 0.85em 1em 0.8em;
+  border-radius: 0.8em; background: rgba(var(--vn-bg), var(--vn-alpha)); border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32); backdrop-filter: blur(10px) saturate(120%); pointer-events: auto;
+  animation: vn-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1); transition: transform 220ms ease, opacity 220ms ease; }
+.vn-card.success { --tone: var(--vn-success); } .vn-card.warning { --tone: var(--vn-warning); } .vn-card.error { --tone: var(--vn-error); }
+.vn-card.out { opacity: 0; transform: translateX(1.2em); }
+.vn-card.compact { align-items: center; padding: 0.65em 0.9em; }
+.vn-card.payment { align-items: center; padding: 0.6em 0.9em; }
+.vn-icon { flex: none; width: 2.5em; height: 2.5em; border-radius: 0.6em; display: grid; place-items: center; font-size: 1em;
+  color: var(--tone); background: color-mix(in srgb, var(--tone) 18%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 26%, transparent); }
+.vn-icon svg { width: 1.3em; height: 1.3em; }
+.vn-card.compact .vn-icon, .vn-card.payment .vn-icon { width: 1.9em; height: 1.9em; border-radius: 0.5em; }
+.vn-card.compact .vn-icon svg, .vn-card.payment .vn-icon svg { width: 1.05em; height: 1.05em; }
+.vn-body { flex: 1; min-width: 0; }
+.vn-row { display: flex; align-items: baseline; gap: 0.6em; }
+.vn-title { flex: 1; min-width: 0; font-weight: 600; font-size: 1.06em; line-height: 1.3; overflow-wrap: anywhere; }
+.vn-title.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.vn-desc { margin-top: 0.15em; color: var(--vn-text-2); font-size: 0.95em; line-height: 1.4; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.vn-time { color: var(--vn-text-2); font-size: 0.85em; flex: none; }
+.vn-count { flex: none; padding: 0 0.45em; border-radius: 1em; font-size: 0.78em; font-weight: 700; color: rgb(var(--vn-bg)); background: var(--tone); }
+.vn-amount { flex: none; font-weight: 700; color: var(--tone); font-variant-numeric: tabular-nums; }
+.vn-line { height: 3px; margin-top: 0.65em; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.vn-line i { display: block; height: 100%; width: 100%; border-radius: 3px; background: var(--tone); transform-origin: left; animation: vn-shrink linear forwards; }
+.vn-close { flex: none; align-self: flex-start; width: 1.6em; height: 1.6em; display: grid; place-items: center; border: 0; border-radius: 0.4em;
+  background: none; color: var(--vn-text-2); cursor: pointer; }
+.vn-close:hover { color: var(--vn-text); background: rgba(255, 255, 255, 0.08); }
+.vn-close svg { width: 0.95em; height: 0.95em; }
+
+/* ---- Progress (bottom centre) ---- */
+.vn-progress { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 1em; padding: 0.95em 1.15em;
+  max-width: 92vw; border-radius: 0.9em; background: rgba(var(--vn-bg), var(--vn-alpha)); border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); backdrop-filter: blur(10px) saturate(120%); animation: vn-rise 220ms ease-out; transition: opacity 240ms ease; }
+.vn-progress.cancelled, .vn-progress.ending { opacity: 0; transition-delay: 0ms; }
+.vn-progress.done { opacity: 1; }
+.vn-progress.done.ending { animation: vn-rise 180ms ease-out, vn-fade 260ms ease-in forwards; animation-delay: 0ms, 600ms; }
+.vn-tile { flex: none; width: 3.1em; height: 3.1em; border-radius: 0.7em; display: grid; place-items: center; color: var(--vn-text);
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1); }
+.vn-tile svg { width: 1.55em; height: 1.55em; }
+.vn-tile.ok { color: var(--vn-success); background: color-mix(in srgb, var(--vn-success) 18%, transparent); border-color: color-mix(in srgb, var(--vn-success) 30%, transparent); }
+.vn-p-main { flex: 1; min-width: 0; }
+.vn-p-top { display: flex; align-items: baseline; gap: 0.8em; }
+.vn-p-label { flex: 1; min-width: 0; font-weight: 600; font-size: 1.08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vn-p-label.big { font-size: 1.15em; }
+.vn-p-pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+.vn-p-track { height: 0.42em; margin: 0.6em 0 0.5em; border-radius: 1em; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.vn-p-track i { display: block; height: 100%; border-radius: 1em; background: var(--vn-accent); }
+.vn-p-bottom { display: flex; align-items: center; justify-content: space-between; color: var(--vn-text-2); font-size: 0.92em; font-variant-numeric: tabular-nums; }
+.vn-p-sub { color: var(--vn-text-2); font-size: 0.95em; margin-top: 0.15em; }
+.vn-cancel { display: inline-flex; align-items: center; gap: 0.45em; color: var(--vn-text); }
+.vn-progress kbd, .vn-ring kbd { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; padding: 0 0.35em; border-radius: 0.35em;
+  border: 1.5px solid rgba(255, 255, 255, 0.75); font: inherit; font-size: 0.82em; font-weight: 700; color: var(--vn-text); }
+
+/* ---- Hold-to-interact ring ---- */
+.vn-progress.hold { padding: 0.85em 1.4em 0.85em 0.95em; }
+.vn-ring { position: relative; flex: none; width: 3.6em; height: 3.6em; display: grid; place-items: center; }
+.vn-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.vn-ring circle { fill: none; stroke-width: 3; }
+.vn-ring .bg { stroke: rgba(255, 255, 255, 0.12); }
+.vn-ring .fg { stroke: var(--vn-accent); stroke-linecap: round; transition: stroke-dashoffset 110ms linear; }
+.vn-ring kbd { font-size: 1em; }
+.vn-ring-ok { color: var(--vn-success); display: grid; place-items: center; }
+.vn-ring-ok svg { position: static; transform: none; width: 1.5em; height: 1.5em; }
+
+@keyframes vn-in { from { opacity: 0; transform: translateX(1.2em); } to { opacity: 1; transform: none; } }
+@keyframes vn-rise { from { opacity: 0; transform: translate(-50%, 0.6em); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes vn-fade { to { opacity: 0; } }
+@keyframes vn-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Reduced motion: no slides or fades (the duration line still runs, it is information). */
+.vn-root.still .vn-card, .vn-root.still .vn-progress { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .vn-card, .vn-progress { animation: none; transition: none; } }

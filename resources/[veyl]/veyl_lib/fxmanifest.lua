@@ -11,6 +11,7 @@ version '0.3.0'
 
 client_scripts {
     'init.lua',
+    'resource/client/ui_config.lua',
     'resource/client/host.lua',
 }
 

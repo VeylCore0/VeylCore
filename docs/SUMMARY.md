@@ -13,6 +13,7 @@
 ## Interface
 
 * [UI suite](UI-SUITE.md)
+* [Notifications and progress](NOTIFICATIONS.md)
 * [HUD](HUD.md)
 * [Phone](PHONE.md)
 * [Emotes](EMOTES.md)

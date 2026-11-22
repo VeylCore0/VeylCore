@@ -18,7 +18,7 @@ local ALIASES = {
     inputDialog = 'dialog', alertDialog = 'dialog',
     notify = 'notify',
     showTextUI = 'textui', hideTextUI = 'textui', isTextUIOpen = 'textui',
-    progress = 'progress', progressActive = 'progress', cancelProgress = 'progress',
+    progress = 'progress', holdProgress = 'progress', progressActive = 'progress', cancelProgress = 'progress',
     requestModel = 'streaming', requestAnimDict = 'streaming', requestPtfx = 'streaming',
     addKeybind = 'keybind', addCommand = 'command',
     onCache = 'cache',

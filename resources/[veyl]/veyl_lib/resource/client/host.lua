@@ -12,7 +12,7 @@ local UI_TIMEOUT_MS = 10000
 
 local focus = nil        -- { token, owner, kind }
 local hostModal = nil    -- { token, cb, owner, kind } for modals rendered by veyl_lib itself
-local progress = nil     -- { owner, cancelled, cb }
+local progress = nil     -- the running action (see Actions below)
 local textUIOwner = nil
 local tokenSeq = 0
 
@@ -54,6 +54,8 @@ exports('GetFocusOwner', function() return focus and focus.owner or nil end)
 RegisterNUICallback('ui:ready', function(_, cb)
     uiReady = true
     cb({ ok = true })
+    -- Theme, placement and limits for notifications and progress (resource/client/ui_config.lua).
+    SendNUIMessage({ action = 'ui:config', data = VlibUIConfig })
 end)
 
 local function ensureUI()
@@ -127,22 +129,78 @@ RegisterNUICallback('modal:result', function(data, cb)
 end)
 
 ---------------------------------------------------------------------------
--- Passive UI: notifications, text prompt
+-- Passive UI: notifications (never take focus), text prompt
 ---------------------------------------------------------------------------
+local NC = VlibUIConfig.Notifications
 local notifySeq = 0
 local TYPES = { info = true, success = true, warning = true, error = true }
+local LAYOUTS = { standard = true, compact = true, payment = true }
 
+local function str(v, max) return type(v) == 'string' and v ~= '' and v:sub(1, max) or nil end
+
+--- Cleans notification options (shared by Notify and UpdateNotification).
+local function cleanNotify(data, partial)
+    local out = {}
+    if data.type ~= nil or not partial then out.type = TYPES[data.type] and data.type or (not partial and 'info' or nil) end
+    out.title = str(data.title, 80)
+    -- Old calls pass `message`; new calls may use `description`.
+    out.description = str(data.description, 400) or str(data.message, 400)
+    out.icon = str(data.icon, 32)
+    if data.duration ~= nil or not partial then
+        out.duration = math.floor(math.max(NC.minDuration, math.min(NC.maxDuration, tonumber(data.duration) or NC.defaultDuration)))
+    end
+    if data.amount ~= nil then
+        local a = tonumber(data.amount)
+        out.amount = a and math.floor(a) or str(data.amount, 24)
+    end
+    if data.layout ~= nil or not partial then
+        out.layout = LAYOUTS[data.layout] and data.layout or (out.amount and 'payment') or ((out.title and out.description) and 'standard') or 'compact'
+    end
+    if data.sound ~= nil then out.sound = data.sound ~= false end
+    if data.showDuration ~= nil then out.showDuration = data.showDuration ~= false end
+    return out
+end
+
+--- Notify({ id?, type, title?, description? | message?, icon?, duration?, layout?, amount?, sound?, showDuration? }) -> id
+--- Same id (or identical type + title + text, with duplicates = 'merge') updates the card and counts it (×2, ×3).
 exports('Notify', function(data)
-    if type(data) ~= 'table' or type(data.message) ~= 'string' then return end
-    notifySeq = notifySeq + 1
-    SendNUIMessage({ action = 'notify', data = {
-        id = tostring(notifySeq), title = type(data.title) == 'string' and data.title:sub(1, 80) or nil,
-        message = data.message:sub(1, 300), type = TYPES[data.type] and data.type or 'info',
-        duration = math.floor(tonumber(data.duration) or 4500),
-    } })
+    if type(data) == 'string' then data = { message = data } end
+    if type(data) ~= 'table' then return nil end
+    local n = cleanNotify(data, false)
+    if not n.title and not n.description then return nil end
+    local id = str(data.id, 64)
+    if not id then
+        notifySeq = notifySeq + 1
+        id = ('n%d'):format(notifySeq)
+        n.autoId = true
+    end
+    n.id = id
+    SendNUIMessage({ action = 'notify', data = n })
+    return id
 end)
 
+--- UpdateNotification(id, changes): change a visible / queued card (e.g. a running counter). Returns nothing.
+exports('UpdateNotification', function(id, changes)
+    if type(id) ~= 'string' or type(changes) ~= 'table' then return end
+    local n = cleanNotify(changes, true)
+    n.id = id
+    SendNUIMessage({ action = 'notify:update', data = n })
+end)
+
+exports('DismissNotification', function(id)
+    if type(id) == 'string' then SendNUIMessage({ action = 'notify:dismiss', data = { id = id } }) end
+end)
+exports('DismissAllNotifications', function() SendNUIMessage({ action = 'notify:clear' }) end)
+
 RegisterNetEvent('veyl_lib:notify', function(data) exports.veyl_lib:Notify(data) end)
+
+-- The page asks to close a card (only possible while veyl_lib's own menu/dialog has the cursor).
+RegisterNUICallback('notify:closed', function(_, cb) cb({ ok = true }) end)
+
+-- Optional key to dismiss the newest card (no cursor needed).
+RegisterCommand('+veyl_dismiss_notify', function() SendNUIMessage({ action = 'notify:dismissNewest' }) end, false)
+RegisterCommand('-veyl_dismiss_notify', function() end, false)
+RegisterKeyMapping('+veyl_dismiss_notify', 'Dismiss newest notification', 'keyboard', NC.dismissKey or '')
 
 exports('ShowTextUI', function(text, key)
     textUIOwner = GetInvokingResource()
@@ -155,8 +213,13 @@ end)
 exports('IsTextUIOpen', function() return textUIOwner ~= nil end)
 
 ---------------------------------------------------------------------------
--- Progress: one at a time; owns its animation, prop and control lock; always cleans up.
+-- Actions: timed progress and hold-to-interact. One at a time; each owns its animation, props and control lock and
+-- always cleans up. States: idle -> running -> completed | cancelled. The result is delivered exactly once.
+-- The page only draws (it animates from the start time); Lua measures elapsed time with GetGameTimer.
 ---------------------------------------------------------------------------
+local PC, HC = VlibUIConfig.Progress, VlibUIConfig.Hold
+local actionSeq = 0
+
 local function loadDict(dict)
     RequestAnimDict(dict)
     local deadline = GetGameTimer() + 3000
@@ -179,44 +242,132 @@ local function attachProp(ped, prop)
     return obj
 end
 
---- StartProgress({ label, duration, canCancel, disable = { move, car, combat }, anim = { dict, clip, flag }, prop = { model, bone, pos, rot } }, cb(bool))
-exports('StartProgress', function(opts, cb)
-    if progress then return cb(false) end
+local function clamp(v, lo, hi, def) v = tonumber(v) if not v then return def end return math.max(lo, math.min(hi, v)) end
+local function color(v) return type(v) == 'string' and v:match('^#%x%x%x%x%x%x$') and v or nil end
+
+--- Ends the running action once: stops its animation / scenario, deletes its props, tells the page, calls back.
+local function endAction(p, completed, reason)
+    if p.ended then return end
+    p.ended = true
+    if progress == p then progress = nil end
+    local ped = PlayerPedId()
+    if p.anim and p.anim.dict then StopAnimTask(ped, p.anim.dict, p.anim.clip, 1.0) end
+    if p.scenario then ClearPedTasks(ped) end
+    for _, obj in ipairs(p.props) do if DoesEntityExist(obj) then DeleteEntity(obj) end end
+    SendNUIMessage({ action = 'progress:end', data = { id = p.id, completed = completed, reason = reason } })
+    pcall(p.cb, completed, reason)
+end
+
+--- Cancels the current action (reason recorded). Safe to call any time.
+local function cancelAction(reason)
+    if progress and not progress.ended then progress.cancelReason = progress.cancelReason or reason or 'cancelled' end
+end
+
+local function blockControls(disable)
+    if disable.move then
+        DisableControlAction(0, 30, true) DisableControlAction(0, 31, true)
+        DisableControlAction(0, 21, true) DisableControlAction(0, 22, true) DisableControlAction(0, 36, true)
+    end
+    if disable.car then
+        DisableControlAction(0, 71, true) DisableControlAction(0, 72, true) DisableControlAction(0, 59, true)
+        DisableControlAction(0, 75, true) DisableControlAction(0, 23, true) -- exit / enter vehicle
+    end
+    if disable.combat ~= false then
+        DisableControlAction(0, 24, true) DisableControlAction(0, 25, true) DisableControlAction(0, 140, true)
+        DisableControlAction(0, 141, true) DisableControlAction(0, 142, true) DisableControlAction(0, 257, true)
+        DisablePlayerFiring(PlayerId(), true)
+    end
+end
+
+--- Starts an action. kind = 'timed' | 'hold'. Returns false + reason if busy (and replace not requested).
+local function startAction(kind, opts, cb, owner)
     opts = type(opts) == 'table' and opts or {}
-    local duration = math.max(250, math.min(math.floor(tonumber(opts.duration) or 3000), 120000))
-    progress = { owner = GetInvokingResource(), cancelled = false, cb = cb }
-    local p = progress
+    if progress and not progress.ended then
+        if opts.replace ~= true then return cb(false, 'busy') end
+        cancelAction('replaced')
+        local old = progress
+        local t = GetGameTimer() + 1000
+        while not old.ended and GetGameTimer() < t do Wait(0) end
+        endAction(old, false, 'replaced')
+    end
+    actionSeq = actionSeq + 1
+    local duration = math.floor(clamp(opts.duration, PC.minDuration, PC.maxDuration, 3000))
+    local p = {
+        id = ('%s:%d'):format(type(opts.id) == 'string' and opts.id:sub(1, 40) or kind, actionSeq), kind = kind, owner = owner, cb = cb,
+        duration = duration, canCancel = opts.canCancel ~= false, props = {}, disable = type(opts.disable) == 'table' and opts.disable or {},
+        anim = type(opts.anim) == 'table' and opts.anim or nil, scenario = type(opts.scenario) == 'string' and opts.scenario or nil,
+        cancelControl = math.floor(clamp(opts.cancelControl, 0, 400, PC.cancelControl)),
+        holdControl = math.floor(clamp(opts.control, 0, 400, HC.control)), decay = tonumber(opts.decay),
+    }
+    if kind == 'hold' then p.canCancel = false end
+    progress = p
     CreateThread(function()
         local ped = PlayerPedId()
-        local anim, propObj = opts.anim, nil
-        if anim and anim.dict and loadDict(anim.dict) then
-            TaskPlayAnim(ped, anim.dict, anim.clip, 3.0, 3.0, -1, anim.flag or 49, 0, false, false, false)
+        local startedInVehicle = IsPedInAnyVehicle(ped, false)
+        if p.anim and p.anim.dict and loadDict(p.anim.dict) then TaskPlayAnim(ped, p.anim.dict, p.anim.clip, 3.0, 3.0, -1, p.anim.flag or 49, 0, false, false, false) end
+        if p.scenario then TaskStartScenarioInPlace(ped, p.scenario, 0, true) end
+        local propList = opts.prop and (opts.prop.model and { opts.prop } or opts.prop) or {}
+        for i = 1, math.min(#propList, 3) do
+            local o = type(propList[i]) == 'table' and propList[i].model and attachProp(ped, propList[i])
+            if o then p.props[#p.props + 1] = o end
         end
-        if opts.prop and opts.prop.model then propObj = attachProp(ped, opts.prop) end
-        SendNUIMessage({ action = 'progress:start', data = { label = tostring(opts.label or 'Working...'), duration = duration, canCancel = opts.canCancel ~= false } })
-        local disable = opts.disable or {}
-        local finishAt = GetGameTimer() + duration
-        while GetGameTimer() < finishAt and not p.cancelled do
-            if disable.move then
-                DisableControlAction(0, 30, true) DisableControlAction(0, 31, true)
-                DisableControlAction(0, 21, true) DisableControlAction(0, 22, true)
+        SendNUIMessage({ action = kind == 'hold' and 'hold:start' or 'progress:start', data = {
+            id = p.id, label = tostring(opts.label or (kind == 'hold' and 'Hold to interact' or 'Working…')):sub(1, 60),
+            icon = type(opts.icon) == 'string' and opts.icon:sub(1, 24) or nil, duration = duration, color = color(opts.color),
+            canCancel = p.canCancel, cancelLabel = tostring(opts.cancelLabel or PC.cancelLabel):sub(1, 6),
+            keyLabel = tostring(opts.keyLabel or HC.label):sub(1, 6), subLabel = opts.subLabel ~= false and tostring(opts.subLabel or HC.releaseText):sub(1, 40) or nil,
+            completeLabel = type(opts.completeLabel) == 'string' and opts.completeLabel:sub(1, 60) or nil, showComplete = opts.showComplete ~= false,
+        } })
+        local startAt, held, lastSent, lastTick, pressedOnce = GetGameTimer(), 0, -1, GetGameTimer(), false
+        while not p.ended do
+            local now = GetGameTimer()
+            blockControls(p.disable)
+            if p.canCancel then DisableControlAction(0, p.cancelControl, true) end
+            -- Cancellation sources
+            if p.canCancel and IsDisabledControlJustPressed(0, p.cancelControl) then cancelAction('cancelled') end
+            if IsEntityDead(ped) or IsPedDeadOrDying(ped, true) then cancelAction('dead') end
+            if p.disable.car and IsPedInAnyVehicle(ped, false) ~= startedInVehicle then cancelAction('vehicle') end
+            if p.disable.move and not startedInVehicle and GetEntitySpeed(ped) > 2.5 then cancelAction('moved') end
+            if p.cancelReason then break end
+            if kind == 'timed' then
+                if now - startAt >= duration then break end
+            else
+                local dt = now - lastTick
+                local down = IsControlPressed(0, p.holdControl) or IsDisabledControlPressed(0, p.holdControl)
+                if down then pressedOnce = true held = held + dt
+                elseif pressedOnce or now - startAt > 400 then
+                    if p.decay and p.decay > 0 then held = math.max(0, held - dt * p.decay) else cancelAction('released') end
+                end
+                if held >= duration then break end
+                -- The page interpolates between these (no per-frame messages).
+                local frac = math.floor(held / duration * 100)
+                if frac ~= lastSent and now - (p.sentAt or 0) > 90 then
+                    lastSent, p.sentAt = frac, now
+                    SendNUIMessage({ action = 'hold:update', data = { id = p.id, progress = held / duration } })
+                end
             end
-            if disable.car then DisableControlAction(0, 71, true) DisableControlAction(0, 72, true) end
-            if disable.combat ~= false then DisableControlAction(0, 24, true) DisableControlAction(0, 25, true) DisablePlayerFiring(PlayerId(), true) end
-            if opts.canCancel ~= false and IsControlJustPressed(0, 73) then p.cancelled = true end
-            if IsEntityDead(ped) then p.cancelled = true end
+            lastTick = now
             Wait(0)
         end
-        if anim and anim.dict then StopAnimTask(ped, anim.dict, anim.clip, 1.0) end
-        if propObj and DoesEntityExist(propObj) then DeleteEntity(propObj) end
-        SendNUIMessage({ action = 'progress:stop' })
-        if progress == p then progress = nil end
-        pcall(p.cb, not p.cancelled)
+        if p.cancelReason then endAction(p, false, p.cancelReason) else endAction(p, true, 'completed') end
     end)
-end)
+end
 
-exports('CancelProgress', function() if progress then progress.cancelled = true end end)
-exports('IsProgressActive', function() return progress ~= nil end)
+--- StartProgress({ id?, label, icon?, duration, color?, canCancel = true, cancelControl?, cancelLabel?, disable = { move, car, combat },
+---   anim = { dict, clip, flag }?, scenario?, prop = { model, bone, pos, rot } | { ... }?, completeLabel?, showComplete = true, replace? }, cb(completed, reason))
+exports('StartProgress', function(opts, cb) startAction('timed', opts, type(cb) == 'function' and cb or function() end, GetInvokingResource()) end)
+
+--- StartHoldProgress({ id?, label, subLabel? | false, keyLabel?, control?, duration, decay? (0 = reset on release), disable?, anim?, replace? }, cb(completed, reason))
+exports('StartHoldProgress', function(opts, cb) startAction('hold', opts, type(cb) == 'function' and cb or function() end, GetInvokingResource()) end)
+
+--- CancelProgress(id?): cancels the running action (or only the one with that id).
+exports('CancelProgress', function(id)
+    if progress and (id == nil or (type(id) == 'string' and progress.id:sub(1, #id) == id)) then cancelAction('cancelled') end
+end)
+exports('IsProgressActive', function() return progress ~= nil and not progress.ended end)
+exports('GetProgressId', function() return progress and not progress.ended and progress.id or nil end)
+
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function() cancelAction('logout') end)
 
 ---------------------------------------------------------------------------
 -- Cleanup
@@ -224,6 +375,13 @@ exports('IsProgressActive', function() return progress ~= nil end)
 AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then
         SetNuiFocus(false, false)
+        -- Our threads stop with us: undo the running action's animation and props right now.
+        if progress and not progress.ended then
+            local ped = PlayerPedId()
+            if progress.anim and progress.anim.dict then StopAnimTask(ped, progress.anim.dict, progress.anim.clip, 1.0) end
+            if progress.scenario then ClearPedTasks(ped) end
+            for _, obj in ipairs(progress.props or {}) do if DoesEntityExist(obj) then DeleteEntity(obj) end end
+        end
         return
     end
     if hostModal and hostModal.owner == res then closeHostModal(nil) end
@@ -232,7 +390,7 @@ AddEventHandler('onResourceStop', function(res)
         focus = nil
         TriggerEvent('veyl_lib:focusRevoked', token, res)
     end
-    if progress and progress.owner == res then progress.cancelled = true end
+    if progress and progress.owner == res then cancelAction('caller_stopped') end
     if textUIOwner == res then exports.veyl_lib:HideTextUI() end
 end)
 

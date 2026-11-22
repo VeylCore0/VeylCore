@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   announceReady, nui, useNuiMessage,
-  type AlertOpen, type FormOpen, type MenuOpen, type NotifyMessage, type ProgressMessage, type TextUIMessage,
+  type AlertOpen, type FormOpen, type MenuOpen, type TextUIMessage,
 } from '@veyl/ui';
 import { Menu } from './Menu';
 import { Form } from './Form';
 import { Alert } from './Alert';
-import { Notifications } from './Notifications';
-import { Progress } from './Progress';
+import { Notifications, useNotifications, type Note } from './Notifications';
+import { HoldCard, ProgressCard, type ActionStart, type ActionState } from './Progress';
+import { themeVars, type UIConfig } from './glyphs';
 import { TextUI } from './TextUI';
 
 type Modal =
@@ -18,8 +19,9 @@ type Modal =
 
 export function App() {
   const [modal, setModal] = useState<Modal>(null);
-  const [notifications, setNotifications] = useState<NotifyMessage[]>([]);
-  const [progress, setProgress] = useState<ProgressMessage | null>(null);
+  const [cfg, setCfg] = useState<UIConfig | undefined>(undefined);
+  const notes = useNotifications(cfg?.Notifications);
+  const [action, setAction] = useState<ActionState | null>(null);
   const [textUI, setTextUI] = useState<TextUIMessage | null>(null);
 
   useEffect(() => announceReady(), []);
@@ -29,30 +31,37 @@ export function App() {
   useNuiMessage<AlertOpen>('alert:open', (data) => setModal({ kind: 'alert', data }));
   useNuiMessage('modal:close', () => setModal(null));
 
-  useNuiMessage<NotifyMessage>('notify', (n) => {
-    setNotifications((list) => {
-      // Merge an identical message that is still visible instead of stacking duplicates.
-      const dup = list.find((x) => x.message === n.message && x.type === n.type);
-      const next = dup ? list.map((x) => (x === dup ? { ...n, id: dup.id + '+' } : x)) : [...list, n];
-      return next.slice(-5);
-    });
-  });
-  const dismiss = (id: string) => setNotifications((list) => list.filter((x) => x.id !== id));
+  useNuiMessage<UIConfig>('ui:config', setCfg);
+  useNuiMessage<Note>('notify', notes.push);
+  useNuiMessage<Partial<Note> & { id: string }>('notify:update', notes.update);
+  useNuiMessage<{ id: string }>('notify:dismiss', (d) => notes.dismiss(d.id));
+  useNuiMessage('notify:dismissNewest', notes.dismissNewest);
+  useNuiMessage('notify:clear', notes.clear);
 
-  useNuiMessage<ProgressMessage>('progress:start', setProgress);
-  useNuiMessage('progress:stop', () => setProgress(null));
+  // Actions: messages for an id that is no longer current are ignored.
+  useNuiMessage<ActionStart>('progress:start', (a) => setAction({ ...a, kind: 'timed', startedAt: performance.now() }));
+  useNuiMessage<ActionStart>('hold:start', (a) => setAction({ ...a, kind: 'hold', startedAt: performance.now(), progress: 0 }));
+  useNuiMessage<{ id: string; progress: number }>('hold:update', (u) => setAction((a) => (a && a.id === u.id && !a.result ? { ...a, progress: Math.max(0, Math.min(1, u.progress)) } : a)));
+  useNuiMessage<{ id: string; completed: boolean }>('progress:end', (e) => {
+    setAction((a) => (a && a.id === e.id ? { ...a, result: e.completed ? 'completed' : 'cancelled' } : a));
+    const keep = e.completed ? (cfg?.Progress.completeMs ?? 900) : 250;
+    window.setTimeout(() => setAction((a) => (a && a.id === e.id ? null : a)), keep);
+  });
   useNuiMessage<TextUIMessage>('textui:show', setTextUI);
   useNuiMessage('textui:hide', () => setTextUI(null));
   useNuiMessage('reset', () => {
     setModal(null);
-    setProgress(null);
+    setAction(null);
+    notes.clear();
     setTextUI(null);
   });
 
   return (
     <>
-      <Notifications items={notifications} onDone={dismiss} />
-      {progress && <Progress {...progress} />}
+      <div className={`vn-root${cfg?.Theme.reducedMotion ? ' still' : ''}`} style={themeVars(cfg?.Theme)}>
+        <Notifications cards={notes.cards} cfg={cfg?.Notifications} interactive={!!modal} onClose={notes.dismiss} />
+        {action && (action.kind === 'hold' ? <HoldCard a={action} cfg={cfg?.Progress} /> : <ProgressCard a={action} cfg={cfg?.Progress} />)}
+      </div>
       {textUI && <TextUI data={textUI} />}
       {modal && (
         <div className="backdrop">
