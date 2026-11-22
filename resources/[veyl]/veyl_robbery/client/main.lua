@@ -12,10 +12,10 @@ local function minigame(difficulty, title)
 end
 
 local busy = false
-local function rob(store, kind, method)
+local function rob(store, kind)
     if busy then return end
     busy = true
-    if kind == 'safe' or method == 'lockpick' then
+    do
         local cfg = kind == 'safe' and C.Safe or C.Register
         local ped = PlayerPedId()
         if Veyl.LoadAnimDict('mp_arresting') then TaskPlayAnim(ped, 'mp_arresting', 'a_uncuff', 3.0, 3.0, -1, 49, 0, false, false, false) end
@@ -27,22 +27,27 @@ local function rob(store, kind, method)
             return
         end
     end
-    local start = Veyl.CallbackTimeout('veyl_robbery', 'start', 10000, store, kind, method)
+    local start = Veyl.CallbackTimeout('veyl_robbery', 'start', 10000, store, kind)
     if not start.ok then busy = false return Veyl.NotifyResult(start) end
     local ped = PlayerPedId()
-    if kind == 'register' then TaskStartScenarioInPlace(ped, 'PROP_HUMAN_BUM_BIN', 0, true) end
+    -- Another progress bar may still be finishing: wait for it instead of failing straight away.
+    local waitUntil = GetGameTimer() + 3000
+    while vlib.progressActive() and GetGameTimer() < waitUntil do Wait(100) end
     local done = vlib.progress({
-        label = kind == 'safe' and 'Opening the safe' or 'Emptying the register', duration = start.data.seconds * 1000, canCancel = true,
+        label = kind == 'safe' and 'Opening the safe' or 'Emptying the register', duration = start.data.seconds * 1000 + 300, canCancel = true,
         disable = { move = true, car = true, combat = true },
-        anim = kind == 'safe' and { dict = 'mini@safe_cracking', clip = 'dial_turn_anti_fast_1', flag = 1 } or nil,
+        anim = kind == 'safe' and { dict = 'mini@safe_cracking', clip = 'dial_turn_anti_fast_1', flag = 1 }
+            or { dict = 'oddjobs@shop_robbery@rob_till', clip = 'loop', flag = 1 },
     })
     ClearPedTasks(ped)
     busy = false
     if not done then
         Veyl.Callback('veyl_robbery', 'cancel')
-        return Veyl.Notify('You left it. The alarm was already raised.', 'warning')
+        return Veyl.Notify('You stopped (X cancels). The alarm was already raised.', 'warning')
     end
-    Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_robbery', 'finish', 10000, start.data.token))
+    local res = Veyl.CallbackTimeout('veyl_robbery', 'finish', 10000, start.data.token)
+    if res.ok then PlaySoundFrontend(-1, 'ROBBERY_MONEY_TOTAL', 'HUD_FRONTEND_CUSTOM_SOUNDSET', true) end
+    Veyl.NotifyResult(res)
 end
 
 local zones = {}
@@ -59,12 +64,9 @@ local function addZones(list)
         zones[#zones + 1] = exports.veyl_target:addSphereZone({
             name = 'register_' .. storeId, coords = center, radius = 1.6, title = 'Register',
             options = {
-                { name = 'veyl_rob_register', label = 'Rob the register', icon = 'money', distance = 3.5,
-                  canInteract = function() return not LocalPlayer.state.cuffed and not busy end,
-                  onSelect = function() CreateThread(function() rob(storeId, 'register', 'weapon') end) end },
                 { name = 'veyl_rob_register_pick', label = 'Pick the register lock', icon = 'lock', distance = 3.5,
                   canInteract = function() return not LocalPlayer.state.cuffed and not busy and (exports.veyl_inventory:GetItemCount(C.Register.item) or 0) > 0 end,
-                  onSelect = function() CreateThread(function() rob(storeId, 'register', 'lockpick') end) end },
+                  onSelect = function() CreateThread(function() rob(storeId, 'register') end) end },
             },
         })
         if s.safe then
