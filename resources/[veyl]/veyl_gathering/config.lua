@@ -4,6 +4,10 @@
 GatheringConfig = {
     Mining = {
         label = 'Davis Quartz quarry', tool = 'pickaxe', seconds = 7, respawnSeconds = 150,
+        -- A rock prop is placed on every spot (the first model that exists in your game build is used).
+        -- It disappears when the rock is mined out and comes back when it refills.
+        rockModels = { 'prop_rock_4_c', 'prop_rock_4_d', 'prop_rock_1_f', 'prop_rock_3_f', 'prop_rock_1_a' },
+        rockDrawDistance = 120.0,
         blip = { coords = vector3(2954.0, 2788.0, 41.0), sprite = 618, colour = 5 },
         spots = {
             vector3(2943.9, 2770.4, 39.1), vector3(2959.0, 2758.3, 42.0), vector3(2975.1, 2789.9, 40.5), vector3(2935.4, 2808.6, 42.5),

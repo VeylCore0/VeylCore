@@ -71,6 +71,10 @@ Veyl.RegisterCallback('complete', function(src, citizenid, token)
         item, y = roll(C.Mining.yields)
         n = math.random(y[2], y[3])
         spotReady.mining[p.index] = os.time() + C.Mining.respawnSeconds
+        -- Everyone sees the rock disappear until it refills.
+        local idx = p.index
+        GlobalState['veylRock' .. idx] = true
+        SetTimeout(C.Mining.respawnSeconds * 1000, function() GlobalState['veylRock' .. idx] = nil end)
     else
         local pt = C.Farming.points[p.index]
         if not near(src, pt.coords, 3.5) then return Veyl.Err('TOO_FAR', 'You walked away') end

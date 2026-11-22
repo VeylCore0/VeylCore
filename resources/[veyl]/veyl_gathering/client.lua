@@ -143,6 +143,57 @@ CreateThread(function()
 end)
 
 ---------------------------------------------------------------------------
+-- Rock props at the quarry (local objects; hidden while a rock is mined out)
+---------------------------------------------------------------------------
+local rocks = {} -- [index] = object handle
+local rockModel = nil
+
+local function pickRockModel()
+    for _, m in ipairs(C.Mining.rockModels or {}) do
+        local h = joaat(m)
+        if IsModelInCdimage(h) then return h end
+    end
+end
+
+local function removeRock(i)
+    if rocks[i] and DoesEntityExist(rocks[i]) then DeleteEntity(rocks[i]) end
+    rocks[i] = nil
+end
+
+local function spawnRock(i, pos)
+    if rocks[i] or not rockModel then return end
+    RequestModel(rockModel)
+    local deadline = GetGameTimer() + 3000
+    while not HasModelLoaded(rockModel) and GetGameTimer() < deadline do Wait(20) end
+    if not HasModelLoaded(rockModel) then return end
+    local obj = CreateObject(rockModel, pos.x, pos.y, pos.z - 1.0, false, false, false)
+    SetEntityHeading(obj, (i * 47) % 360 + 0.0)
+    PlaceObjectOnGroundProperly(obj)
+    FreezeEntityPosition(obj, true)
+    SetEntityInvincible(obj, true)
+    rocks[i] = obj
+end
+
+CreateThread(function()
+    rockModel = pickRockModel()
+    if not rockModel then return print('^3[veyl_gathering] none of Mining.rockModels exist in this game build; no rock props^7') end
+    while true do
+        local pc = GetEntityCoords(PlayerPedId())
+        local near = #(pc - C.Mining.blip.coords) < (C.Mining.rockDrawDistance or 120.0) + 60.0
+        for i, s in ipairs(C.Mining.spots) do
+            local show = near and not GlobalState['veylRock' .. i] and #(pc - s) < (C.Mining.rockDrawDistance or 120.0)
+            if show then spawnRock(i, s) elseif rocks[i] then removeRock(i) end
+        end
+        if not near then SetModelAsNoLongerNeeded(rockModel) end
+        Wait(near and 1000 or 4000)
+    end
+end)
+
+AddEventHandler('onResourceStop', function(res)
+    if res == GetCurrentResourceName() then for i in pairs(rocks) do removeRock(i) end end
+end)
+
+---------------------------------------------------------------------------
 -- Zones and blips
 ---------------------------------------------------------------------------
 local function blip(c, sprite, colour, name)
@@ -155,7 +206,7 @@ CreateThread(function()
     while GetResourceState('veyl_interact') ~= 'started' do Wait(250) end
     for i, s in ipairs(C.Mining.spots) do
         exports.veyl_interact:AddZone({ id = 'veyl_mine_' .. i, coords = s, radius = 2.0, title = 'Rock',
-            options = { { label = 'Mine', icon = 'hand', event = 'veyl_gathering:mine', args = { i = i } } } })
+            options = { { label = 'Mine', icon = 'hand', event = 'veyl_gathering:mine', args = { i = i }, canInteract = function() return not GlobalState['veylRock' .. i] end } } })
     end
     blip(C.Mining.blip.coords, C.Mining.blip.sprite, C.Mining.blip.colour, 'Quarry (mining)')
     for i, p in ipairs(C.Farming.points) do

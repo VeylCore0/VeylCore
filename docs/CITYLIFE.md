@@ -27,7 +27,7 @@ The server checks every step: distance to the target, that your work vehicle is 
 
 | Activity | Where | Needs | Gets |
 |---|---|---|---|
-| **Mining** | Davis Quartz quarry (10 rocks; a rock refills after 2.5 min) | A `pickaxe` (YouTool, Sandy Shores, or craft one) | Stone, coal, iron ore, copper ore, sometimes gold ore |
+| **Mining** | Davis Quartz quarry (10 rocks, shown as rock props; a mined-out rock disappears for everyone and comes back after 2.5 min) | A `pickaxe` (YouTool, Sandy Shores, or craft one) | Stone, coal, iron ore, copper ore, sometimes gold ore |
 | **Farming** | Grapeseed (wheat, tomatoes, potatoes, lettuce, orange trees, cows) | Nothing | Produce and milk (each point refills after 2 min) |
 | **Hunting** | Paleto Forest, Tongva Hills, Mount Chiliad foothills (shown as areas on the map) | A weapon to hunt with, and a `weapon_knife` to skin | Raw meat, deer / boar hides, coyote pelts, sometimes antlers |
 
