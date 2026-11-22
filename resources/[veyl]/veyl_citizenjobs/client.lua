@@ -48,12 +48,35 @@ end
 local function vehicle() return run and NetworkDoesEntityExistWithNetworkId(run.netId) and NetToVeh(run.netId) or 0 end
 
 --- Taxi: a local passenger waits at the pickup and gets in when you arrive.
+--- A waiting spot on the kerb next to the pickup: the nearest pavement point (GetSafeCoordForPed, pavement only),
+--- otherwise the edge of the nearest road stepped 1.5 m off it. Returns the spot and a heading that faces the road.
+local function curbSpot(pos)
+    local _, node = GetClosestVehicleNode(pos.x, pos.y, pos.z, 1, 3.0, 0)
+    local spot
+    local ok, safe = GetSafeCoordForPed(pos.x, pos.y, pos.z, true, 16)
+    if ok and #(safe - pos) < 14.0 then
+        spot = safe
+    else
+        local found, side = GetPointOnRoadSide(pos.x, pos.y, pos.z, 0)
+        if found and node then
+            local dir = vector3(side.x - node.x, side.y - node.y, 0.0)
+            local len = #dir
+            spot = len > 0.1 and (side + dir / len * 1.5) or side
+        end
+    end
+    spot = spot or pos
+    local heading = node and GetHeadingFromVector_2d(node.x - spot.x, node.y - spot.y) or 0.0
+    return spot, heading
+end
+
 local function spawnPassenger(pos, model)
     removePassenger(false)
     local hash = Veyl.LoadModel(model, 5000)
     if not hash then return end
-    local found, z = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 2.0, false)
-    passenger = CreatePed(4, hash, pos.x, pos.y, found and z or pos.z, 0.0, false, true)
+    RequestCollisionAtCoord(pos.x, pos.y, pos.z)
+    local spot, heading = curbSpot(vector3(pos.x, pos.y, pos.z))
+    local found, z = GetGroundZFor_3dCoord(spot.x, spot.y, spot.z + 2.0, false)
+    passenger = CreatePed(4, hash, spot.x, spot.y, found and z or spot.z, heading, false, true)
     SetBlockingOfNonTemporaryEvents(passenger, true)
     SetPedCanRagdoll(passenger, false)
     TaskStartScenarioInPlace(passenger, 'WORLD_HUMAN_STAND_MOBILE', 0, true)
@@ -87,7 +110,7 @@ local function refresh(data)
         if run.carrying then carryBag() else dropBag() end
     elseif run.kind == 'fare' then
         setBlip(run.target, run.step == 'pickup' and 'Passenger' or 'Destination', 5)
-        if run.step == 'pickup' and not passenger then spawnPassenger(run.target, run.ped) end
+        -- The passenger appears when you get close (the area has to be loaded to find the pavement).
     elseif run.kind == 'tow' then
         setBlip(run.target, run.step == 'hook' and 'Breakdown' or 'Tow yard', 47)
     end
@@ -131,6 +154,7 @@ CreateThread(function()
             local d = t and #(pc - vector3(t.x, t.y, t.z)) or math.huge
             local inVeh = GetVehiclePedIsIn(ped, false)
             local myVeh = vehicle()
+            if run.kind == 'fare' and run.step == 'pickup' and not passenger and d < 150.0 then spawnPassenger(t, run.ped) end
             if d < 60.0 then
                 sleep = 0
                 DrawMarker(1, t.x, t.y, t.z - 1.0, 0, 0, 0, 0, 0, 0, 4.0, 4.0, 1.0, 245, 200, 80, 90, false, false, 2, false, nil, nil, false)
