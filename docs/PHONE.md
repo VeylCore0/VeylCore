@@ -224,6 +224,8 @@ Tables: `veyl_phone_places`, `veyl_phone_shared_locations`, `veyl_phone_service_
 | **News** | Weazel News stories. On-duty `weazel` job members (`News.Jobs`) get a pen button; *Breaking news* notifies every online phone |
 | **Racing** | **+** records a track: drive it and tap *Add checkpoint* (2–40). *Host* opens a race; players within `Racing.JoinRadius` m of the start *Join*; the host *Starts* (5 s countdown). Checkpoints are checked by the server (position, order, start time); finish times go to the leaderboard (*Times*). `/quitrace` leaves |
 
+**Installing screenshot-basic:** the GitHub repo (`citizenfx/screenshot-basic`) has no built files and normally builds itself at startup with FXServer's `yarn` / `webpack` resources. To avoid needing those, build it once: `npm install --ignore-scripts`, then run webpack 4 on `client.config.js`, `server.config.js` and `ui.config.js` (Node 17+ needs `NODE_OPTIONS=--openssl-legacy-provider`). Copy `dist/client.js`, `dist/server.js` and `dist/ui.html` into `resources/[standalone]/screenshot-basic/dist/` with an fxmanifest that drops the `dependency 'yarn'`, `dependency 'webpack'` and `webpack_config` lines.
+
 **Garage:** parked vehicles have a key button for **valet delivery**: the vehicle is brought to the nearest road (within 80 m) for `Valet.Fee` from the bank; refunded if it cannot be spawned.
 
 **Tablet:** the `tablet` item opens a menu: **MDT** and **Dispatch** for police / EMS, **My home** (apartments) and the phone. Give it with your admin tools; the image is a placeholder copy of `phone.png`.
