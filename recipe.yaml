@@ -38,7 +38,7 @@ tasks:
   # VeylCore resources, pinned to a tested commit. Update `ref` when you release a new version.
   - action: download_github
     src: https://github.com/VeylCore0/VeylCore
-    ref: 57a2b977ec2f1abfe51473aac4d771bfa65bed44
+    ref: e0bc9ef8361ea76d74518436c789dc3083c17e23
     subpath: resources/[veyl]
     dest: ./resources/[veyl]
 
