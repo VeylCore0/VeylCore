@@ -82,8 +82,8 @@ local function refresh(data)
     local cfg = C.Jobs[run.job]
     if run.kind == 'haul' then
         setBlip(run.target, run.step == 'deliver' and 'Drop-off' or 'Depot', 21)
-    elseif run.kind == 'route' then
-        setBlip(run.target, run.index and run.index <= run.total and ('Bins %d/%d'):format(run.index, run.total) or 'Depot', 25)
+    elseif run.kind == 'bins' then
+        if run.target then setBlip(run.target, 'Depot (quota done)', 25) end
         if run.carrying then carryBag() else dropBag() end
     elseif run.kind == 'fare' then
         setBlip(run.target, run.step == 'pickup' and 'Passenger' or 'Destination', 5)
@@ -91,12 +91,12 @@ local function refresh(data)
     elseif run.kind == 'tow' then
         setBlip(run.target, run.step == 'hook' and 'Breakdown' or 'Tow yard', 47)
     end
-    if cfg and run.kind ~= 'route' then dropBag() end
+    if cfg and run.kind ~= 'bins' then dropBag() end
 end
 
 -- Markers and prompts near the current target -----------------------------------------------
 local busy = false
-local function act(action, label, ms)
+local function act(action, label, ms, arg)
     if busy then return end
     busy = true
     CreateThread(function()
@@ -104,7 +104,7 @@ local function act(action, label, ms)
             local ok = vlib.progress({ label = label, duration = ms, canCancel = true, disable = { move = true, car = action ~= 'pickup' and action ~= 'dropoff', combat = true } })
             if not ok then busy = false return end
         end
-        local res = cb('act', action)
+        local res = cb('act', action, arg)
         Veyl.NotifyResult(res)
         if res.ok and res.data then
             if action == 'pickup' and passenger then
@@ -124,11 +124,11 @@ end
 CreateThread(function()
     while true do
         local sleep = 1000
-        if run and run.target then
+        if run and (run.target or run.kind == 'bins') then
             local ped = PlayerPedId()
             local pc = GetEntityCoords(ped)
             local t = run.target
-            local d = #(pc - vector3(t.x, t.y, t.z))
+            local d = t and #(pc - vector3(t.x, t.y, t.z)) or math.huge
             local inVeh = GetVehiclePedIsIn(ped, false)
             local myVeh = vehicle()
             if d < 60.0 then
@@ -138,9 +138,9 @@ CreateThread(function()
             local prompt, action, label, ms
             if run.kind == 'haul' and run.step == 'deliver' and d < 10.0 and inVeh == 0 then
                 prompt, action, label, ms = 'Unload the truck', 'unload', 'Unloading', C.Jobs.trucker.unloadSeconds * 1000
-            elseif run.kind == 'route' and run.index <= run.total then
-                if not run.carrying and d < 4.0 and inVeh == 0 then prompt, action, label, ms = 'Take a bag from the bins', 'bag', 'Grabbing a bag', 2500
-                elseif run.carrying and myVeh ~= 0 and #(pc - GetEntityCoords(myVeh)) < 6.0 then prompt, action, label, ms = 'Throw the bag in the truck', 'throw', 'Throwing', 1200 end
+            elseif run.kind == 'bins' then
+                -- Taking trash is on the bins themselves (target any trash can or dumpster).
+                if run.carrying and myVeh ~= 0 and #(pc - GetEntityCoords(myVeh)) < 6.0 then prompt, action, label, ms = 'Throw the bag in the truck', 'throw', 'Throwing', 1200 end
                 if run.carrying then sleep = 0 end
             elseif run.kind == 'fare' and inVeh ~= 0 and inVeh == myVeh and d < 15.0 then
                 if run.step == 'pickup' then prompt, action = 'Pick up the passenger', 'pickup' else prompt, action = 'Drop off the passenger', 'dropoff' end
@@ -167,7 +167,7 @@ local function start(job)
     local cfg = C.Jobs[job]
     local text = {
         haul = ('Take a load across the state. $%d plus $%d per km, and $%d for bringing the truck back.'):format(cfg.base or 0, cfg.perKm or 0, cfg.returnBonus or 0),
-        route = ('Empty %d bin stops. $%d per bag and $%d for finishing. Recyclables sometimes turn up.'):format(cfg.stopsPerRun or 0, cfg.payPerBag or 0, cfg.completionBonus or 0),
+        bins = ('Take trash from any trash can or dumpster (with your truck nearby) and throw it in the truck. $%d per bag, $%d bonus for %d bags. Recyclables sometimes turn up.'):format(cfg.payPerBag or 0, cfg.completionBonus or 0, cfg.quota or 0),
         fare = ('Pick up fares around the city. $%d plus $%d per km and tips.'):format(cfg.base or 0, cfg.perKm or 0),
         tow = ('Tow broken-down vehicles to the yard. $%d per tow.'):format(cfg.payPerTow or 0),
     }
@@ -176,6 +176,21 @@ local function start(job)
     Veyl.NotifyResult(res)
     if res.ok then refresh(res.data) end
 end
+
+-- Garbage: every trash can and dumpster is a target during a sanitation shift.
+CreateThread(function()
+    while GetResourceState('veyl_target') ~= 'started' do Wait(500) end
+    local g = C.Jobs.garbage
+    if not g or not g.binModels then return end
+    exports.veyl_target:addModel(g.binModels, {
+        { name = 'veyl_cjob_bin', label = 'Take the trash', icon = 'hand', distance = 2.5, priority = 4,
+          canInteract = function() return run ~= nil and run.kind == 'bins' and not run.carrying and not busy and GetVehiclePedIsIn(PlayerPedId(), false) == 0 end,
+          onSelect = function(d)
+              local c = GetEntityCoords(d.entity)
+              act('bag', 'Grabbing the trash', 2500, { x = c.x, y = c.y, z = c.z })
+          end },
+    })
+end)
 
 AddEventHandler('veyl_citizenjobs:start', function(a) CreateThread(function() start(a.job) end) end)
 AddEventHandler('veyl_citizenjobs:finish', function()

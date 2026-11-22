@@ -17,7 +17,7 @@ Talk to the depot worker, then choose **Start a shift**. If you are unemployed y
 | Job | Depot | What you do | Pay |
 |---|---|---|---|
 | **Trucking** (`trucker`) | Port of Los Santos | Drive the box truck to the marked drop-off and unload it (8 s). Bring the truck back for a bonus | $150 + $95 per km, + $120 for returning the truck |
-| **Sanitation** (`garbage`) | Strawberry | 8 bin stops. At each: take a bag from the bins, throw it in the back of the truck (1–3 bags per stop). 35 % chance per bag of a recyclable (plastic, glass, rubber, scrap metal) | $22 per bag, + $200 for finishing the route and bringing the truck back (paid at the depot) |
+| **Sanitation** (`garbage`) | Strawberry | Target **any** trash can or dumpster (truck within 50 m) → *Take the trash*, then throw the bag in the back of the truck. A bin is empty for 10 min after use. Quota 20 bags. 35 % chance per bag of a recyclable (plastic, glass, rubber, scrap metal) | $22 per bag, + $200 for the quota with the truck back at the depot (paid when you finish) |
 | **Taxi** (`taxi`) | Mirror Park | Pull up at the marked passenger, drive them to their destination. A new fare is marked straight after | $40 + $110 per km + tip, paid on each drop-off |
 | **Tow** (`tow`) | Davis | Drive the flatbed to the breakdown, hook it (5 s, the car sits on the bed), drop it at the yard | $320 per tow, paid on each drop |
 

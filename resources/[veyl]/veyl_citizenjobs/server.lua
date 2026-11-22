@@ -4,6 +4,7 @@
 local C = CitizenJobsConfig
 local runs = {}           -- [citizenid] = run
 local runByVehicle = {}   -- [vehicleId] = citizenid
+local binsUsed = {}       -- ["x:y"] = os.time() when the bin has trash again
 
 Veyl.Startup({ 'veyl_core', 'veyl_vehicles' }, function() return true end)
 
@@ -49,10 +50,9 @@ local function view(run)
     local v = { id = run.id, job = run.job, kind = cfg.kind, netId = run.netId, plate = run.plate, earned = run.earned, step = run.step }
     if cfg.kind == 'haul' then
         v.target = run.step == 'deliver' and C.Jobs[run.job].destinations[run.dest] or depotPos(cfg)
-    elseif cfg.kind == 'route' then
-        v.target = cfg.stops[run.stops[run.index]]
-        v.index, v.total, v.bagsLeft, v.carrying, v.bags = run.index, #run.stops, run.bagsLeft, run.carrying, run.bags
-        if run.index > #run.stops then v.target = depotPos(cfg) end
+    elseif cfg.kind == 'bins' then
+        v.bags, v.quota, v.carrying = run.bags, cfg.quota, run.carrying
+        v.target = run.bags >= cfg.quota and depotPos(cfg) or nil
     elseif cfg.kind == 'fare' then
         v.target = run.step == 'pickup' and cfg.spots[run.from] or cfg.spots[run.to]
         v.ped = run.ped
@@ -159,10 +159,8 @@ Veyl.RegisterCallback('start', function(src, citizenid, job)
         vehicleId = veh.data.vehicleId, netId = veh.data.netId, plate = veh.data.plate, earned = 0, last = os.time(), n = 0 }
     if cfg.kind == 'haul' then
         run.dest, run.step = math.random(1, #cfg.destinations), 'deliver'
-    elseif cfg.kind == 'route' then
-        run.stops, run.index, run.bags, run.carrying = shuffle(#cfg.stops, cfg.stopsPerRun), 1, 0, false
-        run.bagsLeft = math.random(cfg.bagsPerStop[1], cfg.bagsPerStop[2])
-        run.step = 'route'
+    elseif cfg.kind == 'bins' then
+        run.bags, run.carrying, run.step = 0, false, 'collect'
     elseif cfg.kind == 'fare' then
         run.fares = 0
         newFare(run, cfg)
@@ -183,8 +181,8 @@ Veyl.RegisterCallback('finish', function(src, citizenid)
     if not near(src, depotPos(cfg), 6.0) then return Veyl.Err('TOO_FAR', 'Finish at the depot') end
     local back = vehicleNear(run, depotPos(cfg), 40.0)
     if cfg.kind == 'haul' and run.step == 'return' and back then pay(run, cfg.returnBonus, 'Trucking: truck returned', 'return') end
-    if cfg.kind == 'route' then
-        local pay1 = run.bags * cfg.payPerBag + ((run.index > #run.stops and back) and cfg.completionBonus or 0)
+    if cfg.kind == 'bins' then
+        local pay1 = run.bags * cfg.payPerBag + ((run.bags >= cfg.quota and back) and cfg.completionBonus or 0)
         if not pay(run, pay1, ('Sanitation route (%d bags)'):format(run.bags), 'route') then return Veyl.Err('INTERNAL', 'Payment failed, try again') end
     end
     local earned = run.earned
@@ -204,7 +202,7 @@ end, { cooldown = 2000 })
 ---------------------------------------------------------------------------
 local function tooFast(run) return os.time() - run.last < C.MinSecondsPerStop end
 
-Veyl.RegisterCallback('act', function(src, citizenid, action)
+Veyl.RegisterCallback('act', function(src, citizenid, action, arg)
     local run = activeRun(src, citizenid)
     if not run then return Veyl.Err('INVALID_STATE', 'No active shift') end
     local cfg = jobCfg(run.job)
@@ -221,22 +219,23 @@ Veyl.RegisterCallback('act', function(src, citizenid, action)
         return Veyl.Ok(view(run), ('Delivered. Paid $%d. Return the truck to the depot for a bonus, or finish there.'):format(math.floor(cfg.base + km * cfg.perKm)))
     end
 
-    if cfg.kind == 'route' then
-        if run.index > #run.stops then return Veyl.Err('INVALID_STATE', 'Route done. Head back to the depot.') end
-        local stop = cfg.stops[run.stops[run.index]]
+    if cfg.kind == 'bins' then
         if action == 'bag' then
             if run.carrying then return Veyl.Err('INVALID_STATE', 'Throw this bag in the truck first') end
-            if not near(src, stop, 5.0) then return Veyl.Err('TOO_FAR', 'Go to the bins') end
-            if run.bagsLeft == 0 then return Veyl.Err('INVALID_STATE', 'These bins are empty') end
-            if run.firstBagAt == nil and tooFast(run) then return Veyl.Err('TOO_FAST', 'Slow down') end
-            run.firstBagAt = run.firstBagAt or os.time()
-            run.carrying = true
+            local p = type(arg) == 'table' and tonumber(arg.x) and tonumber(arg.y) and tonumber(arg.z) and vector3(arg.x + 0.0, arg.y + 0.0, arg.z + 0.0)
+            if not p or not near(src, p, 3.0) then return Veyl.Err('TOO_FAR', 'Stand at a trash can') end
+            local v = vehicleOf(run)
+            if not v or #(v.coords - p) > cfg.truckRange then return Veyl.Err('TOO_FAR', 'Bring your garbage truck closer') end
+            local key = ('%d:%d'):format(math.floor(p.x), math.floor(p.y))
+            if (binsUsed[key] or 0) > os.time() then return Veyl.Err('EMPTY', 'This one is empty. Try another bin.') end
+            if os.time() - (run.lastBag or 0) < 3 then return Veyl.Err('TOO_FAST', 'Slow down') end
+            binsUsed[key], run.lastBag, run.carrying = os.time() + cfg.binCooldownMinutes * 60, os.time(), true
             return Veyl.Ok(view(run))
         elseif action == 'throw' then
             if not run.carrying then return Veyl.Err('INVALID_STATE', 'Grab a bag first') end
             local v = vehicleOf(run)
             if not v or not near(src, v.coords, 7.0) then return Veyl.Err('TOO_FAR', 'Throw it in the back of the truck') end
-            run.carrying, run.bags, run.bagsLeft = false, run.bags + 1, run.bagsLeft - 1
+            run.carrying, run.bags = false, run.bags + 1
             local r = cfg.recyclables
             if r and math.random() < r.chance then
                 local total, pick = 0, nil
@@ -248,12 +247,8 @@ Veyl.RegisterCallback('act', function(src, citizenid, action)
                     if g.ok then Veyl.Notify(src, ('Found something useful: %s'):format(pick:gsub('_', ' ')), 'success') end
                 end
             end
-            local msg
-            if run.bagsLeft <= 0 then
-                run.index, run.last, run.firstBagAt = run.index + 1, os.time(), nil
-                if run.index <= #run.stops then run.bagsLeft = math.random(cfg.bagsPerStop[1], cfg.bagsPerStop[2]) end
-                msg = run.index > #run.stops and 'Route done! Take the truck back to the depot.' or ('Stop done (%d/%d)'):format(run.index - 1, #run.stops)
-            end
+            local msg = run.bags == cfg.quota and ('Quota done (%d bags)! Take the truck back to the depot for your bonus, or keep collecting.'):format(run.bags)
+                or ('%d / %d bags'):format(run.bags, cfg.quota)
             return Veyl.Ok(view(run), msg)
         end
     end

@@ -17,19 +17,25 @@ CitizenJobsConfig = {
                 vector3(-438.4, -2795.0, 6.0), vector3(2555.8, 2602.9, 37.9), vector3(-1140.0, -1993.0, 13.2),
             },
         },
-        -- Garbage: empty the bins on your route into the truck. Recyclables sometimes turn up.
+        -- Garbage: take trash from ANY trash can or dumpster near your truck and throw it in the back.
+        -- Collect the quota for a bonus. Each bin is empty for a while after it was used. Recyclables sometimes turn up.
         garbage = {
-            label = 'Sanitation', kind = 'route', blip = { sprite = 318, colour = 25 },
+            label = 'Sanitation', kind = 'bins', blip = { sprite = 318, colour = 25 },
             depot = { model = 's_m_y_garbage', coords = vector4(-321.7, -1545.8, 31.0, 0.0) },
             spawn = vector4(-334.9, -1562.9, 25.2, 60.0), vehicle = 'trash2', platePrefix = 'TRSH',
-            stopsPerRun = 8, bagsPerStop = { 1, 3 }, payPerBag = 22, completionBonus = 200,
+            quota = 20, payPerBag = 22, completionBonus = 200,
+            truckRange = 50.0,             -- the truck must be this close to the bin
+            binCooldownMinutes = 10,       -- a bin is empty this long after someone emptied it
             recyclables = { chance = 0.35, items = { plastic = 40, glass = 25, rubber = 20, scrap_metal = 15 } },
-            stops = {
-                vector3(-174.9, -1290.2, 31.3), vector3(-89.3, -1325.6, 29.3), vector3(31.6, -1307.1, 29.3),
-                vector3(126.0, -1307.9, 29.2), vector3(220.9, -1391.6, 30.5), vector3(355.2, -1466.0, 29.3),
-                vector3(462.7, -1477.4, 29.3), vector3(492.5, -1281.2, 29.3), vector3(401.1, -1094.1, 29.4),
-                vector3(275.2, -1053.0, 29.2), vector3(147.4, -1036.5, 29.3), vector3(46.5, -1077.4, 29.4),
-                vector3(-56.0, -1219.2, 28.8), vector3(-251.1, -1172.0, 23.0), vector3(-298.8, -1352.6, 31.3),
+            binModels = {
+                'prop_bin_01a', 'prop_bin_02a', 'prop_bin_03a', 'prop_bin_04a', 'prop_bin_05a', 'prop_bin_06a', 'prop_bin_07a',
+                'prop_bin_07b', 'prop_bin_07c', 'prop_bin_07d', 'prop_bin_08a', 'prop_bin_08open', 'prop_bin_09a', 'prop_bin_10a',
+                'prop_bin_10b', 'prop_bin_11a', 'prop_bin_11b', 'prop_bin_12a', 'prop_bin_13a', 'prop_bin_14a', 'prop_bin_14b',
+                'prop_bin_beach_01a', 'prop_bin_beach_01d', 'prop_bin_delpiero', 'prop_bin_delpiero_b', 'zprop_bin_01a_old',
+                'prop_cs_bin_01', 'prop_cs_bin_01_skinned', 'prop_cs_bin_02', 'prop_cs_bin_03',
+                'prop_dumpster_01a', 'prop_dumpster_02a', 'prop_dumpster_02b', 'prop_dumpster_3a', 'prop_dumpster_4a', 'prop_dumpster_4b',
+                'prop_recyclebin_01a', 'prop_recyclebin_02_c', 'prop_recyclebin_02_d', 'prop_recyclebin_02a', 'prop_recyclebin_02b',
+                'prop_recyclebin_03_a', 'prop_recyclebin_04_a', 'prop_recyclebin_04_b', 'prop_recyclebin_05_a',
             },
         },
         -- Taxi: pick up a fare, drive them, get paid by distance. Fares keep coming until you finish.
