@@ -324,10 +324,20 @@ Veyl.AsyncExport('StoreOwnedVehicle', function(src, citizenid, netId, garage, pr
         clean = clean or {}
         for k, val in pairs(v.authProps) do if k ~= 'dirt' then clean[k] = val end end
     end
-    local affected = MySQL.update.await([[UPDATE veyl_player_vehicles SET state = 'garaged', garage = ?, fuel = ?, engine = ?, body = ?,
-        props = COALESCE(?, props) WHERE id = ? AND citizenid = ? AND state = 'out']],
-        { garage, fuel or 100.0, math.max(0.0, GetVehicleEngineHealth(entity)), math.max(0.0, GetVehicleBodyHealth(entity)),
-          clean and json.encode(clean) or nil, v.ownedId, citizenid })
+    -- Engine and body both reading exactly 0 means the server has no synced values yet (e.g. parked right after it
+    -- spawned), not a wreck: keep the saved condition (COALESCE with NULL) instead of saving a ruined car.
+    local eng, bod = GetVehicleEngineHealth(entity), GetVehicleBodyHealth(entity)
+    local unsynced = eng == 0 and bod == 0
+    -- Only the columns we have values for (a nil inside a parameter list would shift every later parameter).
+    local sets, args = { "state = 'garaged'", 'garage = ?', 'fuel = ?' }, { garage, fuel or 100.0 }
+    if not unsynced then
+        sets[#sets + 1] = 'engine = ?' args[#args + 1] = math.max(0.0, eng)
+        sets[#sets + 1] = 'body = ?' args[#args + 1] = math.max(0.0, bod)
+    end
+    if clean then sets[#sets + 1] = 'props = ?' args[#args + 1] = json.encode(clean) end
+    args[#args + 1] = v.ownedId
+    args[#args + 1] = citizenid
+    local affected = MySQL.update.await(('UPDATE veyl_player_vehicles SET %s WHERE id = ? AND citizenid = ? AND state = \'out\''):format(table.concat(sets, ', ')), args)
     if affected ~= 1 then return Veyl.Err('DATABASE_ERROR', 'Could not park the vehicle') end
     removeTracking(id, 'stored', true)
     return Veyl.Ok()

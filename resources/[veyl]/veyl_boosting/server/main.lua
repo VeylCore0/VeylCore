@@ -136,15 +136,19 @@ end, { cooldown = 500 })
 Veyl.RegisterCallback('deliver', function(src, citizenid)
     local c = contracts[citizenid]
     if not c or not c.hotwired then return Veyl.Err('NOT_FOUND', 'No car to deliver') end
+    if c.delivering then return Veyl.Err('BUSY', 'Already being delivered') end
     local ent = entityOf(c)
     if ent == 0 or #(GetEntityCoords(ent) - c.drop) > C.DropRadius then return Veyl.Err('TOO_FAR', 'Park it at the drop-off') end
     local ped = GetPlayerPed(src)
     if GetVehiclePedIsIn(ped, false) == ent then return Veyl.Err('INVALID_STATE', 'Get out and walk away') end
     local cl = c.cfg
     local pay = math.random(cl.pay[1], cl.pay[2])
+    -- 0 exactly means the server has no synced value yet (not a wreck): pay in full rather than guess.
     local health = GetVehicleBodyHealth(ent)
-    if health < 700 then pay = math.floor(pay * math.max(0.3, health / 1000)) end
-    core('CreditOnce', citizenid, 'cash', pay, ('Boosting: %s'):format(c.model), ('boost:%s:%d'):format(citizenid, os.time()))
+    if health > 0 and health < 700 then pay = math.floor(pay * math.max(0.3, health / 1000)) end
+    c.delivering = true
+    -- One payment per contract vehicle, whatever happens with repeated requests.
+    core('CreditOnce', citizenid, 'cash', pay, ('Boosting: %s'):format(c.model), ('boost:%s:%s'):format(citizenid, c.vehicleId))
     MySQL.query.await('INSERT INTO veyl_boosting_rep (citizenid, rep, completed) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE rep = rep + VALUES(rep), completed = completed + 1',
         { citizenid, cl.gain })
     finish(citizenid)
