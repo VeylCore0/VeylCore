@@ -52,12 +52,6 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Store robberies:** registers and safes, a police minimum, a silent alarm and cooldowns.
 - **Migration tool** from QBCore or QBox, a **server health check** and **database backups**.
 
-## 🛠️ Next up: launch polish
-- **In-game acceptance testing** with real players, system by system.
-- **Item art** for weapons, ammo, fish, ingredients and medical items.
-- **Location pass:** hospital beds, businesses, prison and department points checked against our MLOs.
-- **Performance pass:** client and server timings on a full server.
-- **Clean install** from the txAdmin recipe, start to finish.
 
 ## ✅ Built, now testing: crime expansion
 - **Heists:** six Fleeca banks, the Paleto bank and Vangelico, with thermite, hacking, drills and marked bills.
@@ -89,6 +83,27 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - ✅ **Voicemail, call history and blocked numbers.**
 - ✅ **Phone looks:** wallpapers, ringtones, light and dark themes, and phone cases in your hand.
 - ✅ **Tablet:** an item that opens the MDT, dispatch and your home panel.
+
+## ✅ Built, now testing: customs and polish
+- ✅ **Veyl Customs:** live preview of your own car, Performance / Bodywork / Wheels / Paint / Lighting / Details, a Paint Studio with custom colours and finishes, saved builds with share codes, and server-priced checkout.
+- ✅ **Mechanic business:** quotes the customer approves, service bays, parts stock and orders, a workshop dashboard with team and history.
+- ✅ **New phone look:** a taller phone with a Dynamic Island for calls, weather and calendar widgets, home pages, search and drag-to-rearrange.
+- ✅ **New notifications and progress bars:** clean cards with a time line and counters, a progress card with time left and cancel, and hold-to-interact rings.
+- ✅ **Lockpick mini game** for store registers, safes, door locks and boosting.
+- ✅ **Cash as an item** that stays in sync with your money, so you can hand it over, drop it or stash it.
+- ✅ **Docs on GitBook**, synced from GitHub.
+
+## 🛠️ Next up: launch polish
+- **In-game testing** of everything above with real players, system by system.
+- **Item art:** about 120 items still show a placeholder (weapons, ammo, ores, hides, crops, drinks, fish, ingredients).
+- **Location pass:** job depots, rocks and farm points, crafting benches, buyers, customs shops, businesses, the plate shop and the insurance office checked in game.
+- **Performance pass:** client and server timings on a full server.
+- **Clean install** from the txAdmin recipe, start to finish.
+
+## 🔜 Then: finishing touches
+- **Phone:** sending photos in messages and on Flock, selfies, a drawn map in Maps, contact pictures and favourites, buying straight from Marketplace listings, and recorded voicemail.
+- **Customs:** test drives before you buy, a showroom, customer reviews, favourite mechanics, special-order parts, and lift and spray booth animations.
+- **Dealership:** test drives, financing and trade-ins; shared and job garages.
 
 ## 🔜 Then: housing and justice
 - **Housing:** houses and apartments to buy or rent across the city, keys, storage and furniture.
