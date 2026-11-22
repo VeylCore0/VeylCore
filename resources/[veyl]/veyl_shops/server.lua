@@ -35,6 +35,18 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        { id = '003_weapon_registry', sql = {
+            [[CREATE TABLE IF NOT EXISTS veyl_weapon_registry (
+                serial VARCHAR(16) NOT NULL,
+                citizenid VARCHAR(16) NOT NULL,
+                item VARCHAR(64) NOT NULL,
+                shop VARCHAR(64) NULL,
+                status ENUM('registered','stolen','seized') NOT NULL DEFAULT 'registered',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (serial),
+                KEY idx_cid (citizenid)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        } },
     })
     if not ok then return false end
     Reconcile(false)
@@ -95,7 +107,25 @@ local function settle(row, lines)
     local delivered, refunded = {}, 0
     for n, line in ipairs(lines) do
         local lineOp = ('%s:%d'):format(row.op_id, n)
-        local grant = inv('GiveItem', row.citizenid, line.item, line.count, nil, lineOp)
+        local grant
+        if line.item:sub(1, 7) == 'weapon_' then
+            -- Weapons are delivered one by one, each with its own registered serial number (stable per operation,
+            -- so a retried settlement gives the same serials and never registers twice).
+            grant = { ok = true }
+            for k = 1, line.count do
+                local serial = ('VL%08X'):format(GetHashKey(lineOp .. ':' .. k) & 0xFFFFFFFF)
+                local g = inv('GiveItem', row.citizenid, line.item, 1, { serial = serial }, lineOp .. ':' .. k)
+                if g.ok or g.code == 'DUPLICATE_OPERATION' then
+                    MySQL.insert.await('INSERT IGNORE INTO veyl_weapon_registry (serial, citizenid, item, shop) VALUES (?, ?, ?, ?)',
+                        { serial, row.citizenid, line.item, row.shop })
+                else
+                    grant = g
+                    break
+                end
+            end
+        else
+            grant = inv('GiveItem', row.citizenid, line.item, line.count, nil, lineOp)
+        end
         if grant.ok or grant.code == 'DUPLICATE_OPERATION' then
             delivered[#delivered + 1] = { item = line.item, count = line.count }
         elseif grant.code == 'TIMEOUT' then

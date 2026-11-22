@@ -12,6 +12,10 @@ RegisterNetEvent('veyl_inventory:weapon', function(w)
     local hash = joaat(w.hash)
     GiveWeaponToPed(ped, hash, w.ammoItem and (w.ammo or 0) or 1, false, true)
     if w.ammoItem then SetPedAmmo(ped, hash, w.ammo or 0) end
+    for _, a in ipairs(w.attachments or {}) do
+        local comp = ResolveComponent(hash, w.hash, a)
+        if comp then GiveWeaponComponentToPed(ped, hash, comp) end
+    end
     SetCurrentPedWeapon(ped, hash, true)
     if w.ammoItem and (w.ammo or 0) == 0 then vlib.notify({ message = ('%s drawn, but you have no ammo for it'):format(w.label), type = 'warning' }) end
 end)
@@ -66,3 +70,24 @@ RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
 end)
 
 exports('GetCurrentWeapon', function() return current end)
+
+--- The first component of an attachment this weapon accepts (or nil).
+function ResolveComponent(hash, weaponName, att)
+    local list = {}
+    for _, c in ipairs(att.components or {}) do list[#list + 1] = c end
+    if att.perWeapon then list[#list + 1] = att.perWeapon:format(weaponName:upper():gsub('^WEAPON_', '')) end
+    for _, c in ipairs(list) do
+        local ch = joaat(c)
+        if DoesWeaponTakeWeaponComponent(hash, ch) then return ch end
+    end
+    return nil
+end
+
+RegisterNetEvent('veyl_inventory:weapon:tryAttach', function(item, att)
+    if not current then return end
+    if ResolveComponent(joaat(current.hash), current.hash, att) then
+        TriggerServerEvent('veyl_inventory:weapon:attach', item)
+    else
+        vlib.notify({ message = ('That does not fit your %s'):format(current.label), type = 'error' })
+    end
+end)

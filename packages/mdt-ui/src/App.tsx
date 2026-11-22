@@ -14,7 +14,7 @@ interface Person extends Omit<PersonRow, 'warrants'> {
   gender?: number | string; nationality?: string; online: boolean; licences: { key: string; label: string; held: boolean }[];
   vehicles: { plate: string; model: string; state: string; stolen?: number; bolo?: number }[];
   citations: { id: number; amount: number; reason: string; officer_name: string; status: string; at: number }[];
-  warrants: Warrant[]; reports: ReportRow[]; notes: string; notesBy?: string; sentence?: { months: number; remaining: number } | null;
+  warrants: Warrant[]; reports: ReportRow[]; notes: string; weapons?: { serial: string; item: string; status: string; at: number }[]; notesBy?: string; sentence?: { months: number; remaining: number } | null;
 }
 interface Vehicle { plate: string; model?: string; state?: string; registered: boolean; owner?: { citizenid: string; name: string }; stolen: boolean; bolo: boolean; notes: string; flaggedBy?: string }
 interface Report { id?: number; type: string; title: string; body: string; author_name?: string; at?: number; people: { citizenid: string; role: string; name?: string }[]; charges?: string[] }
@@ -240,6 +240,14 @@ function PersonView({ cid, charges, canLicence, say, back, openVehicle, openRepo
             <button key={v.plate} className={`mdt-item ${v.stolen || v.bolo ? 'warn' : ''}`} onClick={() => openVehicle(v.plate)}>
               <strong className="mono">{v.plate}</strong><span>{v.model}</span><em>{v.state}{v.stolen ? ' · STOLEN' : ''}{v.bolo ? ' · BOLO' : ''}</em>
             </button>
+          ))}
+        </Section>
+        <Section title={`Registered weapons (${(p.weapons ?? []).length})`}>
+          {(p.weapons ?? []).length === 0 && <div className="v-muted small">None registered.</div>}
+          {(p.weapons ?? []).map((w) => (
+            <div key={w.serial} className={`mdt-item static ${w.status !== 'registered' ? 'warn' : ''}`}>
+              <strong className="mono">{w.serial}</strong><span>{w.item.replace(/^weapon_/, '')}</span><em>{w.status} · {date(w.at)}</em>
+            </div>
           ))}
         </Section>
         <Section title={`Reports (${p.reports.length})`}>

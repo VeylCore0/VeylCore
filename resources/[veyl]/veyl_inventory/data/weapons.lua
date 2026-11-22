@@ -14,6 +14,16 @@ return {
         ammo_sniper  = { label = 'Sniper Rounds', weight = 40, maxStack = 60 },
     },
 
+    -- Attachments: use one while a weapon is drawn. Each lists GTA components to try; the first the weapon accepts
+    -- is fitted. `perWeapon` builds a weapon-specific component (e.g. COMPONENT_PISTOL_CLIP_02).
+    attachments = {
+        att_suppressor = { label = 'Suppressor', weight = 200, components = { 'COMPONENT_AT_PI_SUPP', 'COMPONENT_AT_PI_SUPP_02', 'COMPONENT_AT_AR_SUPP', 'COMPONENT_AT_AR_SUPP_02', 'COMPONENT_AT_SR_SUPP', 'COMPONENT_AT_SR_SUPP_03' } },
+        att_flashlight = { label = 'Weapon Flashlight', weight = 100, components = { 'COMPONENT_AT_PI_FLSH', 'COMPONENT_AT_PI_FLSH_02', 'COMPONENT_AT_PI_FLSH_03', 'COMPONENT_AT_AR_FLSH' } },
+        att_extmag = { label = 'Extended Magazine', weight = 150, perWeapon = 'COMPONENT_%s_CLIP_02' },
+        att_scope = { label = 'Weapon Scope', weight = 250, components = { 'COMPONENT_AT_SCOPE_MACRO', 'COMPONENT_AT_SCOPE_MACRO_02', 'COMPONENT_AT_SCOPE_SMALL', 'COMPONENT_AT_SCOPE_SMALL_02', 'COMPONENT_AT_SCOPE_MEDIUM', 'COMPONENT_AT_SCOPE_LARGE', 'COMPONENT_AT_PI_RAIL' } },
+        att_grip = { label = 'Grip', weight = 150, components = { 'COMPONENT_AT_AR_AFGRIP', 'COMPONENT_AT_AR_AFGRIP_02' } },
+    },
+
     weapons = {
         -- Melee
         weapon_knife        = { label = 'Knife', weight = 300 },

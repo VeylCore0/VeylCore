@@ -17,6 +17,13 @@ function MergeWeapons(defs)
                 stack = true, maxStack = a.maxStack or 250, usable = false }
         end
     end
+    AttachmentDefs = data.attachments or {}
+    for name, a in pairs(AttachmentDefs) do
+        if not defs[name] then
+            defs[name] = { name = name, label = a.label, description = 'Use it while holding a compatible weapon.', image = a.image or (name .. '.png'),
+                weight = a.weight or 150, stack = true, maxStack = 10, use = { handler = 'weapon_attachment', durationMs = 0, consumeCount = 0 }, usable = true }
+        end
+    end
     for name, w in pairs(data.weapons or {}) do
         WeaponDefs[name] = { hash = w.hash or name, ammo = w.ammo, label = w.label }
         if not defs[name] then

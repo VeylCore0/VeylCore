@@ -160,6 +160,8 @@ local function profile(citizenid)
         WHERE citizenid = ? ORDER BY status = 'active' DESC, id DESC LIMIT 25]], { citizenid }) or {}
     p.reports = MySQL.query.await([[SELECT r.id, r.type, r.title, rp.role, UNIX_TIMESTAMP(r.created_at) AS at FROM veyl_mdt_report_people rp
         JOIN veyl_mdt_reports r ON r.id = rp.report_id WHERE rp.citizenid = ? ORDER BY r.id DESC LIMIT 25]], { citizenid }) or {}
+    p.weapons = MySQL.scalar.await("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'veyl_weapon_registry'") > 0
+        and MySQL.query.await([[SELECT serial, item, status, UNIX_TIMESTAMP(created_at) AS at FROM veyl_weapon_registry WHERE citizenid = ? ORDER BY created_at DESC LIMIT 25]], { citizenid }) or {}
     local prof = MySQL.single.await('SELECT notes, updated_by, UNIX_TIMESTAMP(updated_at) AS at FROM veyl_mdt_profiles WHERE citizenid = ?', { citizenid })
     p.notes = prof and prof.notes or ''
     p.notesBy = prof and prof.updated_by or nil
