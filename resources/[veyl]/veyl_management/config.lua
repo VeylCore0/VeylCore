@@ -7,6 +7,8 @@ ManagementConfig = {
         { job = 'police',    coords = vector3(461.45, -986.20, 30.73), label = 'Police management' },
         { job = 'ambulance', coords = vector3(311.21, -599.36, 43.29), label = 'EMS management' },
         { job = 'mechanic',  coords = vector3(-347.29, -133.27, 39.01), label = 'LS Customs management' },
+        { job = 'beanmachine', coords = vector3(-635.7, 227.9, 81.88), label = 'Bean Machine management' },
+        { job = 'burgershot', coords = vector3(-1178.1, -896.0, 13.97), label = 'Burger Shot management' },
     },
     OfficeRadius = 1.5,
 

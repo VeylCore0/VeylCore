@@ -54,4 +54,29 @@ return {
             ['2'] = { name = 'Owner', payment = 130, isboss = true },
         },
     },
+    -- Player-owned businesses (veyl_business): the owner holds the top (boss) grade.
+    beanmachine = {
+        label = 'Bean Machine',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Barista', payment = 30 },
+            ['1'] = { name = 'Shift Lead', payment = 45 },
+            ['2'] = { name = 'Manager', payment = 60, isboss = true },
+            ['3'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
+    burgershot = {
+        label = 'Burger Shot',
+        type = 'business',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Cook', payment = 30 },
+            ['1'] = { name = 'Shift Lead', payment = 45 },
+            ['2'] = { name = 'Manager', payment = 60, isboss = true },
+            ['3'] = { name = 'Owner', payment = 0, isboss = true },
+        },
+    },
 }
