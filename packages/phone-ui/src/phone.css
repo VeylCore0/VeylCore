@@ -389,3 +389,31 @@ button.ph-widget { cursor: pointer; }
 .ph-device.light .ph-search.inapp, .ph-device.light .ph-inline input, .ph-device.light .ph-form input, .ph-device.light .ph-form textarea { background: rgba(0, 0, 0, 0.05); color: #1d1d24; border-color: rgba(0, 0, 0, 0.12); }
 .ph-device.light .ph-btn.ghost { border-color: rgba(0, 0, 0, 0.2); color: #1d1d24; }
 .ph-device.light .sv-ico { background: rgba(0, 0, 0, 0.06); }
+
+/* Phase 2: camera, jobs, bills, music, news, racing */
+.cm-cam { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+.cm-preview { width: 100%; aspect-ratio: 16 / 10; border-radius: 0.9rem; background: rgba(0, 0, 0, 0.35); display: grid; place-items: center; overflow: hidden; text-align: center; padding: 0.4rem; }
+.cm-preview img, .cm-full { width: 100%; border-radius: 0.8rem; display: block; }
+.cm-shutter { width: 4rem; height: 4rem; border-radius: 50%; border: 4px solid #f4f4f6; background: rgba(255, 255, 255, 0.15); color: inherit; display: grid; place-items: center; cursor: pointer; }
+.cm-shutter:disabled { opacity: 0.5; }
+.cm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.25rem; }
+.cm-grid button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 0.4rem; overflow: hidden; background: rgba(255, 255, 255, 0.06); cursor: pointer; }
+.cm-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.jb-duty { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.75rem; border-radius: 0.9rem; background: rgba(255, 255, 255, 0.06); margin-bottom: 0.5rem; }
+.jb-app { padding: 0.65rem 0.75rem; border-radius: 0.9rem; background: rgba(255, 255, 255, 0.05); margin-bottom: 0.45rem; }
+.jb-app p { margin: 0.35rem 0 0.5rem; white-space: pre-wrap; font-size: 0.9em; }
+.bl-score { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem; border-radius: 0.9rem; background: rgba(255, 255, 255, 0.05); }
+.bl-dial { --p: 50%; flex: none; width: 5rem; height: 5rem; border-radius: 50%; display: grid; place-content: center; text-align: center;
+  background: radial-gradient(closest-side, #1c1826 78%, transparent 80%), conic-gradient(var(--accent) var(--p), rgba(255, 255, 255, 0.1) 0); }
+.ph-device.light .bl-dial { background: radial-gradient(closest-side, #f4f2f8 78%, transparent 80%), conic-gradient(var(--accent) var(--p), rgba(0, 0, 0, 0.1) 0); }
+.bl-dial strong { font-size: 1.3rem; line-height: 1; }
+.bl-dial span { font-size: 0.65rem; opacity: 0.7; }
+.mu-now { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem; border-radius: 0.9rem; background: linear-gradient(135deg, rgba(212, 72, 122, 0.35), rgba(139, 99, 214, 0.3)); }
+.mu-disc { width: 3.2rem; height: 3.2rem; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.3); }
+.mu-vol { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.6rem 0.2rem; font-size: 0.82em; }
+.mu-vol input { accent-color: var(--accent); }
+.mu-ctrl { display: flex; gap: 0.4rem; }
+.nw-flag { display: inline-block; margin-right: 0.35rem; padding: 0.05rem 0.35rem; border-radius: 0.3rem; background: #c23b3b; color: #fff; font-size: 0.7em; font-weight: 800; letter-spacing: 0.05em; }
+.nw-check { flex-direction: row !important; align-items: center; gap: 0.45rem !important; }
+.rc-board { margin: 0; padding: 0 0 0 1.4rem; }
+.rc-board li { display: flex; justify-content: space-between; padding: 0.45rem 0.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }

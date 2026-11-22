@@ -36,6 +36,15 @@ export function GarageApp() {
     await nui('waypoint', { x: r.data.x, y: r.data.y });
     toast(`Waypoint set: ${r.data.label}`);
   };
+  const valet = async (v: Vehicle) => {
+    setBusy(v.id);
+    const spot = await nui<{ x: number; y: number; z: number; h: number }>('valetSpot');
+    if (!spot.ok || !spot.data) { setBusy(null); toast(spot.message ?? 'Stand next to a road', 'error'); return; }
+    const r = await api<{ x: number; y: number }>('garageValet', v.id, spot.data);
+    setBusy(null);
+    toast(r.message ?? (r.ok ? 'On its way' : 'Valet unavailable'), r.ok ? undefined : 'error');
+    if (r.ok && r.data) { await nui('waypoint', r.data); void load(); }
+  };
   return (
     <div className="ph-appview">
       <AppHeader title="Garage" right={<button className="ph-icon-btn" aria-label="Refresh" onClick={() => void load()}><Icon name="rotate_left" size="1rem" /></button>} />
@@ -52,10 +61,11 @@ export function GarageApp() {
               <div className="muted gr-place">{v.state === 'out' ? 'Live location available' : v.place ?? 'Unknown location'}{v.state === 'impound' && v.impoundFee > 0 ? ` · $${v.impoundFee} fee` : ''}</div>
               <div className="gr-meters"><Meter icon="fuel" value={v.fuel} /><Meter icon="engine" value={v.engine} /><Meter icon="car" value={v.body} /></div>
             </div>
+            {v.state === 'garaged' && <button className="ph-icon-btn gr-go" disabled={busy !== null} aria-label={`Valet: bring ${v.name} to me`} title="Valet delivery" onClick={() => void valet(v)}><Icon name="key" size="1.1rem" /></button>}
             <button className="ph-icon-btn gr-go" disabled={busy !== null} aria-label={`Set waypoint to ${v.name}`} onClick={() => void locate(v)}><Icon name="pin" size="1.1rem" /></button>
           </div>
         ))}
-        {items && items.length > 0 && <div className="ph-help">Take vehicles out and park them at a garage. Tap the pin to set a waypoint.</div>}
+        {items && items.length > 0 && <div className="ph-help">Take vehicles out and park them at a garage. Tap the pin to set a waypoint, or the key to have a parked vehicle brought to the road next to you (valet, paid from your bank).</div>}
       </div>
     </div>
   );

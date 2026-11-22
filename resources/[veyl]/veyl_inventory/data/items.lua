@@ -43,6 +43,8 @@ return {
     radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.png', weight = 400, stack = false },
     repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.png', weight = 2500, stack = true, maxStack = 5 },
     phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false },
+    tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, description = 'MDT, dispatch and property management on a bigger screen.',
+        use = { handler = 'phone_tablet', durationMs = 0, consumeCount = 0 } },
     identity_card = {
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.png',
         weight = 10, stack = false, metadataSchema = 'identity_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 },

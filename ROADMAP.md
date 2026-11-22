@@ -73,31 +73,30 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Crafting:** benches, recipes and materials from the new jobs.
 - **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
 
-## 🛠️ In progress: phone 2.0
-- **Camera and gallery:** photos and selfies, albums, and sharing photos in messages and on Flock.
+## ✅ Built, now testing: phone 2.0
+- ✅ **Camera and gallery:** take photos and keep them in a gallery (needs the free screenshot-basic resource). Still to come: selfies, and sending photos in messages and on Flock.
 - ✅ **Maps:** GPS to city places, businesses and saved places, and sharing your live location.
 - ✅ **Services:** request police, EMS, mechanics, taxis and businesses, with a queue for whoever is on duty.
 - ✅ **Email:** citations, bills, receipts and job offers from businesses and the city.
-- **Jobs app:** job listings, applications and shift clock-in for the job you work.
-- **Property app:** listings, your keys, rent due and roommates.
-- **Garage app 2.0:** vehicle tracking, insurance and valet delivery.
-- **Bank app 2.0:** invoices and bills to pay, recurring payments and a credit score.
-- **Music:** Veyl Radio, playlists and a speaker you can play for people nearby.
-- **News app:** Weazel News articles and breaking alerts.
+- ✅ **Jobs app:** your jobs, clock in and out, the city job board, applications and an applicant inbox for bosses.
+- ✅ **Property app:** the Apartments app for your home, keys, rent and roommates.
+- ✅ **Garage app 2.0:** vehicle tracking and paid valet delivery to the road next to you. Insurance comes with the vehicles update.
+- ✅ **Bills app:** pay mechanic invoices and police citations, standing orders, and a credit score.
+- ✅ **Music:** Veyl Radio stations, internet radio, and a speaker that people nearby hear.
+- ✅ **News app:** Weazel News stories, a Weazel News job, and breaking alerts on every phone.
 - ✅ **Dark web:** the Silk Road app for black market orders, unlocked by a USB drive.
-- **Racing app:** street races, invites and leaderboards.
+- ✅ **Racing app:** record tracks, host and join races, checkpoints checked by the server, and leaderboards.
 - ✅ **Voicemail, call history and blocked numbers.**
 - ✅ **Phone looks:** wallpapers, ringtones, light and dark themes, and phone cases in your hand.
-- **Tablet:** a bigger screen for the MDT, business management and real estate.
+- ✅ **Tablet:** an item that opens the MDT, dispatch and your home panel.
 
 ## 🔜 Then: housing and justice
 - **Housing:** houses and apartments to buy or rent across the city, keys, storage and furniture.
 - **Real estate agents:** listings, viewings and sales.
 - **Justice:** lawyers, judges, court cases and fines that go to the city.
-- **News:** a Weazel News job with cameras and articles.
+- **News crews:** Weazel News cameras and microphones.
 
 ## 🌱 Later
-- **Racing:** street races with a phone app, tracks and leaderboards.
 - **Skills:** stamina, driving, shooting and fishing that improve as you play.
 - **Casino**, a **lottery** and arcade games.
 - **Web admin panel:** players, characters, logs and bans in a browser.

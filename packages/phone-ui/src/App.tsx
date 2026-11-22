@@ -17,6 +17,8 @@ import { MapsApp } from './apps/Maps';
 import { ServicesApp } from './apps/Services';
 import { MailApp } from './apps/Mail';
 import { VoicemailApp } from './apps/Voicemail';
+import { BillsApp, CameraApp, JobsApp, MusicApp, NewsApp, RacingApp, loadStations } from './apps/Phase2';
+import { syncSpeakers } from './music';
 
 // ---------------------------------------------------------------------------
 // Context shared by every app
@@ -100,6 +102,8 @@ export function App() {
     window.setTimeout(() => setBanners((b) => b.filter((x) => x.id !== n.id)), 4500);
   }, []);
 
+  // Phones playing out loud nearby (volume by distance from the client).
+  useNuiMessage<{ id: number; station: string; volume: number }[]>('phone:speakers', (list) => { void loadStations().then(() => syncSpeakers(list ?? [])); });
   useNuiMessage<{ event: string; data: any }>('phone:push', ({ event, data }) => {
     const s = settingsRef.current;
     if (event === 'message') {
@@ -504,6 +508,12 @@ function AppHost({ app }: { app: string }) {
     case 'services': return <ServicesApp />;
     case 'mail': return <MailApp />;
     case 'voicemail': return <VoicemailApp />;
+    case 'camera': return <CameraApp />;
+    case 'jobs': return <JobsApp />;
+    case 'bills': return <BillsApp />;
+    case 'music': return <MusicApp />;
+    case 'news': return <NewsApp />;
+    case 'racing': return <RacingApp />;
     default: return <div className="ph-empty">This app is not available.</div>;
   }
 }

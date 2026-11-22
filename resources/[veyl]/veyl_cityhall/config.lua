@@ -47,5 +47,7 @@ CityHallConfig = {
           location = vector3(298.6, -584.5, 43.3), locationLabel = 'Pillbox Hill Medical Center' },
         { job = 'mechanic', description = 'Repair and customise vehicles at LS Customs.', apply = 'Ask the shop owner for an interview.',
           location = vector3(-347.3, -133.5, 39.0), locationLabel = 'LS Customs, Burton' },
+        { job = 'weazel', description = 'Report on the city for Weazel News and publish to every phone.', apply = 'Apply through the Jobs app on your phone.',
+          location = vector3(-598.9, -929.9, 23.9), locationLabel = 'Weazel Plaza, Little Seoul' },
     },
 }

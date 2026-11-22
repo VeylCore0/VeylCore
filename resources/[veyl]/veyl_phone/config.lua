@@ -38,6 +38,18 @@ PhoneConfig = {
           description = 'Receipts, bills, job offers and messages from businesses and the city.' },
         { id = 'voicemail', label = 'Voicemail', enabled = true, preinstalled = true, category = 'Utilities',
           description = 'Messages people left when you could not answer, and leaving your own.' },
+        { id = 'camera', label = 'Camera', enabled = true, preinstalled = true, category = 'Photo',
+          description = 'Take photos (needs screenshot-basic) and keep them in your gallery.' },
+        { id = 'jobs', label = 'Jobs', enabled = true, preinstalled = true, category = 'Work',
+          description = 'Your jobs, clock in and out, the city job board and applications.' },
+        { id = 'bills', label = 'Bills', enabled = true, preinstalled = true, category = 'Finance',
+          description = 'Pay invoices and citations, set up standing orders, see your credit score.' },
+        { id = 'music', label = 'Music', enabled = true, preinstalled = false, category = 'Entertainment',
+          description = 'Radio stations in your ears, or out loud for everyone nearby.' },
+        { id = 'news', label = 'News', enabled = true, preinstalled = true, category = 'News',
+          description = 'Weazel News stories and breaking alerts.' },
+        { id = 'racing', label = 'Racing', enabled = true, preinstalled = false, category = 'Vehicles',
+          description = 'Record tracks, host and join races, and the leaderboards.' },
     },
 
     Flock = { PostLength = 280, PageSize = 20, PostCooldownMs = 5000, MaxMentions = 5 },
@@ -79,6 +91,24 @@ PhoneConfig = {
 
     Mail = { Max = 200 },
     Voicemail = { Max = 50, Length = 500 },
+
+    -- Phase 2 apps
+    Camera = { Max = 60, Quality = 0.55 },          -- photos per player; JPEG quality (lower = smaller rows)
+    Valet = { Fee = 250 },                           -- bank charge to have a garaged vehicle brought to you
+    Standing = { Max = 5, MaxAmount = 50000 },       -- standing orders per player and per payment
+    Music = {
+        SpeakerRange = 30.0,                         -- metres other players hear a phone playing out loud
+        -- Built-in stations are generated in the phone (no stream needed). Add internet radio with
+        -- { id = 'myradio', label = 'My Radio', url = 'https://...' } (the URL must allow cross-origin audio).
+        Stations = {
+            { id = 'veyl', label = 'Veyl Radio', style = 'synth' },
+            { id = 'lofi', label = 'Lo-Fi Beach', style = 'lofi' },
+            { id = 'night', label = 'Night Drive', style = 'night' },
+        },
+    },
+    News = { Jobs = { 'weazel' } },                  -- jobs allowed to publish (on duty)
+    Racing = { JoinRadius = 60.0 },                  -- metres from the start line to join a race
+    Tablet = { Mdt = 'mdt', Dispatch = 'dispatch' }, -- commands opened from the tablet menu
 
     Wallpapers = { 'aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono' },
     Accents = { '#b892f4', '#7aa7ff', '#5fd3a5', '#f2c66d', '#ef8f96', '#e3e3ea' },

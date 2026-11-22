@@ -270,3 +270,12 @@ RegisterCommand('licence', function(src, args)
     Veyl.Notify(target, ('Your %s was %s.'):format(label:lower(), state == 'on' and 'granted' or 'revoked'), state == 'on' and 'success' or 'warning')
     Veyl.Audit(src, 'cityhall_licence', { target = tpd.citizenid, licence = key, state = state })
 end, false)
+
+-- The job board (used by the phone's Jobs app).
+exports('GetJobBoard', function()
+    local out = {}
+    for _, j in ipairs(CityHallConfig.JobBoard or {}) do
+        out[#out + 1] = { job = j.job, description = j.description, apply = j.apply, locationLabel = j.locationLabel }
+    end
+    return out
+end)

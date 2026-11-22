@@ -176,8 +176,8 @@ The server suite covered:
 ## Limitations
 
 - **Calls:** off until pma-voice is installed. No speakerphone.
-- **Camera and gallery:** not built. No screenshot resource is installed.
-- **Not built yet (hidden):** business directory, jobs, services/dispatch, maps, properties, deliveries, events and criminal contacts.
+- **Camera and gallery:** needs the free `screenshot-basic` resource. Without it the Camera app shows "The server needs the screenshot-basic resource for photos". No selfies yet.
+- **Not built yet:** business directory, deliveries, events, criminal contacts, photo messages and vehicle insurance.
 - **Flock:** no images. Posts are text only, because there is no screenshot resource.
 - **Badges:** held in memory. Resources should re-send them on `veyl_phone:sessionStarted`.
 
@@ -212,3 +212,24 @@ exports.veyl_phone:SendMail(citizenid, 'Sender name', 'Subject', 'Body text')
 ```
 
 Tables: `veyl_phone_places`, `veyl_phone_shared_locations`, `veyl_phone_service_requests`, `veyl_phone_mail`, `veyl_phone_voicemail` (migration `003_phone2`).
+
+## Phone 2.0, phase 2
+
+| App | What it does |
+|---|---|
+| **Camera** | Takes a photo of the game view with `screenshot-basic` (`ensure screenshot-basic` before `veyl_phone`) and saves it to the **Gallery** tab (up to `Camera.Max`, JPEG quality `Camera.Quality`). Tap a photo to view or delete it |
+| **Jobs** | Your jobs with grade and pay, *Clock in / out*, *Make main*. The **Job board** lists City Hall's board (`exports.veyl_cityhall:GetJobBoard()`); jobs you cannot walk into get *Apply*. Bosses get an **Applicants** tab and a notification for each application |
+| **Bills** | Unpaid mechanic invoices and police citations, paid from the bank with the same operation ids as the in-person flows (`invoice:<id>`, `citation:<id>`), so a bill is never charged twice. **Standing orders** to any phone number every 1–30 days (checked every 5 minutes; three failures cancel it). **Credit score** 300–850 from bills paid, bills unpaid, failed standing orders and bank balance |
+| **Music** | Built-in stations generated in the phone (Veyl Radio, Lo-Fi Beach, Night Drive) plus any internet radio in `Music.Stations`. Keeps playing with the phone closed. **Speaker on** plays it for everyone within `Music.SpeakerRange` m, louder the closer they are |
+| **News** | Weazel News stories. On-duty `weazel` job members (`News.Jobs`) get a pen button; *Breaking news* notifies every online phone |
+| **Racing** | **+** records a track: drive it and tap *Add checkpoint* (2–40). *Host* opens a race; players within `Racing.JoinRadius` m of the start *Join*; the host *Starts* (5 s countdown). Checkpoints are checked by the server (position, order, start time); finish times go to the leaderboard (*Times*). `/quitrace` leaves |
+
+**Garage:** parked vehicles have a key button for **valet delivery**: the vehicle is brought to the nearest road (within 80 m) for `Valet.Fee` from the bank; refunded if it cannot be spawned.
+
+**Tablet:** the `tablet` item opens a menu: **MDT** and **Dispatch** for police / EMS, **My home** (apartments) and the phone. Give it with your admin tools; the image is a placeholder copy of `phone.png`.
+
+The Weazel News job (`weazel`: Reporter, Senior Reporter, Editor in Chief) is in `veyl_core/shared/jobs.lua` and on the City Hall job board.
+
+Tables: `veyl_phone_photos`, `veyl_phone_job_apps`, `veyl_phone_standing`, `veyl_phone_news`, `veyl_phone_race_tracks`, `veyl_phone_race_results` (migration `004_phone3`).
+
+Checked here: Lua parses, the page type-checks and builds, the new tables and their queries run on MariaDB. Not checked in game yet: photos (needs screenshot-basic), valet spawn, speaker audio between two players, a full race with two players, and the tablet menu.

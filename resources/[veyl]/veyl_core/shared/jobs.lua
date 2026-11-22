@@ -54,6 +54,17 @@ return {
             ['2'] = { name = 'Owner', payment = 130, isboss = true },
         },
     },
+    weazel = {
+        label = 'Weazel News',
+        type = 'civilian',
+        defaultDuty = false,
+        offDutyPay = false,
+        grades = {
+            ['0'] = { name = 'Reporter', payment = 50 },
+            ['1'] = { name = 'Senior Reporter', payment = 70 },
+            ['2'] = { name = 'Editor in Chief', payment = 100, isboss = true },
+        },
+    },
     -- Player-owned businesses (veyl_business): the owner holds the top (boss) grade.
     beanmachine = {
         label = 'Bean Machine',

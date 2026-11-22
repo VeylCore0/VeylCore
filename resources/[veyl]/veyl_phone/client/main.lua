@@ -171,6 +171,10 @@ local ALLOWED = {
     servicesData = true, serviceRequest = true, serviceTake = true, serviceClose = true,
     mailList = true, mailRead = true, mailDelete = true,
     voicemailList = true, voicemailLeave = true, voicemailRead = true, voicemailDelete = true,
+    photoSave = true, photoList = true, photoGet = true, photoDelete = true,
+    jobsData = true, jobsDuty = true, jobsPrimary = true, jobsApply = true, jobsAppClose = true, garageValet = true,
+    billsData = true, billPay = true, standingCreate = true, standingCancel = true, speakerPlay = true, speakerStop = true,
+    newsList = true, newsPost = true, raceData = true, raceBoard = true, raceTrackSave = true, raceHost = true, raceJoin = true, raceStart = true,
 }
 
 RegisterNUICallback('api', function(data, cb)

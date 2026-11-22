@@ -58,6 +58,8 @@ export const APP_STYLE: Record<string, { icon: string; color: string }> = {
   market: { icon: 'tag', color: '#c95d84' }, notes: { icon: 'note', color: '#d4a43c' }, calculator: { icon: 'calc', color: '#4b4a57' },
   maps: { icon: 'pin', color: '#3fa06b' }, services: { icon: 'bell', color: '#d0584f' }, mail: { icon: 'send', color: '#4b7fd6' },
   voicemail: { icon: 'call', color: '#7a5bc4' },
+  camera: { icon: 'camera', color: '#46464f' }, jobs: { icon: 'briefcase', color: '#c9883e' }, bills: { icon: 'receipt', color: '#2f8f74' },
+  music: { icon: 'mic', color: '#d4487a' }, news: { icon: 'note', color: '#c23b3b' }, racing: { icon: 'car', color: '#e0a63a' },
 };
 
 export const CONTACT_COLORS = ['#8b63d6', '#4aa39a', '#d08b4f', '#5b8bd6', '#c95d84', '#7aa34a', '#a07a5a', '#6a6a7a'];

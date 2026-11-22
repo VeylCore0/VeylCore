@@ -177,6 +177,44 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
             },
         },
         {
+            -- Phone 2.0, phase 2: camera, jobs, bank 2.0, news, racing
+            id = '004_phone3',
+            sql = {
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_photos (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, image LONGTEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), KEY idx_cid (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_job_apps (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, job VARCHAR(32) NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    name VARCHAR(64) NOT NULL, number VARCHAR(16) NULL, message VARCHAR(500) NOT NULL,
+                    status ENUM('sent','seen','closed') NOT NULL DEFAULT 'sent', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_job (job, status), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_standing (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, to_cid VARCHAR(16) NOT NULL,
+                    to_label VARCHAR(64) NOT NULL, amount INT UNSIGNED NOT NULL, every_days TINYINT UNSIGNED NOT NULL,
+                    note VARCHAR(80) NULL, next_at DATETIME NOT NULL, failures TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                    active TINYINT(1) NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_due (active, next_at), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_news (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, author_cid VARCHAR(16) NOT NULL, author VARCHAR(64) NOT NULL,
+                    title VARCHAR(120) NOT NULL, body TEXT NOT NULL, breaking TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_race_tracks (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, name VARCHAR(40) NOT NULL, creator_cid VARCHAR(16) NOT NULL,
+                    creator VARCHAR(64) NOT NULL, checkpoints LONGTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_phone_race_results (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, track_id INT UNSIGNED NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    name VARCHAR(64) NOT NULL, ms INT UNSIGNED NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_track (track_id, ms)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            },
+        },
+        {
             -- Phone 2.0, phase 1: maps, services, email, voicemail
             id = '003_phone2',
             sql = {
