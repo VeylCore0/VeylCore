@@ -31,6 +31,9 @@ Every sentence and release is kept in `veyl_prison_history` (who sentenced, who 
 
 Server exports: `Sentence(officerSrc, citizenid, months, reason)`, `GetSentence(citizenid)`, `Release(citizenid, by)`.
 
-## Not included yet
+## More
 
-Confiscating belongings on entry.
+- **Belongings:** everything except ID and licence cards (`KeepItems`) is taken on entry and handed back on release. If they are released while offline, or something does not fit, they get it at their next login.
+- **Canteen:** a free meal (sandwich and water) every 10 min.
+- **Offline time** (`CountOffline = true`): the sentence also runs down while logged out.
+- **Escapes** (`AllowEscape = true`): leaving the grounds is an escape instead of being put back. Police get an urgent "Prison break" dispatch call, the MDT gets a warrant, and the remaining time waits: the next sentence starts fresh with their belongings still kept.

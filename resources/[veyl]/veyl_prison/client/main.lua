@@ -32,6 +32,12 @@ local function addWork()
             options = { { label = s.label, icon = 'wrench', event = 'veyl_prison:work', args = { spot = i } } },
         })
     end
+    if C.Canteen then
+        workZones[#workZones + 1] = exports.veyl_interact:AddZone({
+            id = 'veyl_prison_canteen', coords = C.Canteen.coords, radius = 1.5, title = 'Canteen',
+            options = { { label = 'Get a meal', icon = 'burger', event = 'veyl_prison:canteen' } },
+        })
+    end
 end
 
 RegisterNetEvent('veyl_prison:state', function(st)
@@ -82,3 +88,6 @@ CreateThread(function()
 end)
 
 AddEventHandler('onResourceStop', function(res) if res == GetCurrentResourceName() then clearWork() end end)
+AddEventHandler('veyl_prison:canteen', function()
+    CreateThread(function() Veyl.NotifyResult(Veyl.Callback('veyl_prison', 'canteen')) end)
+end)

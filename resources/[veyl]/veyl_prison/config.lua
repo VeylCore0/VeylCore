@@ -11,6 +11,20 @@ PrisonConfig = {
     Release = vector4(1848.13, 2586.05, 45.67, 269.5),
     Grounds = { center = vector3(1690.0, 2580.0, 45.0), radius = 150.0 },
 
+    -- Belongings are taken on entry and handed back on release (even if released while offline: on next login).
+    Confiscate = true,
+    KeepItems = { identity_card = true, driver_license = true, weapon_license = true },
+
+    -- true: time also passes while the prisoner is logged out.
+    CountOffline = false,
+
+    -- false: leaving the grounds puts the prisoner back inside.
+    -- true: they escape. Police get a dispatch call, the MDT gets a warrant, and the sentence waits for their arrest.
+    AllowEscape = false,
+
+    -- Canteen: a free meal now and then.
+    Canteen = { coords = vector3(1781.1, 2557.9, 45.67), cooldownSeconds = 600, items = { { item = 'sandwich', count = 1 }, { item = 'water_bottle', count = 1 } } },
+
     -- Yard work: each finished job takes time off the sentence.
     Work = {
         MonthsOff = 1,

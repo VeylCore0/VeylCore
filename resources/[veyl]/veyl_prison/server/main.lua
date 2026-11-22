@@ -7,7 +7,7 @@
 local C = PrisonConfig
 local inmates = {} -- [src] = { citizenid, remaining, months, lastWork }
 
-Veyl.Startup({ 'veyl_core' }, function()
+Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
     local ok = Veyl.Migrate({
         { id = '001_sentences', sql = {
             [[CREATE TABLE IF NOT EXISTS veyl_prison_sentences (
@@ -31,6 +31,11 @@ Veyl.Startup({ 'veyl_core' }, function()
                 PRIMARY KEY (id),
                 KEY idx_cid (citizenid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        } },
+        { id = '002_belongings_escape', sql = {
+            [[ALTER TABLE veyl_prison_sentences ADD COLUMN IF NOT EXISTS belongings LONGTEXT NULL,
+                ADD COLUMN IF NOT EXISTS escaped TINYINT(1) NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP]],
         } },
     })
     if not ok then return false end
@@ -57,30 +62,94 @@ local function push(src)
     exports.veyl_core:SetMetadata(src, 'jailtime', i and i.remaining or 0)
 end
 
-function LoadInmate(src)
-    local cid = src and Veyl.GetCitizenId(src)
-    if not cid then return end
-    local row = MySQL.single.await('SELECT months, remaining FROM veyl_prison_sentences WHERE citizenid = ?', { cid })
-    if row and row.remaining > 0 then
-        inmates[src] = { citizenid = cid, remaining = row.remaining, months = row.months, lastWork = 0 }
-        push(src)
-        TriggerClientEvent('veyl_prison:placeInside', src, C.Inside)
-    elseif row then
+local function decode(v)
+    if type(v) == 'table' then return v end
+    local ok, t = pcall(json.decode, v or '[]')
+    return ok and type(t) == 'table' and t or {}
+end
+
+--- Hands confiscated belongings back. Returns the items that did not fit (left in the record for next time).
+local function returnBelongings(src, cid)
+    local list = decode(MySQL.scalar.await('SELECT belongings FROM veyl_prison_sentences WHERE citizenid = ?', { cid }))
+    local failed = {}
+    for _, it in ipairs(list) do
+        local ok = exports.veyl_inventory:AddItem(src, it.name, it.count, it.metadata)
+        if not ok then failed[#failed + 1] = it end
+    end
+    if #list > 0 then
+        Veyl.Notify(src, #failed == 0 and 'Your belongings were returned.'
+            or ('Some belongings did not fit (%d). Make room and log in again to collect them.'):format(#failed), #failed == 0 and 'success' or 'warning', 8000)
+    end
+    return failed
+end
+
+--- Archives and removes a finished sentence (keeps it with remaining = 0 when belongings are still owed).
+local function finish(cid, by, failed)
+    MySQL.insert.await([[INSERT INTO veyl_prison_history (citizenid, months, reason, officer, sentenced_at, released_by)
+        SELECT citizenid, months, reason, officer, created_at, ? FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0]], { tostring(by or ''):sub(1, 64), cid })
+    if failed and #failed > 0 then
+        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, escaped = 0, belongings = ? WHERE citizenid = ?', { json.encode(failed), cid })
+    else
         MySQL.update.await('DELETE FROM veyl_prison_sentences WHERE citizenid = ?', { cid })
     end
 end
 
-local function release(src, cid, by)
-    if not MySQL.scalar.await('SELECT 1 FROM veyl_prison_sentences WHERE citizenid = ?', { cid }) then return false end
-    MySQL.insert.await([[INSERT INTO veyl_prison_history (citizenid, months, reason, officer, sentenced_at, released_by)
-        SELECT citizenid, months, reason, officer, created_at, ? FROM veyl_prison_sentences WHERE citizenid = ?]], { tostring(by or ''):sub(1, 64), cid })
-    MySQL.update.await('DELETE FROM veyl_prison_sentences WHERE citizenid = ?', { cid })
-    if src then
-        inmates[src] = nil
-        push(src)
-        TriggerClientEvent('veyl_prison:released', src, C.Release)
+function LoadInmate(src)
+    local cid = src and Veyl.GetCitizenId(src)
+    if not cid then return end
+    local row = MySQL.single.await([[SELECT months, remaining, escaped, UNIX_TIMESTAMP(updated_at) AS updated FROM veyl_prison_sentences
+        WHERE citizenid = ?]], { cid })
+    if not row then return end
+    if row.escaped == 1 then
+        Veyl.Notify(src, 'You escaped from Bolingbroke. The police are looking for you.', 'warning', 8000)
+        return
     end
+    local remaining = row.remaining
+    if remaining > 0 and C.CountOffline and row.updated then
+        remaining = math.max(0, remaining - math.floor((os.time() - row.updated) / C.SecondsPerMonth))
+        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = ? WHERE citizenid = ?', { math.max(remaining, 0), cid })
+    end
+    if remaining > 0 then
+        inmates[src] = { citizenid = cid, remaining = remaining, months = row.months, lastWork = 0 }
+        push(src)
+        TriggerClientEvent('veyl_prison:placeInside', src, C.Inside)
+    else
+        -- Released (or served) while away: hand back what is owed.
+        local failed = returnBelongings(src, cid)
+        finish(cid, row.remaining > 0 and 'served offline' or nil, failed)
+        if row.remaining > 0 then Veyl.Notify(src, 'Your sentence ended while you were away.', 'success', 8000) end
+    end
+end
+
+local function release(src, cid, by)
+    if not MySQL.scalar.await('SELECT 1 FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0', { cid }) then return false end
+    if not src then
+        -- Offline: they collect their belongings when they next log in.
+        MySQL.insert.await([[INSERT INTO veyl_prison_history (citizenid, months, reason, officer, sentenced_at, released_by)
+            SELECT citizenid, months, reason, officer, created_at, ? FROM veyl_prison_sentences WHERE citizenid = ?]], { tostring(by or ''):sub(1, 64), cid })
+        MySQL.update.await('UPDATE veyl_prison_sentences SET remaining = 0, escaped = 0 WHERE citizenid = ?', { cid })
+        return true
+    end
+    inmates[src] = nil
+    push(src)
+    TriggerClientEvent('veyl_prison:released', src, C.Release)
+    SetTimeout(2500, function()
+        if not GetPlayerName(src) then return end
+        finish(cid, by, returnBelongings(src, cid))
+    end)
     return true
+end
+
+--- Takes everything but KeepItems. Returns the list taken.
+local function confiscate(src)
+    local taken = {}
+    for _, it in pairs(exports.veyl_inventory:GetInventoryItems(src) or {}) do
+        if it and not C.KeepItems[it.name] then
+            local ok = exports.veyl_inventory:RemoveItem(src, it.name, it.count, it.metadata)
+            if ok then taken[#taken + 1] = { name = it.name, count = it.count, metadata = it.metadata } end
+        end
+    end
+    return taken
 end
 
 ---------------------------------------------------------------------------
@@ -104,6 +173,17 @@ local function sentence(officerSrc, citizenid, months, reason)
     MySQL.query.await([[INSERT INTO veyl_prison_sentences (citizenid, months, remaining, reason, officer) VALUES (?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE months = VALUES(months), remaining = VALUES(remaining), reason = VALUES(reason), officer = VALUES(officer), created_at = NOW()]],
         { citizenid, months, months, reason, officerName })
+    MySQL.update.await('UPDATE veyl_prison_sentences SET escaped = 0 WHERE citizenid = ?', { citizenid })
+    if C.Confiscate then
+        local taken = confiscate(target)
+        if #taken > 0 then
+            -- Keep anything still owed from an earlier sentence.
+            local owed = decode(MySQL.scalar.await('SELECT belongings FROM veyl_prison_sentences WHERE citizenid = ?', { citizenid }))
+            for _, it in ipairs(taken) do owed[#owed + 1] = it end
+            MySQL.update.await('UPDATE veyl_prison_sentences SET belongings = ? WHERE citizenid = ?', { json.encode(owed), citizenid })
+            Veyl.Notify(target, ('%d item%s taken into storage until your release.'):format(#taken, #taken == 1 and ' was' or 's were'), 'info', 7000)
+        end
+    end
     inmates[target] = { citizenid = citizenid, remaining = months, months = months, lastWork = 0 }
     if GetResourceState('veyl_police') == 'started' then pcall(function() exports.veyl_police:SetCuffed(target, false) end) end
     push(target)
@@ -116,8 +196,8 @@ end
 exports('Sentence', sentence)
 
 exports('GetSentence', function(citizenid)
-    local row = MySQL.single.await('SELECT months, remaining, reason FROM veyl_prison_sentences WHERE citizenid = ?', { citizenid })
-    return row and { months = row.months, remaining = row.remaining, reason = row.reason } or nil
+    local row = MySQL.single.await('SELECT months, remaining, reason, escaped FROM veyl_prison_sentences WHERE citizenid = ? AND remaining > 0', { citizenid })
+    return row and { months = row.months, remaining = row.remaining, reason = row.reason, escaped = row.escaped == 1 } or nil
 end)
 
 exports('Release', function(citizenid, by)
@@ -170,11 +250,13 @@ CreateThread(function()
                 local pc = Veyl.GetPlayerCoords(src)
                 local out = pc and #(vector2(pc.x, pc.y) - vector2(C.Grounds.center.x, C.Grounds.center.y)) > C.Grounds.radius + 10.0
                 local downed = Player(src).state.medical ~= nil
-                if out and not downed then
+                if out and not downed and C.AllowEscape then
+                    Escape(src, i, pc)
+                elseif out and not downed then
                     TriggerClientEvent('veyl_prison:placeInside', src, C.Inside)
                     Veyl.Notify(src, 'You cannot leave the prison grounds.', 'error')
                 end
-                if tick then
+                if tick and inmates[src] then
                     i.remaining = math.max(0, i.remaining - 1)
                     MySQL.update('UPDATE veyl_prison_sentences SET remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
                     if i.remaining == 0 then
@@ -232,3 +314,41 @@ AddEventHandler('playerDropped', function() inmates[source] = nil working[source
 AddEventHandler('veyl:playerRespawned', function(src)
     if inmates[src] then SetTimeout(1500, function() if inmates[src] then TriggerClientEvent('veyl_prison:placeInside', src, C.Inside) end end) end
 end)
+
+---------------------------------------------------------------------------
+-- Escapes (AllowEscape = true): dispatch call, MDT warrant, the sentence waits for the arrest
+---------------------------------------------------------------------------
+function Escape(src, i, pc)
+    inmates[src] = nil
+    MySQL.update.await('UPDATE veyl_prison_sentences SET escaped = 1, remaining = ? WHERE citizenid = ?', { i.remaining, i.citizenid })
+    push(src)
+    local pd = Veyl.GetPlayerData(src)
+    local who = charName(pd)
+    if GetResourceState('veyl_dispatch') == 'started' then
+        pcall(function()
+            exports.veyl_dispatch:Alert({ services = { 'police' }, code = '10-98', title = 'Prison break', priority = 1, coords = pc,
+                street = 'Bolingbroke Penitentiary', message = ('%s escaped with %d months left'):format(who, i.remaining), blip = { sprite = 188, colour = 1, scale = 1.3 } })
+        end)
+    end
+    if GetResourceState('veyl_mdt') == 'started' then
+        MySQL.insert.await('INSERT INTO veyl_mdt_warrants (citizenid, reason, issued_by) VALUES (?, ?, ?)',
+            { i.citizenid, ('Escaped from Bolingbroke (%d months left)'):format(i.remaining), 'Bolingbroke Penitentiary' })
+    end
+    Veyl.Notify(src, 'You escaped! The police have been alerted.', 'warning', 8000)
+    Veyl.Audit(src, 'prison_escape', { remaining = i.remaining })
+end
+
+---------------------------------------------------------------------------
+-- Canteen
+---------------------------------------------------------------------------
+local lastMeal = {}
+Veyl.RegisterCallback('canteen', function(src, citizenid)
+    if not inmates[src] then return Veyl.Err('INVALID_STATE', 'The canteen is for inmates') end
+    local pc = Veyl.GetPlayerCoords(src)
+    if not pc or #(pc - C.Canteen.coords) > 3.5 then return Veyl.Err('TOO_FAR', 'Go to the canteen') end
+    local wait = (lastMeal[citizenid] or 0) + C.Canteen.cooldownSeconds - os.time()
+    if wait > 0 then return Veyl.Err('RATE_LIMITED', ('Next meal in %d min'):format(math.ceil(wait / 60))) end
+    lastMeal[citizenid] = os.time()
+    for _, it in ipairs(C.Canteen.items) do exports.veyl_inventory:AddItem(src, it.item, it.count or 1) end
+    return Veyl.Ok(nil, 'You got a tray of food')
+end, { cooldown = 1000 })
