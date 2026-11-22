@@ -66,7 +66,10 @@ PhoneConfig = {
     Weather = 'veyl_world',           -- GlobalState.veylWorld (weather + in-game time)
 
     Animations = {
-        prop = 'prop_npc_phone_02',
+        -- In-hand prop. sd_phone_black comes from the sd-phone prop pack (ensure sd-phone before veyl_phone); if that
+        -- model is not streamed, the base-game phone is used instead.
+        prop = 'sd_phone_black',
+        fallbackProp = 'prop_npc_phone_02',
         text = { dict = 'cellphone@', clip = 'cellphone_text_read_base' },
         call = { dict = 'cellphone@', clip = 'cellphone_call_listen_base' },
         carText = { dict = 'anim@cellphone@in_car@ps', clip = 'cellphone_text_read_base' },

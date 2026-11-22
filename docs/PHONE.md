@@ -180,3 +180,14 @@ The server suite covered:
 - **Not built yet (hidden):** business directory, jobs, services/dispatch, maps, properties, deliveries, events and criminal contacts.
 - **Flock:** no images. Posts are text only, because there is no screenshot resource.
 - **Badges:** held in memory. Resources should re-send them on `veyl_phone:sessionStarted`.
+
+## In-hand prop
+
+The phone in the player's hand is `sd_phone_black` from the **sd-phone** prop pack (Samuels Development, streamed models only; it is not a phone script and does not conflict with `veyl_phone`). Start it before the phone:
+
+```
+ensure sd-phone
+ensure veyl_phone
+```
+
+The model welds to the right hand (bone 28422) at zero offset, like GTA's own phone. If the pack is not running, the base-game `prop_npc_phone_02` is used (`Animations.prop` / `fallbackProp` in `config.lua`). Other colours from the pack (`sd_phone_blue`, `sd_phone_red`, …) work the same way.

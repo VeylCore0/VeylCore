@@ -43,6 +43,7 @@ ensure veyl_dealership
 ensure veyl_mechanic
 ensure veyl_weedprops       # custom weed models (must start before veyl_drugs)
 ensure veyl_drugs
+ensure sd-phone              # optional: in-hand phone prop models (sd_phone_black); falls back to the GTA phone without it
 ensure veyl_phone
 ensure veyl_loadscreen
 # veyl_apartments needs the Starlite Motel MLO (free, by Zydrec): put zydrec-starlitemotel in your resources folder.

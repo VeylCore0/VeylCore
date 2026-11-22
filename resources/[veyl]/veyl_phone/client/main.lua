@@ -21,6 +21,7 @@ end
 local function attachProp(ped)
     if prop and DoesEntityExist(prop) then return end
     local hash = joaat(A.prop)
+    if not IsModelInCdimage(hash) and A.fallbackProp then hash = joaat(A.fallbackProp) end
     RequestModel(hash)
     local deadline = GetGameTimer() + 2000
     while not HasModelLoaded(hash) and GetGameTimer() < deadline do Wait(10) end
