@@ -134,7 +134,7 @@ function CustomsCatalog.Clean(key, value)
         local r, g, b = int(v.r, 0, 255), int(v.g, 0, 255), int(v.b, 0, 255)
         return (r and g and b) and { r = r, g = g, b = b } or nil
     end
-    if o.kind == 'mod' then return int(value, -1, 60)
+    if o.kind == 'mod' then return int(value, -1, (o.slot == 23 or o.slot == 24) and 250 or 60) -- some wheel types have 200+ rims
     elseif o.kind == 'toggle' or o.kind == 'extra' then if type(value) == 'boolean' then return value end return nil
     elseif o.kind == 'index' or o.kind == 'livery' then return int(value, o.min, o.max)
     elseif o.kind == 'rgb' then return rgb(value)

@@ -25,7 +25,8 @@ export function Customize({ d, say, close }: { d: CustomizeData; say: Toast; clo
   const [light, setLight] = useState<string | null>(null);
   const S = d.session;
 
-  const opts = useMemo(() => d.options.map((o) => (o.key === 'mod:23' && wheels ? { ...o, values: wheels } : o)), [d.options, wheels]);
+  const [rear, setRear] = useState<Opt['values'] | null>(null);
+  const opts = useMemo(() => d.options.map((o) => (o.key === 'mod:23' && wheels ? { ...o, values: wheels } : o.key === 'mod:24' && rear ? { ...o, values: rear } : o)), [d.options, wheels, rear]);
   const catOpts = opts.filter((o) => o.cat === cat);
   const value = (key: string) => (key in cart ? cart[key] : d.current[key]);
 
@@ -65,7 +66,14 @@ export function Customize({ d, say, close }: { d: CustomizeData; say: Toast; clo
 
   const camera = (payload: Record<string, unknown>) => { void nui('camera', { session: S, ...payload }); };
   const pickCat = (c: string) => { setCat(c); setGroup(null); camera({ frame: CAM[c] ?? 'front34' }); if (c !== 'paint' && light) { setLight(null); void nui('lighting', { session: S, mode: null }); } };
-  const openGroup = (o: Opt) => { setGroup(o.key); if (o.camera) camera({ frame: o.camera }); };
+  const openGroup = (o: Opt) => {
+    setGroup(o.key);
+    if (o.camera) camera({ frame: o.camera });
+    // Rims depend on the wheel type: ask the game for the current list every time.
+    if (o.key === 'mod:23' || o.key === 'mod:24') {
+      void nui<Opt['values']>('modValues', { session: S, slot: o.key === 'mod:23' ? 23 : 24 }).then((r) => { if (r.ok && r.data) (o.key === 'mod:23' ? setWheels : setRear)(r.data); });
+    }
+  };
 
   // Keyboard: Escape (with an unsaved-changes prompt), hold Space to compare with the original.
   const comparing = useRef(false);
@@ -143,6 +151,8 @@ export function Customize({ d, say, close }: { d: CustomizeData; say: Toast; clo
               <div className="scroll">
                 <OptionEditor o={g} current={value(g.key)} original={d.current[g.key]} prices={rowPrices} set={(v) => void preview(g.key, v)} />
               </div>
+              {(g.key === 'mod:23' || g.key === 'mod:24') && (g.values?.length ?? 0) <= 1 && <p className="note">No rims for this wheel type on this vehicle. Try another wheel type.</p>}
+              {g.key === 'wheelType' && <p className="note">Choosing a type puts its first rim on. Pick the exact rim under <b>Wheels</b>.</p>}
               {g.key in cart && <button className="btn ghost small" style={{ marginTop: 12 }} onClick={() => void preview(g.key, null)}>Undo this change</button>}
             </>
           ) : (

@@ -36,7 +36,8 @@ local function enumerate(veh, shop)
             if o.kind == 'mod' then
                 local n = GetNumVehicleMods(veh, o.slot)
                 if o.cat == 'performance' and C.Performance[o.slot] then n = math.min(n, C.Performance[o.slot] + 1) end
-                if n > 0 then
+                local wheelSlot = o.slot == 23 or o.slot == 24
+                if n > 0 or wheelSlot then
                     local values = { { value = -1, label = o.cat == 'performance' and 'Stock' or 'Factory' } }
                     for i = 0, n - 1 do values[#values + 1] = { value = i, label = o.cat == 'performance' and (Cat.PerfLevelNames[i] or ('Level %d'):format(i + 1)) or modLabel(veh, o.slot, i) } end
                     entry = { values = values }
@@ -276,13 +277,34 @@ RegisterNUICallback('preview', function(data, r)
     applyState()
     local extra
     if key == 'wheelType' then
-        -- Wheel lists depend on the wheel type: send the new counts.
+        -- A wheel type alone changes nothing you can see (the stock rims stay): put the type's first rim on, so the
+        -- choice shows immediately. Pick another rim under "Wheels".
         local n = GetNumVehicleMods(session.clone, 23)
-        local values = { { value = -1, label = 'Factory' } }
-        for i = 0, n - 1 do values[#values + 1] = { value = i, label = modLabel(session.clone, 23, i) } end
-        extra = { wheels = values }
+        if n > 0 and session.cart.wheelType ~= nil and (session.cart['mod:23'] == nil or session.cart['mod:23'] == -1 or session.cart['mod:23'] >= n) then
+            session.cart['mod:23'] = 0
+            if session.bike then session.cart['mod:24'] = 0 end
+            stateFromCart()
+            applyState()
+        end
+        extra = { wheels = WheelValues(23) }
     end
     r({ ok = true, data = { cart = session.cart, extra = extra } })
+end)
+
+--- Rims for the current wheel type, read live from the game (slot 23 = front / all wheels, 24 = motorcycle rear).
+function WheelValues(slot)
+    local veh = session and session.clone
+    if not veh or not DoesEntityExist(veh) then return {} end
+    SetVehicleModKit(veh, 0)
+    local n = GetNumVehicleMods(veh, slot)
+    local values = { { value = -1, label = 'Factory' } }
+    for i = 0, n - 1 do values[#values + 1] = { value = i, label = modLabel(veh, slot, i) } end
+    return values
+end
+
+RegisterNUICallback('modValues', function(data, r)
+    if not valid(data) or (data.slot ~= 23 and data.slot ~= 24) then return r({ ok = false }) end
+    r({ ok = true, data = WheelValues(data.slot) })
 end)
 
 RegisterNUICallback('resetCart', function(data, r)
