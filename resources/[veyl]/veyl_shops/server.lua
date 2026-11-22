@@ -75,6 +75,10 @@ Veyl.RegisterCallback('catalog', function(src, _, shopId)
     if not shop then return Veyl.Err('NOT_FOUND', 'Unknown shop') end
     if not nearShop(src, shop) then return Veyl.Err('TOO_FAR', 'You need to be at the counter') end
     if shop.groups and not exports.veyl_core:HasGroup(src, shop.groups) then return Veyl.Err('NO_PERMISSION', 'This store is not open to you') end
+    if shop.licence then
+        local lic = exports.veyl_core:GetMetadata(src, 'licences')
+        if not (type(lic) == 'table' and lic[shop.licence]) then return Veyl.Err('NO_PERMISSION', shop.licenceMessage or 'You need a licence to buy here') end
+    end
     return Veyl.Ok(catalogFor(shop, src))
 end, { cooldown = 500 })
 
@@ -165,6 +169,10 @@ Veyl.RegisterCallback('checkout', function(src, citizenid, req)
 
     if not nearShop(src, shop) then return Veyl.Err('TOO_FAR', 'You need to be at the counter') end
     if shop.groups and not exports.veyl_core:HasGroup(src, shop.groups) then return Veyl.Err('NO_PERMISSION', 'This store is not open to you') end
+    if shop.licence then
+        local lic = exports.veyl_core:GetMetadata(src, 'licences')
+        if not (type(lic) == 'table' and lic[shop.licence]) then return Veyl.Err('NO_PERMISSION', shop.licenceMessage or 'You need a licence to buy here') end
+    end
     local methodOk = false
     for _, m in ipairs(shop.methods or { 'cash', 'bank' }) do if m == req.method then methodOk = true end end
     if not methodOk then return Veyl.Err('INVALID_INPUT', 'Payment method not accepted here') end

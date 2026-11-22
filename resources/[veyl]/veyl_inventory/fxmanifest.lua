@@ -24,6 +24,7 @@ server_scripts {
     'server/sessions.lua',
     'server/adapter_veylcore.lua',
     'server/exports.lua',
+    'server/weapons.lua',
 }
 
 client_scripts {
@@ -32,6 +33,7 @@ client_scripts {
     'client/use.lua',
     'client/stashes.lua',
     'client/drops.lua',
+    'client/weapons.lua',
 }
 
 ui_page 'web/dist/index.html'

@@ -2,6 +2,31 @@
 
 ItemDefs = {}
 
+--- Adds data/weapons.lua: one non-stacking item per weapon (use = draw / holster) and stacking ammo items.
+--- Definitions already in items.lua win, so a weapon can be customised there.
+function MergeWeapons(defs)
+    local code = LoadResourceFile(GetCurrentResourceName(), 'data/weapons.lua')
+    if not code then return end
+    local chunk, err = load(code, '@@veyl_inventory/data/weapons.lua', 't')
+    if not chunk then error('veyl_inventory: data/weapons.lua: ' .. err) end
+    local data = chunk()
+    WeaponDefs = {}
+    for name, a in pairs(data.ammo or {}) do
+        if not defs[name] then
+            defs[name] = { name = name, label = a.label, description = a.description, image = a.image or (name .. '.png'), weight = a.weight or 10,
+                stack = true, maxStack = a.maxStack or 250, usable = false }
+        end
+    end
+    for name, w in pairs(data.weapons or {}) do
+        WeaponDefs[name] = { hash = w.hash or name, ammo = w.ammo, label = w.label }
+        if not defs[name] then
+            defs[name] = { name = name, label = w.label, description = w.description or (w.ammo and ('Uses ' .. ((data.ammo[w.ammo] or {}).label or w.ammo)) or 'Melee'),
+                image = w.image or (name .. '.png'), weight = w.weight or 1000, stack = false, maxStack = 1,
+                use = { handler = 'weapon', durationMs = 0, consumeCount = 0 }, usable = true }
+        end
+    end
+end
+
 local function loadDefinitions()
     local code = LoadResourceFile(GetCurrentResourceName(), 'data/items.lua')
     if not code then error('veyl_inventory: data/items.lua is missing') end
@@ -21,6 +46,7 @@ local function loadDefinitions()
         end
         d.usable = d.use ~= nil or d.usable == true
     end
+    MergeWeapons(defs)
     return defs
 end
 
