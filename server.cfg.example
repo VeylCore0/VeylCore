@@ -56,6 +56,7 @@ ensure veyl_emotes
 ensure veyl_dispatch
 ensure veyl_police
 ensure veyl_mdt
+ensure veyl_prison
 ensure veyl_delivery
 ensure veyl_admin
 ensure veyl_qbexample       # optional example
