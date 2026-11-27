@@ -17,10 +17,19 @@ import { APP_LOOK, AppIcon, ToastHost, cx } from './ui';
 import type { Banner, ExternalApp, Hello, PushEvent, World } from './types';
 
 const SCALE_BASE = 940;
-const calcScale = () => Math.max(0.6, Math.min(1.25, window.innerHeight / SCALE_BASE));
-function useScale() {
-  const [s, set] = useState(calcScale);
-  useEffect(() => { const f = () => set(calcScale()); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+/** Automatic scale for the screen height, times the player's size setting (percent), never taller than the screen. */
+const calcScale = (size: number) => {
+  const auto = Math.max(0.6, Math.min(1.25, window.innerHeight / SCALE_BASE));
+  return Math.min(auto * (size / 100), (window.innerHeight - 24) / 800);
+};
+function useScale(size: number) {
+  const [s, set] = useState(() => calcScale(size));
+  useEffect(() => {
+    const f = () => set(calcScale(size));
+    f();
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, [size]);
   return s;
 }
 
@@ -142,7 +151,7 @@ export function App() {
   const app = useStore((s) => s.app);
   const settings = useStore((s) => s.settings);
   const darkTop = useStore((s) => s.shade || (!!s.call && !s.callMin));
-  const scale = useScale();
+  const scale = useScale(settings.size);
 
   useEffect(() => announceReady(), []);
   useNuiMessage<Hello>('phone:session', (d) => d && onSession(d));

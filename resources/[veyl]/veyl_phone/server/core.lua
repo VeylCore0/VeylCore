@@ -194,6 +194,7 @@ function Phone.CleanSettings(s)
         airplane = s.airplane == true,       -- not reachable: no calls; messages are kept for later
         silent = s.silent == true,           -- no sounds, vibration only
         streamer = s.streamer == true,       -- hide own number in the UI
+        size = (type(s.size) == 'number' and s.size == s.size) and math.max(60, math.min(140, math.floor(s.size))) or 100, -- phone size on screen, percent
         brightness = (type(s.brightness) == 'number' and s.brightness == s.brightness) and math.max(20, math.min(100, math.floor(s.brightness))) or 100,
         installed = {},                      -- non-core apps installed from the App Store
         home = {},                           -- home-screen order (app ids)

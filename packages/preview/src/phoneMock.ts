@@ -49,7 +49,7 @@ const msg = (conversationId: number, sender: string, body: string, ago: number, 
 
 function reset(empty: boolean) {
   seq = 100; blocked = []; call = null; callTimers.forEach(clearTimeout); callTimers = [];
-  settings = { wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black', volume: 70, brightness: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: ['calculator', 'clock'], home: [] };
+  settings = { wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black', volume: 70, brightness: 100, size: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: ['calculator', 'clock'], home: [] };
   Object.keys(badges).forEach((k) => delete badges[k]);
   if (empty) { contacts = []; convs = []; mail = []; notifs = []; recents = []; return; }
   contacts = [

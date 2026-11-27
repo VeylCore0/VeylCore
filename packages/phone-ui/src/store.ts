@@ -5,7 +5,7 @@ import type { Banner, Call, Conversation, ExternalApp, Hello, Notification, Sett
 
 export const DEFAULT_SETTINGS: Settings = {
   wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black',
-  volume: 70, brightness: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: [], home: [],
+  volume: 70, brightness: 100, size: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: [], home: [],
 };
 
 export interface State {

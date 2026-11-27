@@ -63,8 +63,13 @@ function Root({ go }: { go: (p: Page) => void }) {
   );
 }
 
+const SIZES: { id: string; label: string; value: number }[] = [{ id: 's', label: 'Small', value: 80 }, { id: 'm', label: 'Default', value: 100 }, { id: 'l', label: 'Large', value: 120 }];
+
 function Appearance({ onBack }: { onBack: () => void }) {
   const s = useStore((st) => st.settings);
+  const [size, setSize] = useState(s.size);
+  const applySize = (v: number) => { setSize(v); void updateSettings({ size: v }); };
+  const preset = SIZES.find((p) => p.value === size)?.id ?? '';
   const presets = useStore((st) => st.hello?.presets) ?? FALLBACK;
   return (
     <div className="ph-app">
@@ -94,6 +99,13 @@ function Appearance({ onBack }: { onBack: () => void }) {
             {presets.cases.map((c) => (
               <button key={c} className={cx('ph-swatch', s.case === c && 'on')} style={{ background: CASE_COLOR[c] ?? '#222' }} onClick={() => void updateSettings({ case: c })} aria-label={cap(c)} aria-pressed={s.case === c}>{s.case === c && <Ico name="check" size={16} stroke={3} />}</button>
             ))}
+          </div>
+        </Group>
+        <Group title="Phone size" footer="Makes the whole phone bigger or smaller on your screen. It always fits your screen.">
+          <div className="ph-group-pad"><Segmented options={SIZES.map((p) => ({ id: p.id, label: p.label }))} value={preset} onChange={(id) => applySize(SIZES.find((p) => p.id === id)!.value)} /></div>
+          <div className="ph-group-pad ph-slide">
+            <Ico name="minus" size={16} /><Slider label="Phone size" value={size} min={60} max={140} onChange={setSize} onCommit={applySize} /><Ico name="plus" size={16} />
+            <span className="ph-size-val">{size}%</span>
           </div>
         </Group>
         <Group title="Brightness">

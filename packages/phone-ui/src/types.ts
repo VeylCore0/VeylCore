@@ -2,7 +2,7 @@
 
 export type Settings = {
   wallpaper: string; accent: string; ringtone: string; notifySound: string; theme: 'dark' | 'light'; case: string;
-  volume: number; brightness: number;
+  volume: number; brightness: number; size: number;
   dnd: boolean; airplane: boolean; silent: boolean; streamer: boolean;
   installed: string[]; home: string[];
 };

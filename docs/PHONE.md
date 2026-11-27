@@ -11,6 +11,8 @@ The rest of this page is the contract between the two. A UI that follows it need
 
 A tall phone that slides up from the bottom right, with a Dynamic Island for calls, a glass home screen with a time and weather widget, a notification centre (tap the status bar), dark and light themes, five wallpapers, accent colours and phone cases.
 
+**Phone size:** Settings, Appearance, Phone size. Small, Default, Large, or a slider from 60% to 140%. It is saved per character and never grows taller than the screen.
+
 **Share my number:** the share button in Contacts lists people next to you; they get a prompt and choose whether to save you. Range, how long the prompt lasts and the per-person cooldown are in `PhoneConfig.Share`.
 
 Built-in apps: **Phone** (keypad, recents, favourites, full-screen call screen), **Messages** (direct and group chats, read receipts, location and contact cards, new chat), **Contacts**, **Mail**, **App Store**, **Settings**, **Calculator** and **Clock** (city time, stopwatch, timer). Apps that other resources register with `RegisterApp` show up on the home screen on their own.
@@ -230,7 +232,7 @@ type Hello = {
 };
 type Settings = {
   wallpaper: string; accent: string; ringtone: string; notifySound: string; theme: 'dark' | 'light'; case: string;
-  volume: number /* 0-100 */; brightness: number /* 20-100 */;
+  volume: number /* 0-100 */; brightness: number /* 20-100 */; size: number /* 60-140, percent of the automatic size */;
   dnd: boolean; airplane: boolean; silent: boolean; streamer: boolean;
   installed: string[];       // non-core apps installed from the App Store
   home: string[];            // home-screen order (empty = default order)
