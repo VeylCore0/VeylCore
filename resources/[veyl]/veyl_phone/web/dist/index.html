@@ -1,53 +1,12 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>veyl_phone</title>
-<!--
-  PLACEHOLDER. The real phone UI replaces this whole web/dist folder (built from packages/phone-ui).
-  It only proves the base works in game: it answers ui:ready, shows the session from `hello`, and closes on Escape.
-  The full UI contract is in docs/PHONE.md.
--->
-<style>
-  html, body { margin: 0; height: 100%; background: transparent; font: 14px/1.4 system-ui, sans-serif; color: #eee; overflow: hidden; }
-  #phone { display: none; position: absolute; right: 48px; bottom: 48px; width: 300px; padding: 20px; border-radius: 28px;
-    background: #15131a; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
-  h1 { font-size: 16px; margin: 0 0 8px; }
-  .muted { color: #9a95a6; font-size: 12px; }
-  #peek { position: absolute; right: 48px; top: 48px; max-width: 300px; padding: 10px 14px; border-radius: 14px; background: #15131aee; display: none; }
-</style>
+  <meta charset="UTF-8" />
+  <title>veyl_phone_ui</title>
+  <script type="module" crossorigin src="./assets/index-CKpAA31h.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Dof36ReH.css">
 </head>
 <body>
-<div id="phone">
-  <h1>Phone base is running</h1>
-  <div id="info" class="muted"></div>
-  <p class="muted">The phone UI has not been built yet. Press Esc to close.</p>
-</div>
-<div id="peek"></div>
-<script>
-  const res = 'veyl_phone';
-  const post = (name, body) => fetch(`https://${res}/${name}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(r => r.json()).catch(() => null);
-  const phone = document.getElementById('phone'), info = document.getElementById('info'), peek = document.getElementById('peek');
-  let peekTimer;
-  window.addEventListener('message', (e) => {
-    const m = e.data || {};
-    if (m.action === 'phone:open') {
-      const d = m.data || {};
-      info.textContent = `${d.name || ''} · ${d.display || ''} · ${(d.apps || []).length} apps, ${(d.external || []).length} from other resources`;
-      phone.style.display = 'block';
-    } else if (m.action === 'phone:close' || m.action === 'phone:reset') {
-      phone.style.display = 'none';
-    } else if (m.action === 'phone:push') {
-      const { event, data } = m.data || {};
-      const text = event === 'notification' ? data.notification.title
-        : event === 'message' ? `Message: ${data.message.body}`
-        : event === 'call' ? `Call ${data.state}: ${data.peer ? data.peer.display : ''}`
-        : event === 'mail' ? `Mail: ${data.mail.subject}` : null;
-      if (text) { peek.textContent = text; peek.style.display = 'block'; clearTimeout(peekTimer); peekTimer = setTimeout(() => peek.style.display = 'none', 4000); }
-    }
-  });
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && phone.style.display === 'block') post('close'); });
-  post('ui:ready');
-</script>
+  <div id="root"></div>
 </body>
 </html>

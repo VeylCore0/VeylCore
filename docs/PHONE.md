@@ -3,9 +3,23 @@
 The phone is split in two:
 
 - **The base** (`resources/[veyl]/veyl_phone`, Lua). It owns all data and rules: numbers, settings, apps, notifications, contacts, messages, calls and mail. The server checks every action.
-- **The UI** (`packages/phone-ui`, React and Vite, not built yet). It only displays data and asks the base to do things. Its build output goes to `resources/[veyl]/veyl_phone/web/dist/`. Until it exists, that folder holds a placeholder page that proves the base works in game.
+- **The UI** (`packages/phone-ui`, React and Vite). It only displays data and asks the base to do things. Its build output goes to `resources/[veyl]/veyl_phone/web/dist/` (committed, like the other UIs).
 
 The rest of this page is the contract between the two. A UI that follows it needs no Lua changes.
+
+## The phone UI
+
+A tall phone that slides up from the bottom right, with a Dynamic Island for calls, a glass home screen with a time and weather widget, a notification centre (tap the status bar), dark and light themes, five wallpapers, accent colours and phone cases.
+
+Built-in apps: **Phone** (keypad, recents, favourites, full-screen call screen), **Messages** (direct and group chats, read receipts, location and contact cards, new chat), **Contacts**, **Mail**, **App Store**, **Settings**, **Calculator** and **Clock** (city time, stopwatch, timer). Apps that other resources register with `RegisterApp` show up on the home screen on their own.
+
+Escape closes the innermost thing first (a sheet, then a thread, then the app, then the phone). The home bar goes home.
+
+**Previewing and building**
+
+- `npm run preview`, then pick **Phone** in the toolbar. Buttons add a message, a group message, an incoming call, a notification and a mail; the mode box shows the empty, error and no-voice states. The demo backend is `packages/preview/src/phoneMock.ts` and behaves like the real server (replies, read receipts, calls that connect).
+- `npm run build -w @veyl/phone-ui` writes the UI into the resource.
+- All class names start with `ph-`, and modifiers are namespaced (`k-primary`, `cb-red`...), so no other UI's stylesheet can change the phone.
 
 ## For server owners
 
