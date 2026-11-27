@@ -1,25 +1,84 @@
-.tg-root { position: fixed; inset: 0; pointer-events: none; }
-.tg-reticle {
-  position: absolute; left: 50%; top: 50%; width: 1.05rem; height: 1.05rem; transform: translate(-50%, -50%) rotate(45deg);
-  border: 1.5px solid rgba(244, 244, 246, 0.7); display: flex; align-items: center; justify-content: center; transition: border-color var(--motion);
+/* Interaction menu. Recolour: set --tg-accent, --tg-accent-hi, --tg-sel-a, --tg-sel-b and --tg-rgb (blue: #2f6fe0, #4f9bff, #1f55c4, #3b82f6, 47, 111, 224). Sizes are rem so it scales with the screen. */
+.tg-root {
+  position: fixed; inset: 0; pointer-events: none;
+  --tg-accent: var(--accent-strong, #9b72d5);
+  --tg-accent-hi: var(--accent, #b892f4);
+  --tg-sel-a: #6a40c2; --tg-sel-b: #9466e2; /* selected row gradient (dark enough for white text) */
+  --tg-rgb: 155, 114, 213; /* the accent as r, g, b for glows: keep in sync with --tg-accent */
+  --row: 2.7rem; --gap: 0.38rem; --step: calc(var(--row) + var(--gap));
 }
-.tg-reticle span { width: 0.25rem; height: 0.25rem; border-radius: 50%; background: rgba(244, 244, 246, 0.8); }
-.tg-reticle.on { border-color: var(--accent); background: rgba(184, 146, 244, 0.12); }
-.tg-reticle.on span { background: var(--accent); }
 
-.tg-card {
-  position: absolute; left: calc(50% + 2.8rem); top: calc(50% - 3.6rem); width: min(17rem, 40vw);
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.55rem 0.6rem 0.5rem;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+/* ---- reticle ---- */
+.tg-reticle { position: absolute; left: 50%; top: 50%; width: 1.5rem; height: 1.5rem; transform: translate(-50%, -50%); transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.tg-reticle > span { position: absolute; inset: 0; margin: auto; width: 0.3rem; height: 0.3rem; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 6px rgba(0, 0, 0, 0.6); transition: background 0.2s, box-shadow 0.2s, transform 0.2s; }
+.tg-reticle > i { position: absolute; width: 0.34rem; height: 0.34rem; border: 1.5px solid rgba(255, 255, 255, 0.55); opacity: 0.9; transition: border-color 0.2s, transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.tg-reticle > i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 3px; }
+.tg-reticle > i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 3px; }
+.tg-reticle > i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 3px; }
+.tg-reticle > i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 3px; }
+.tg-reticle.on > i { border-color: var(--tg-accent-hi); transform: scale(1.18); }
+.tg-reticle.on > i:nth-child(1) { transform: translate(-0.12rem, -0.12rem) scale(1.18); } .tg-reticle.on > i:nth-child(2) { transform: translate(0.12rem, -0.12rem) scale(1.18); }
+.tg-reticle.on > i:nth-child(3) { transform: translate(-0.12rem, 0.12rem) scale(1.18); } .tg-reticle.on > i:nth-child(4) { transform: translate(0.12rem, 0.12rem) scale(1.18); }
+.tg-reticle.on > span { background: var(--tg-accent-hi); box-shadow: 0 0 10px var(--tg-accent), 0 0 2px #fff; transform: scale(1.25); }
+
+/* ---- menu ---- */
+.tg-menu { position: absolute; left: calc(50% + 2.9rem); top: 50%; transform: translateY(-50%); width: max-content; min-width: 14rem; max-width: min(22rem, 42vw); animation: tg-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.tg-link { position: absolute; right: 100%; top: 50%; width: 1.5rem; height: 1px; margin-right: 0.45rem; background: linear-gradient(90deg, transparent, var(--tg-accent-hi)); opacity: 0.8; }
+
+.tg-head { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.5rem 3.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); }
+.tg-head > svg:first-child { color: var(--tg-accent-hi); flex: none; }
+.tg-title { color: #fff; }
+.tg-state { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; padding: 0.12rem 0.5rem; border-radius: 99px; background: rgba(12, 13, 18, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); letter-spacing: 0.08em; font-size: 0.64rem; backdrop-filter: blur(10px); }
+
+.tg-body { position: relative; padding-left: 3.4rem; }
+.tg-list { display: flex; flex-direction: column; gap: var(--gap); }
+
+/* The keycap follows the selection. */
+.tg-key {
+  position: absolute; left: 0; top: 0; width: var(--row); height: var(--row); display: grid; place-items: center;
+  transform: translateY(calc(var(--sel, 0) * var(--step))); transition: transform 0.2s cubic-bezier(0.25, 1.2, 0.4, 1);
 }
-.tg-brand { display: flex; align-items: center; gap: 0.45rem; font-size: 0.72rem; letter-spacing: 0.32em; font-weight: 600; padding: 0.1rem 0.2rem 0.45rem; }
-.tg-context { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0.25rem; border-top: 1px solid var(--border-soft); }
-.tg-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; }
-.tg-state { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--text-muted); }
-.tg-options { display: flex; flex-direction: column; }
-.tg-opt { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem; border-radius: 4px; border-left: 2px solid transparent; font-size: 0.88rem; color: var(--text); }
-.tg-opt svg { color: var(--text-muted); }
-.tg-opt.sel { background: var(--accent-soft); border-left-color: var(--accent); }
-.tg-opt.sel svg { color: var(--accent); }
-.tg-hints { display: flex; justify-content: space-between; align-items: center; margin-top: 0.45rem; padding: 0.45rem 0.25rem 0.1rem; border-top: 1px solid var(--border-soft); font-size: 0.75rem; color: var(--text-muted); }
-.tg-hints span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.tg-key span {
+  width: 100%; height: 100%; display: grid; place-items: center; border-radius: 0.65rem; font-size: 1.15rem; font-weight: 800; color: #fff;
+  background: linear-gradient(160deg, rgba(34, 35, 46, 0.92), rgba(12, 13, 18, 0.92)); border: 1.5px solid var(--tg-accent-hi);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25), 0 0 18px rgba(var(--tg-rgb), 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  animation: tg-key 2.2s ease-in-out infinite;
+}
+
+.tg-row {
+  position: relative; height: var(--row); display: flex; align-items: center; gap: 0.7rem; padding-right: 0.2rem;
+  opacity: calc(1 - var(--d, 0) * 0.14); transition: opacity 0.16s, transform 0.2s cubic-bezier(0.25, 1.2, 0.4, 1);
+  animation: tg-row 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: calc(var(--n, 0) * 32ms);
+}
+.tg-dot { flex: none; width: 0.62rem; height: 0.62rem; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.45); background: rgba(10, 11, 15, 0.7); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25); transition: all 0.18s; }
+.tg-opt {
+  position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.7rem; padding: 0 1rem 0 0.9rem; overflow: hidden;
+  border-radius: 0.65rem; font-size: 0.95rem; font-weight: 550; color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(100deg, rgba(20, 21, 29, 0.86), rgba(14, 15, 21, 0.78)); border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, color 0.18s, transform 0.2s cubic-bezier(0.25, 1.2, 0.4, 1);
+}
+.tg-opt::before { content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 3px; border-radius: 0 3px 3px 0; background: var(--tg-accent); opacity: 0.35; transition: opacity 0.18s, top 0.18s, bottom 0.18s; }
+.tg-opt svg { flex: none; color: rgba(255, 255, 255, 0.6); transition: color 0.18s; }
+.tg-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tg-row.sel { opacity: 1; z-index: 1; transform: translateX(0.3rem); }
+.tg-row.sel .tg-dot { border-color: #fff; background: var(--tg-accent-hi); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), 0 0 10px var(--tg-accent-hi); transform: scale(1.15); }
+.tg-row.sel .tg-opt {
+  color: #fff; font-weight: 650; border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(100deg, var(--tg-sel-a) 0%, var(--tg-sel-b) 100%);
+  box-shadow: 0 8px 26px rgba(var(--tg-rgb), 0.55), 0 0 0 1px rgba(var(--tg-rgb), 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.tg-row.sel .tg-opt::before { opacity: 1; top: 0; bottom: 0; background: #fff; width: 3px; }
+.tg-row.sel .tg-opt svg { color: #fff; }
+.tg-row.sel .tg-opt::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%); transform: translateX(-120%); animation: tg-shine 2.8s ease-in-out infinite; }
+
+.tg-hints { display: flex; align-items: center; gap: 0.9rem; margin: 0.55rem 0 0 3.4rem; font-size: 0.7rem; color: rgba(255, 255, 255, 0.62); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); letter-spacing: 0.04em; }
+.tg-hints > span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.tg-cap { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; height: 1.25rem; padding: 0 0.35rem; border-radius: 0.3rem; font-weight: 700; font-size: 0.64rem; color: #fff; background: rgba(12, 13, 18, 0.78); border: 1px solid rgba(255, 255, 255, 0.22); }
+
+@keyframes tg-in { from { opacity: 0; transform: translateY(-50%) translateX(-12px); } }
+@keyframes tg-row { from { opacity: 0; transform: translateX(-14px); } }
+@keyframes tg-key { 0%, 100% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25), 0 0 14px rgba(var(--tg-rgb), 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18); } 50% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25), 0 0 24px rgba(var(--tg-rgb), 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.18); } }
+@keyframes tg-shine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .tg-key span, .tg-row.sel .tg-opt::after { animation: none; } }
