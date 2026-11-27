@@ -6,6 +6,19 @@
 Phone = { ready = false, sessions = {}, byNumber = {}, byCid = {} }
 local P = PhoneConfig.Presets
 
+-- A phone with a PIN that has not been unlocked refuses every request except these (answering a call must always work).
+local WHILE_LOCKED = { hello = true, unlock = true, lock = true, pinReset = true, callAnswer = true, callDecline = true, callEnd = true }
+local registerCallback = Veyl.RegisterCallback
+Veyl.RegisterCallback = function(name, fn, opts)
+    return registerCallback(name, function(src, citizenid, ...)
+        if not WHILE_LOCKED[name] then
+            local s = Phone.sessions[src]
+            if s and s.locked then return Veyl.Err('LOCKED', 'Unlock your phone first') end
+        end
+        return fn(src, citizenid, ...)
+    end, opts)
+end
+
 ---------------------------------------------------------------------------
 -- Tables. The base uses veyl_ph_* tables. The previous phone's veyl_phone_* tables are never changed or dropped;
 -- numbers, display names and contacts are copied from them once (so characters keep their number).
@@ -118,6 +131,22 @@ local MIGRATIONS = {
                 PRIMARY KEY (id),
                 KEY idx_cid (citizenid, id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        },
+    },
+    {
+        -- Account (email + password), PIN lock and the first-run setup flag. Times are unix seconds.
+        id = 'v2_003_security',
+        sql = {
+            [[ALTER TABLE veyl_ph_accounts
+                ADD COLUMN email VARCHAR(64) NULL,
+                ADD COLUMN pass_hash VARCHAR(160) NULL,
+                ADD COLUMN pin_hash VARCHAR(160) NULL,
+                ADD COLUMN pin_fails TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                ADD COLUMN pin_locked_until INT UNSIGNED NOT NULL DEFAULT 0,
+                ADD COLUMN pass_fails TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                ADD COLUMN pass_locked_until INT UNSIGNED NOT NULL DEFAULT 0,
+                ADD COLUMN setup_done TINYINT(1) NOT NULL DEFAULT 0,
+                ADD UNIQUE KEY uq_email (email)]],
         },
     },
 }
@@ -329,7 +358,36 @@ end
 ---------------------------------------------------------------------------
 -- Handshake and settings
 ---------------------------------------------------------------------------
---- hello: starts (or refreshes) the session and returns everything the UI needs to draw the phone.
+--- Everything the UI needs to draw the phone. A locked phone (PIN set, not entered) gets no personal data at all.
+function Phone.HelloData(s, acc)
+    local L = PhoneConfig.Limits
+    local locked = s.locked == true
+    local data = {
+        number = locked and '' or acc.number, display = locked and '' or PhoneUtil.Format(acc.number), name = locked and '' or acc.display_name,
+        settings = s.settings, voice = Calls.Availability(), call = Calls.StateFor(s.src), locked = locked,
+        security = { email = (not locked) and s.email or nil, hasPin = s.hasPin, setupDone = s.setupDone, grace = PhoneConfig.Lock.GraceSeconds,
+            domain = PhoneConfig.Account.Domain, passwordMin = PhoneConfig.Account.PasswordMin },
+        presets = P,
+        limits = { message = L.MessageLength, groupMembers = L.GroupMembers, groupName = L.GroupName, name = L.NameLength, pageSize = L.PageSize },
+        serverTime = os.time(),
+    }
+    if locked then
+        data.apps, data.unread, data.badges = {}, { messages = 0, notifications = 0, mail = 0 }, {}
+    else
+        data.apps = Apps.ListFor(s.settings)
+        data.unread = { messages = Messages.UnreadTotal(acc.number), notifications = Notify.UnreadCount(s.cid), mail = Mail.UnreadCount(s.cid) }
+        data.badges = Notify.Badges(s.cid)
+    end
+    return data
+end
+
+function Phone.HelloFor(src)
+    local s = Phone.sessions[src]
+    local acc = s and MySQL.single.await('SELECT * FROM veyl_ph_accounts WHERE citizenid = ?', { s.cid })
+    return s and acc and Phone.HelloData(s, acc) or nil
+end
+
+--- hello: starts (or refreshes) the session and returns what the UI needs. Requires the phone item.
 Veyl.RegisterCallback('hello', function(src, citizenid)
     if not Phone.ready then return Veyl.Err('NOT_READY', 'The phone service is starting') end
     if not Phone.HasDevice(src) then return Veyl.Err('NO_DEVICE', 'You need a phone') end
@@ -341,33 +399,17 @@ Veyl.RegisterCallback('hello', function(src, citizenid)
     local settings = Phone.CleanSettings(Phone.Decode(acc.settings, defaultSettings()))
     Player(src).state:set('phoneCase', settings.case, true)
     local old = Phone.sessions[src]
-    if old and old.cid ~= citizenid then Phone.EndSession(src, 'character_changed') end
-    local s = { src = src, cid = citizenid, number = acc.number, name = acc.display_name, settings = settings }
+    if old and old.cid ~= citizenid then Phone.EndSession(src, 'character_changed') old = nil end
+    local hasPin = type(acc.pin_hash) == 'string' and acc.pin_hash ~= ''
+    local keep = old and old.unlockedUntil or nil -- still inside the grace period after putting the phone away
+    local s = { src = src, cid = citizenid, number = acc.number, name = acc.display_name, settings = settings,
+        hasPin = hasPin, email = acc.email, setupDone = acc.setup_done == 1 or acc.setup_done == true, unlockedUntil = keep }
+    s.locked = hasPin and not (keep ~= nil and os.time() < keep)
     Phone.sessions[src] = s
     Phone.byNumber[acc.number] = s
     Phone.byCid[citizenid] = s
     TriggerEvent('veyl_phone:sessionStarted', src, s)
-    return Veyl.Ok({
-        number = acc.number,
-        display = PhoneUtil.Format(acc.number),
-        name = acc.display_name,
-        settings = settings,
-        apps = Apps.ListFor(settings),
-        voice = Calls.Availability(),
-        call = Calls.StateFor(src),
-        unread = {
-            messages = Messages.UnreadTotal(acc.number),
-            notifications = Notify.UnreadCount(citizenid),
-            mail = Mail.UnreadCount(citizenid),
-        },
-        badges = Notify.Badges(citizenid),
-        presets = P,
-        limits = {
-            message = PhoneConfig.Limits.MessageLength, groupMembers = PhoneConfig.Limits.GroupMembers,
-            groupName = PhoneConfig.Limits.GroupName, name = PhoneConfig.Limits.NameLength, pageSize = PhoneConfig.Limits.PageSize,
-        },
-        serverTime = os.time(),
-    })
+    return Veyl.Ok(Phone.HelloData(s, acc))
 end, { cooldown = 1000 })
 
 Veyl.RegisterCallback('settingsSave', function(src, citizenid, input)

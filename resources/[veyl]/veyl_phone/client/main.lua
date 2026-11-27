@@ -103,6 +103,8 @@ end
 
 function OnPhoneClosed()
     refreshAnim()
+    -- Putting the phone away locks it again when a PIN is set (the server decides, after its grace period).
+    CreateThread(function() Veyl.CallbackTimeout('veyl_phone', 'lock', 5000) end)
 end
 
 --- Opens the phone, optionally straight into an app (`appId`) and a route inside it (`route`, app-defined string).
@@ -201,6 +203,7 @@ local ALLOWED = {
     callStart = true, callAnswer = true, callDecline = true, callEnd = true, recents = true,
     mailList = true, mailRead = true, mailDelete = true,
     nearby = true, shareNumber = true, shareAnswer = true,
+    unlock = true, accountCheck = true, accountCreate = true, passwordChange = true, pinSet = true, pinRemove = true, pinReset = true, setupFinish = true,
 }
 
 --- api { name, args: [] } -> { ok, code?, message?, data? }

@@ -8,9 +8,10 @@ import { useBack } from '../nav';
 import { playNotify, startRing, stopRing } from '../sound';
 import { setState, useStore } from '../store';
 import { Avatar, Button, Empty, Group, Header, Row, Segmented, Slider, Spinner, TextInput, Toggle, cx, say, toast } from '../ui';
+import { AccountPage } from './Security';
 import type { Settings } from '../types';
 
-type Page = 'root' | 'appearance' | 'sounds' | 'blocked' | 'profile';
+type Page = 'root' | 'account' | 'appearance' | 'sounds' | 'blocked' | 'profile';
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const CASE_COLOR: Record<string, string> = { black: '#16161b', blue: '#2f5fc4', green: '#2f8a63', orange: '#d1692b', pink: '#cc5a8c', purple: '#7048c0', red: '#b53a44', yellow: '#cfa73a' };
 const FALLBACK = {
@@ -21,6 +22,7 @@ const FALLBACK = {
 export function SettingsApp() {
   const [page, setPage] = useState<Page>('root');
   useBack(page !== 'root', () => { stopRing(); setPage('root'); return true; });
+  if (page === 'account') return <AccountPage onBack={() => setPage('root')} />;
   if (page === 'appearance') return <Appearance onBack={() => setPage('root')} />;
   if (page === 'sounds') return <Sounds onBack={() => { stopRing(); setPage('root'); }} />;
   if (page === 'blocked') return <Blocked onBack={() => setPage('root')} />;
@@ -31,6 +33,7 @@ export function SettingsApp() {
 function Root({ go }: { go: (p: Page) => void }) {
   const hello = useStore((s) => s.hello);
   const s = useStore((st) => st.settings);
+  const sec = useStore((st) => st.hello?.security);
   const set = (p: Partial<Settings>) => void updateSettings(p);
   return (
     <div className="ph-app">
@@ -41,6 +44,9 @@ function Root({ go }: { go: (p: Page) => void }) {
           <span><strong>{hello?.name ?? 'Citizen'}</strong><em>{s.streamer ? '•••-••••' : hello?.display}</em></span>
           <Ico name="forward" size={18} style={{ opacity: 0.4 }} />
         </button>
+        <Group footer={sec && !sec.email && !sec.hasPin ? 'Create an account and set a PIN to keep your phone private.' : undefined}>
+          <Row icon="shield" iconColor="#3a7bf0" title="Account & Security" sub={sec?.email ?? 'Not set up'} right={sec?.hasPin ? <span className="ph-sub">PIN on</span> : undefined} onClick={() => go('account')} chevron />
+        </Group>
         <Group footer="Focus silences calls and sounds. Airplane mode stops calls and messages from being sent.">
           <Row icon="plane" iconColor="#e8903a" title="Airplane mode" right={<Toggle on={s.airplane} onChange={(v) => set({ airplane: v })} label="Airplane mode" />} />
           <Row icon="moon" iconColor="#6a6cf0" title="Do Not Disturb" right={<Toggle on={s.dnd} onChange={(v) => set({ dnd: v })} label="Do Not Disturb" />} />

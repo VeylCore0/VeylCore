@@ -31,6 +31,8 @@ Escape closes the innermost thing first (a sheet, then a thread, then the app, t
 - **Item:** characters need the `phone` item (`PhoneConfig.RequireItem`) to open the phone and to be reachable. The number belongs to the character, so a new phone item gives back the same number and data.
 - **Key:** F1 by default (`PhoneConfig.OpenKey`). Players can rebind it in the FiveM key settings.
 - **Data:** the base uses `veyl_ph_*` tables. On first start it copies numbers, display names, contacts and blocked numbers from the previous phone's `veyl_phone_*` tables. It never changes or drops those old tables, so you can delete them yourself once you're happy.
+- **Account and PIN:** each character can create an account (an email like `name@veylid.com` and a password) and set a 4-digit PIN. With a PIN on, the phone is locked every time it is opened (after a 10 second grace period), and the **server** refuses every request except answering calls until the PIN is entered; a locked phone is sent no messages, contacts, numbers or apps. Five wrong tries lock it for 5 minutes (stored in the database, so a restart does not reset it). Passwords and PINs are salted and hashed; nothing readable is stored. A forgotten PIN is reset with the account password, or by staff with `phonepinreset <citizenid>` in the server console (or a player with the `phone.admin` permission). Settings are in `PhoneConfig.Account` (email domain, lengths) and `PhoneConfig.Lock` (grace, attempts, lockout).
+- **First-run setup:** the first time a character opens the phone they see a short setup (account, then PIN). Every step can be skipped and everything can be done later in Settings, Account & Security.
 - **Config:** `config.lua` covers apps, presets (wallpapers, accents, ringtones, themes, cases), limits, call ring time and animations.
 - **Tablet item:** using a `tablet` opens a small menu with MDT and Dispatch (for police and EMS), My home, and Phone. It is handled by this resource (`client/tablet.lua`).
 
@@ -44,6 +46,7 @@ Escape closes the innermost thing first (a sheet, then a thread, then the app, t
 | server | `exports.veyl_phone:SendSystemMessage(number, body)` → boolean | A text from the reserved number `000-0000`, so replies never reach a real player. |
 | server | `exports.veyl_phone:GetCitizenByNumber(number)` → citizenid or nil | Accepts `5551234` or `555-1234`. |
 | server | `exports.veyl_phone:GetNumber(citizenid)` → `'5551234'` or nil | |
+| server | `exports.veyl_phone:GetEmail(citizenid)` → email or nil, `GetCitizenByEmail(email)` → citizenid or nil | The phone account's email (nil until the character creates an account). |
 | server | `exports.veyl_phone:IsReachable(citizenid)`, `IsInCall(source)`, `EndCall(source)` | |
 | server | event `veyl_phone:sessionStarted (src, session)` / `veyl_phone:sessionEnded (src, session, reason)` | `session = { src, cid, number, name, settings }` |
 | client | `exports.veyl_phone:RegisterApp({ id, label, icon?, color?, event })` | A home-screen app owned by your resource. Tapping it closes the phone and triggers `event` on that client. It is removed when your resource stops. |
@@ -168,6 +171,22 @@ Call as `post('api', { name, args: [...] })`.
 | `callEnd` | `[callId?]` | none (hang up, or cancel while ringing) |
 | `recents` | none | `Recent[]` (last 50) |
 
+**Account and PIN**
+
+| name | args | data |
+|---|---|---|
+| `unlock` | `[pin]` | The full `Hello` (the phone is unlocked). Errors: `WRONG_PIN` (`data.left` tries), `LOCKED_OUT` (`data.seconds`). Works while locked. |
+| `lock` | none | Called by the game when the phone is put away. The next `hello` is locked once the grace period ends. |
+| `pinSet` | `[{ pin, current? }]` | `{ hasPin }`. `current` is required to change an existing PIN. |
+| `pinRemove` | `[current]` | `{ hasPin: false }` |
+| `pinReset` | `[{ password, pin }]` | The full `Hello`. Forgot PIN: the account password proves it is you. `NO_ACCOUNT` when the phone has none. Works while locked. |
+| `accountCheck` | `[name]` | `{ available, email?, reason? }`, for live feedback while typing |
+| `accountCreate` | `[{ username, password }]` | `{ email }`. Once per phone. |
+| `passwordChange` | `[{ current, new }]` | none |
+| `setupFinish` | none | none. The first-run setup was finished or skipped. |
+
+While a phone is locked the server answers every other request with `LOCKED`, except `hello`, `unlock`, `lock`, `pinReset` and answering, declining or ending a call.
+
 **Share my number**
 
 | name | args | data |
@@ -214,6 +233,8 @@ Reasons are `cancelled`, `declined`, `timeout`, `hangup`, `busy`, `unavailable`,
 
 ```ts
 type Hello = {
+  locked: boolean;           // a PIN is set and not entered: apps/unread/badges are empty and number, name and email are blank
+  security: { email?: string | null; hasPin: boolean; setupDone: boolean; grace: number; domain: string; passwordMin: number };
   number: string;            // '5551234'
   display: string;           // '555-1234' (hide it when settings.streamer)
   name: string;              // display name
@@ -277,6 +298,11 @@ These come from `PhoneConfig.Apps`:
 - **Calculator and Clock:** client-only.
 
 Only show apps that are listed in `hello.apps` (and `installed`) or in `external`. Tapping an external app calls `openExternal`. Routes are free-form strings each app defines, like `phone/recents` from a missed-call notification or `apartments` from the apartments resource. Unknown routes just open the app.
+
+### Lock screen and setup
+
+- When `hello.locked` is true, draw only the PIN screen and call `unlock`. Do not render anything else, and do not show message or mail text in banners (the UI hides previews whenever a PIN is set and the phone is locked or put away).
+- When `hello.security.setupDone` is false (and the phone is not locked), show the setup flow; call `setupFinish` when it is finished or skipped.
 
 ### Rules the UI must keep
 

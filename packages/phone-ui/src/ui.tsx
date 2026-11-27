@@ -93,14 +93,14 @@ export function Slider({ value, min = 0, max = 100, onChange, onCommit, label }:
 }
 
 /** Text input that tells the game when it has focus (so W/A/S/D don't move the player while typing). */
-export function TextInput(props: { value: string; onChange: (v: string) => void; placeholder?: string; maxLength?: number; inputMode?: 'numeric' | 'text' | 'tel'; autoFocus?: boolean; onEnter?: () => void; className?: string; label?: string; multiline?: boolean }) {
-  const { value, onChange, placeholder, maxLength, inputMode, autoFocus, onEnter, className, label, multiline } = props;
+export function TextInput(props: { value: string; onChange: (v: string) => void; placeholder?: string; maxLength?: number; inputMode?: 'numeric' | 'text' | 'tel'; autoFocus?: boolean; onEnter?: () => void; className?: string; label?: string; multiline?: boolean; type?: 'text' | 'password' }) {
+  const { value, onChange, placeholder, maxLength, inputMode, autoFocus, onEnter, className, label, multiline, type } = props;
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useEffect(() => { if (autoFocus) ref.current?.focus({ preventScroll: true }); }, [autoFocus]);
   // If this field unmounts while focused, release the typing lock.
   useEffect(() => () => { if (document.activeElement === ref.current) void typing(false); }, []);
   const common = {
-    ref, value, placeholder, maxLength, inputMode, 'aria-label': label ?? placeholder, className: cx('ph-input', className), spellCheck: false, autoComplete: 'off',
+    ref, value, placeholder, maxLength, inputMode, type, 'aria-label': label ?? placeholder, className: cx('ph-input', className), spellCheck: false, autoComplete: 'off',
     onChange: (e: { target: { value: string } }) => onChange(e.target.value),
     onFocus: () => void typing(true), onBlur: () => void typing(false),
   };

@@ -42,6 +42,12 @@ let callTimers: number[] = [];
 let voiceOk = true;
 const badges: Record<string, number> = {};
 
+/** Account + PIN state, like the server's veyl_ph_accounts row. Preview PIN is 1234, password hunter22. */
+const DOMAIN = 'veylid.com';
+const freshSec = () => ({ email: 'alex.morgan@' + DOMAIN as string | null, pass: 'hunter22', pin: null as string | null, setupDone: true, locked: false, fails: 0, lockedUntil: 0 });
+let sec = freshSec();
+const TAKEN = ['admin', 'jamie.cole', 'riley', 'alex'];
+
 const nameOf = (n: string) => contacts.find((c) => c.number === n)?.name ?? fmt(n);
 const contact = (name: string, number: string, favorite = false, note?: string): Contact => ({ id: ++seq, name, number, display: fmt(number), favorite, note });
 const msg = (conversationId: number, sender: string, body: string, ago: number, extra: Partial<Message> = {}): Message =>
@@ -49,6 +55,7 @@ const msg = (conversationId: number, sender: string, body: string, ago: number, 
 
 function reset(empty: boolean) {
   seq = 100; blocked = []; call = null; callTimers.forEach(clearTimeout); callTimers = [];
+  sec = freshSec();
   settings = { wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black', volume: 70, brightness: 100, size: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: ['calculator', 'clock'], home: [] };
   Object.keys(badges).forEach((k) => delete badges[k]);
   if (empty) { contacts = []; convs = []; mail = []; notifs = []; recents = []; return; }
@@ -118,7 +125,16 @@ const callView = (c: MockCall): Call => ({ id: c.id, state: c.state, reason: c.r
 export function phoneSession(empty: boolean): Hello {
   void empty;
   const installed = new Set(settings.installed);
+  const security = { email: sec.locked ? null : sec.email, hasPin: !!sec.pin, setupDone: sec.setupDone, grace: 0, domain: DOMAIN, passwordMin: 6 };
+  if (sec.locked) {
+    return {
+      number: '', display: '', name: '', settings, apps: [], locked: true, security, voice: { available: true, provider: 'pma-voice' }, call: call ? callView(call) : null,
+      unread: { messages: 0, notifications: 0, mail: 0 }, badges: {}, presets: PRESETS, limits: { message: 500, groupMembers: 12, groupName: 32, name: 40, pageSize: 30 },
+      serverTime: now(), external: EXTERNAL, world: { hour: 21, minute: 41, weather: 'CLEAR' },
+    };
+  }
   return {
+    locked: false, security,
     number: ME, display: fmt(ME), name: 'Alex Morgan', settings, apps: APPS.map((a) => ({ ...a, installed: a.core || installed.has(a.id) })),
     voice: voiceOk ? { available: true, provider: 'pma-voice' } : { available: false, reason: 'Calls need a voice resource (start pma-voice).' },
     call: call ? callView(call) : null, unread: { messages: unreadTotal(), notifications: notifUnread(), mail: mailUnread() }, badges: { ...badges },
@@ -129,8 +145,13 @@ export function phoneSession(empty: boolean): Hello {
 
 export function phoneReset(empty: boolean) { reset(empty); devEmit('phone:reset'); }
 
+/** Putting the phone away (the real client calls the server's `lock`). */
+export function phoneClose() { if (sec.pin) sec.locked = true; devEmit('phone:close'); }
+
 /** Preview buttons: simulate things the server pushes. */
-export function phoneDemo(kind: 'message' | 'call' | 'notification' | 'mail' | 'group' | 'share') {
+export function phoneDemo(kind: 'message' | 'call' | 'notification' | 'mail' | 'group' | 'share' | 'lock' | 'setup') {
+  if (kind === 'lock') { sec.pin = sec.pin ?? '1234'; sec.locked = true; sec.fails = 0; sec.lockedUntil = 0; devEmit('phone:open', phoneSession(false)); return; }
+  if (kind === 'setup') { sec = { ...freshSec(), email: null, setupDone: false }; devEmit('phone:open', phoneSession(false)); return; }
   if (kind === 'message') {
     const c = convs.find((x) => x.peer === '5550177') ?? convs[0];
     if (!c) return;
@@ -177,8 +198,67 @@ const NEARBY = [{ id: 14, name: 'Jamie Cole', distance: 0.8 }, { id: 22, name: '
 
 const CANNED = ['Haha yeah', 'On my way', 'Give me 10 minutes', 'Sounds good to me', 'Send me the location', 'Can you call me?', 'Ok!'];
 
+const OPEN_WHEN_LOCKED = ['hello', 'unlock', 'lock', 'pinReset', 'callAnswer', 'callDecline', 'callEnd'];
+const isPin = (v: unknown): v is string => typeof v === 'string' && /^\d{4}$/.test(v);
+/** Same limit as the server: 5 wrong tries lock it for 5 minutes. */
+function tryPin(pin: unknown): NuiResponse | null {
+  const wait = sec.lockedUntil - now();
+  if (wait > 0) return { ok: false, code: 'LOCKED_OUT', message: `Too many attempts. Try again in ${wait >= 120 ? Math.ceil(wait / 60) + ' minutes' : wait + ' seconds'}.`, data: { seconds: wait } as never };
+  if (pin === sec.pin) { sec.fails = 0; return null; }
+  sec.fails++;
+  if (sec.fails >= 5) { sec.fails = 0; sec.lockedUntil = now() + 300; return { ok: false, code: 'LOCKED_OUT', message: 'Too many attempts. Try again in 5 minutes.', data: { seconds: 300 } as never }; }
+  return { ok: false, code: 'WRONG_PIN', message: 'Wrong PIN', data: { left: 5 - sec.fails } as never };
+}
+
 export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiResponse> {
+  if (sec.locked && !OPEN_WHEN_LOCKED.includes(name)) return err('LOCKED', 'Unlock your phone first');
   switch (name) {
+    case 'unlock': {
+      if (!sec.pin) { sec.locked = false; return ok(phoneSession(false)); }
+      if (!isPin(a[0])) return err('INVALID_INPUT', 'Enter your 4-digit PIN');
+      const bad = tryPin(a[0]);
+      if (bad) return bad;
+      sec.locked = false;
+      return ok(phoneSession(false));
+    }
+    case 'lock': if (sec.pin) sec.locked = true; return ok(undefined);
+    case 'accountCheck': {
+      const u = String(a[0] ?? '').toLowerCase().trim();
+      if (!/^[a-z0-9][a-z0-9._]{1,22}[a-z0-9]$/.test(u) || u.includes('..')) return ok({ available: false, reason: 'Use 3 to 24 letters, numbers, dots and underscores' });
+      if (TAKEN.includes(u)) return ok({ available: false, email: u + '@' + DOMAIN, reason: u === 'admin' ? 'That name is not available' : 'That email is taken' });
+      return ok({ available: true, email: u + '@' + DOMAIN });
+    }
+    case 'accountCreate': {
+      const p = a[0] as { username: string; password: string };
+      if (sec.email) return err('ALREADY_EXISTS', 'This phone already has an account');
+      if (String(p.password ?? '').length < 6) return err('INVALID_INPUT', 'Use 6 to 64 characters for your password');
+      if (TAKEN.includes(String(p.username).toLowerCase())) return err('ALREADY_EXISTS', 'That email is taken');
+      sec.email = String(p.username).toLowerCase() + '@' + DOMAIN; sec.pass = p.password;
+      return ok({ email: sec.email }, 'Account created');
+    }
+    case 'passwordChange': {
+      const p = a[0] as { current: string; new: string };
+      if (!sec.email) return err('NO_ACCOUNT', 'Create an account first');
+      if (p.current !== sec.pass) return { ok: false, code: 'WRONG_PASSWORD', message: 'Wrong password', data: { left: 4 } as never };
+      if (String(p.new).length < 6) return err('INVALID_INPUT', 'Use 6 to 64 characters for your password');
+      sec.pass = p.new; return ok(undefined, 'Password changed');
+    }
+    case 'pinSet': {
+      const p = a[0] as { pin: string; current?: string };
+      if (!isPin(p.pin)) return err('INVALID_INPUT', 'A PIN is 4 digits');
+      if (sec.pin) { const bad = tryPin(p.current); if (bad) return bad; }
+      sec.pin = p.pin; return ok({ hasPin: true }, 'PIN saved');
+    }
+    case 'pinRemove': { if (!sec.pin) return ok({ hasPin: false }); const bad = tryPin(a[0]); if (bad) return bad; sec.pin = null; return ok({ hasPin: false }, 'PIN turned off'); }
+    case 'pinReset': {
+      const p = a[0] as { password: string; pin: string };
+      if (!sec.email) return err('NO_ACCOUNT', 'This phone has no account. Ask staff to reset your PIN.');
+      if (!isPin(p.pin)) return err('INVALID_INPUT', 'A PIN is 4 digits');
+      if (p.password !== sec.pass) return { ok: false, code: 'WRONG_PASSWORD', message: 'Wrong password', data: { left: 4 } as never };
+      sec.pin = p.pin; sec.locked = false; sec.fails = 0; sec.lockedUntil = 0;
+      return ok(phoneSession(false), 'PIN reset');
+    }
+    case 'setupFinish': sec.setupDone = true; return ok(undefined);
     case 'hello': return ok(phoneSession(false));
     case 'settingsSave': {
       const p = (a[0] ?? {}) as Partial<Settings>;

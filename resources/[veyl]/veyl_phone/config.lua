@@ -50,6 +50,10 @@ PhoneConfig = {
         RingSeconds = 30,
         ChannelBase = 5000,           -- pma-voice call channel = ChannelBase + call id
     },
+    -- Account (email + password, like an Apple ID) and PIN lock.
+    Account = { Domain = 'veylid.com', UsernameMin = 3, UsernameMax = 24, PasswordMin = 6 },
+    Lock = { GraceSeconds = 10, MaxAttempts = 5, LockoutSeconds = 300 },   -- reopen within the grace period without the PIN; 5 wrong tries lock it for 5 minutes
+
     Share = { Range = 4.0, ExpireSeconds = 60, CooldownSeconds = 30 },   -- "Share my number": metres, how long the prompt lasts, per-pair cooldown
     Voice = 'auto',                   -- 'auto' = pma-voice when it is started; calls are disabled without a voice resource
 

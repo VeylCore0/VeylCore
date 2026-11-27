@@ -14,7 +14,7 @@ import { App as DrugsApp } from '../../drugs-ui/src/App';
 import { App as ApartmentsApp } from '../../apartments-ui/src/App';
 import { App as DoorsApp } from '../../doorlocks-ui/src/App';
 import { App as PhoneApp } from '../../phone-ui/src/App';
-import { phoneApi, phoneDemo, phoneReset, phoneSession, phoneVoice } from './phoneMock';
+import { phoneApi, phoneClose, phoneDemo, phoneReset, phoneSession, phoneVoice } from './phoneMock';
 import { doorEditor, doorHandler, doorManage } from './doorMock';
 import { aptCatalog, aptDashboard, aptFurniture, aptHandler } from './aptMock';
 import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
@@ -65,7 +65,7 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (action === 'ui:ready') return { ok: true };
     if (isApt(screen)) return aptHandler(action, payload, mode);
     if (screen === 'phone') {
-      if (action === 'close') { devEmit('phone:close'); return { ok: true }; }
+      if (action === 'close') { phoneClose(); return { ok: true }; }
       if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };
       if (action === 'location') return { ok: true, data: { label: 'Legion Square, Pillbox Hill' } };
       if (action === 'api') {
@@ -268,7 +268,9 @@ function Preview() {
           <button onClick={() => phoneDemo('notification')}>+ notification</button>
           <button onClick={() => phoneDemo('share')}>+ number share</button>
           <button onClick={() => phoneDemo('mail')}>+ mail</button>
-          <button onClick={() => devEmit('phone:close')}>close phone</button>
+          <button onClick={() => phoneDemo('lock')}>lock phone (PIN 1234)</button>
+          <button onClick={() => phoneDemo('setup')}>first-run setup</button>
+          <button onClick={() => phoneClose()}>close phone</button>
           <button onClick={() => devEmit('phone:open', phoneSession(false))}>open phone</button>
         </>}
       </div>

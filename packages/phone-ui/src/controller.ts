@@ -5,7 +5,7 @@ import { clockText, nowSec, setClockOffset } from './format';
 import { getState, resetState, setState, DEFAULT_SETTINGS } from './store';
 import { playNotify, playTimerDone, startRing, stopRing } from './sound';
 import { say, toast } from './ui';
-import type { Banner, Call, Conversation, ExternalApp, Hello, MailItem, Notification, PushEvent, Settings, World } from './types';
+import type { Banner, Call, Conversation, ExternalApp, Hello, MailItem, Notification, PushEvent, Security, Settings, World } from './types';
 
 // ---------------------------------------------------------------------------
 // Push bus: components that show live data (an open thread, the inbox) listen here
@@ -22,12 +22,18 @@ export const setActiveThread = (id: number | null) => { activeThread = id; };
 // Banners
 // ---------------------------------------------------------------------------
 let bannerSeq = 0;
-export function banner(b: Omit<Banner, 'id'>, ms = 4600) {
+export function banner(input: Omit<Banner, 'id'>, ms = 4600) {
+  const b = shield(input);
   const id = ++bannerSeq;
   setState((s) => ({ banners: [...s.banners.filter((x) => !((b.sticky || b.kind === 'share') && x.kind === b.kind)).slice(-2), { ...b, id }] }));
   if (!b.sticky) window.setTimeout(() => dismissBanner(id), ms);
   return id;
 }
+/** With a PIN, banners never show what a message or mail says while the phone is locked or put away. */
+const previewsHidden = () => { const s = getState(); return !!s.hello?.security?.hasPin && (!!s.hello.locked || !s.open); };
+const SHIELD: Record<Banner['kind'], string> = { message: 'New message', mail: 'New mail', share: 'Number shared', notification: 'Notification', call: 'Incoming call', timer: 'Timer' };
+const shield = (b: Omit<Banner, 'id'>): Omit<Banner, 'id'> => (previewsHidden() && b.kind !== 'call' && b.kind !== 'timer' ? { ...b, title: SHIELD[b.kind], body: 'Unlock to view' } : b);
+
 export function dismissBanner(id: number) { setState((s) => ({ banners: s.banners.filter((b) => b.id !== id) })); }
 const dropBanners = (kind: Banner['kind']) => setState((s) => ({ banners: s.banners.filter((b) => b.kind !== kind) }));
 
@@ -217,6 +223,11 @@ export async function loadNotifications() {
   const res = await api<{ items: Notification[]; unread: number }>('notifications');
   if (res.ok && res.data) setState((s) => ({ notifications: res.data!.items, unread: { ...s.unread, notifications: res.data!.unread } }));
   return res.ok;
+}
+
+/** Patches the account / PIN state after a change (create account, set PIN...). */
+export function setSecurity(patch: Partial<Security>) {
+  setState((s) => (s.hello ? { hello: { ...s.hello, security: { ...s.hello.security, ...patch } } } : {}));
 }
 
 export function worldClock() {

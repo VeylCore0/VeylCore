@@ -38,10 +38,12 @@ export function Home() {
   const unread = useStore((s) => s.unread);
   const badges = useStore((s) => s.badges);
   const world = useStore((s) => s.world);
+  const locked = useStore((s) => !!s.hello?.locked);
   const { dock, grid } = useMemo(() => buildTiles(hello, settings, external), [hello, settings, external]);
   const w = world?.weather ? WEATHER[world.weather.toUpperCase()] ?? { text: world.weather, icon: 'cloud' } : null;
   const badgeOf = (id: string) => (id === 'messages' ? unread.messages : id === 'mail' ? unread.mail : badges[id] ?? 0);
 
+  if (locked) return null; // a locked phone shows nothing of itself behind the PIN screen
   return (
     <div className="ph-home">
       <div className="ph-home-scroll">

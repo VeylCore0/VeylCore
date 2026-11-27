@@ -68,6 +68,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 ## 🛠️ Now building: the new phone
 The phone is being rebuilt from the ground up on a new base.
 - ✅ **New phone base:** keeps your number and contacts, with messages and read receipts, group chats, calls, blocked numbers, notifications, mail, app badges and phone settings.
+- ✅ **Phone account and PIN:** first-run setup, an email and password account like an Apple ID, and a 4-digit PIN lock that the server enforces, with lockouts and a password reset for a forgotten PIN.
 - ✅ **New phone screen:** a tall phone with a Dynamic Island for calls, a glass home screen, a notification centre with quick settings, dark and light themes, wallpapers, accent colours and phone cases. Phone, Messages, Contacts (with sharing your number to people next to you), Mail, App Store, Settings, Calculator and Clock are built.
 - **Apps coming back one by one** on the new phone: Bank, Garage, Maps, Services, Jobs, Bills, Camera, Music, News, Racing, Flock, Marketplace, Notes and Voicemail.
 - Apps from other parts of the city keep working: Apartments, Invoices, Boosting and the Silk Road.

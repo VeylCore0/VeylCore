@@ -5,6 +5,8 @@ import { VIEWS } from './apps';
 import { CallScreen, useSecondTick } from './CallScreen';
 import { closePhone, dismissBanner, followRoute, goHome, onApps, onClosed, onNavigate, onOpen, onPushEvent, onReset, onSession, onTick } from './controller';
 import { Home } from './Home';
+import { LockScreen } from './LockScreen';
+import { Setup } from './Setup';
 import { clockText, duration, nowSec } from './format';
 import { Battery, Ico, SignalBars } from './icons';
 import { goBack } from './nav';
@@ -55,15 +57,16 @@ function StatusBar() {
   const call = useStore((s) => s.call);
   const callMin = useStore((s) => s.callMin);
   const shade = useStore((s) => s.shade);
+  const locked = useStore((s) => !!s.hello?.locked);
   const pill = !!call && callMin && call.state !== 'ended';
   useSecondTick(pill && call?.state === 'connected');
   return (
     <div className="ph-status">
-      <button className="ph-status-time" onClick={() => setState({ shade: !shade })} aria-label="Notifications">
+      <button className="ph-status-time" onClick={() => !locked && setState({ shade: !shade })} aria-label="Notifications">
         {world ? clockText(world.hour, world.minute) : ''}
         {unread > 0 && <i className="ph-status-dot" />}
       </button>
-      <button className={cx('ph-island', pill && 'pill')} onClick={() => (pill ? setState({ callMin: false }) : setState({ shade: !shade }))}
+      <button className={cx('ph-island', pill && 'pill')} onClick={() => (pill ? setState({ callMin: false }) : !locked && setState({ shade: !shade }))}
         aria-label={pill ? 'Return to call' : 'Notifications'}>
         {pill && call ? (
           <>
@@ -112,8 +115,9 @@ function Banners({ inside }: { inside: boolean }) {
 /** Someone nearby shared their number: save them or not. Lives on the server for 60 seconds. */
 function SharePrompt() {
   const share = useStore((s) => s.share);
-  useBack(!!share, () => { setState({ share: null }); return true; });
-  if (!share) return null;
+  const locked = useStore((s) => !!s.hello?.locked);
+  useBack(!!share && !locked, () => { setState({ share: null }); return true; });
+  if (!share || locked) return null;
   const answer = async (accept: boolean) => {
     setState({ share: null });
     const r = await api('shareAnswer', share.id, accept);
@@ -140,9 +144,10 @@ function AppHost() {
   const app = useStore((s) => s.app);
   const route = useStore((s) => s.route);
   const openId = useStore((s) => s.openId);
+  const locked = useStore((s) => !!s.hello?.locked);
   const View = app ? VIEWS[app] : undefined;
   useEffect(() => { if (app && !View) goHome(); }, [app, View]);
-  if (!app || !View) return null;
+  if (!app || !View || locked) return null;
   return <div className="ph-appview" key={`${openId}:${app}`}><View route={route} /></div>;
 }
 
@@ -150,7 +155,9 @@ export function App() {
   const open = useStore((s) => s.open);
   const app = useStore((s) => s.app);
   const settings = useStore((s) => s.settings);
-  const darkTop = useStore((s) => s.shade || (!!s.call && !s.callMin));
+  const locked = useStore((s) => !!s.hello?.locked);
+  const needsSetup = useStore((s) => !!s.hello && !s.hello.locked && !!s.hello.security && !s.hello.security.setupDone);
+  const darkTop = useStore((s) => s.shade || (!!s.call && !s.callMin) || !!s.hello?.locked || (!!s.hello && !!s.hello.security && !s.hello.security.setupDone));
   const scale = useScale(settings.size);
 
   useEffect(() => announceReady(), []);
@@ -171,13 +178,14 @@ export function App() {
       e.preventDefault();
       if (goBack()) return;
       const s = getState();
-      if (s.app) goHome(); else closePhone();
+      if (s.app && !locked && !needsSetup) goHome(); else closePhone();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, locked, needsSetup]);
 
   const homeBar = () => {
+    if (locked || needsSetup) return;
     const s = getState();
     if (s.call && !s.callMin && s.call.state !== 'incoming') setState({ callMin: true });
     setState({ shade: false });
@@ -198,6 +206,8 @@ export function App() {
             <AppHost />
             <StatusBar />
             <Banners inside />
+            <Setup />
+            <LockScreen />
             <Shade />
             <SharePrompt />
             <CallScreen />

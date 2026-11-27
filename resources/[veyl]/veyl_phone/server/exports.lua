@@ -18,6 +18,18 @@ exports('GetCitizenByNumber', function(number) if not ready() then return nil en
 --- exports.veyl_phone:GetNumber(citizenid) -> '5551234' | nil (the account is created on first phone use)
 exports('GetNumber', function(citizenid) if not ready() or type(citizenid) ~= 'string' then return nil end return Phone.NumberOf(citizenid) end)
 
+--- exports.veyl_phone:GetEmail(citizenid) -> 'name@veylid.com' | nil (the phone account email; nil when not set up)
+exports('GetEmail', function(citizenid)
+    if not ready() or type(citizenid) ~= 'string' then return nil end
+    return MySQL.scalar.await('SELECT email FROM veyl_ph_accounts WHERE citizenid = ?', { citizenid })
+end)
+
+--- exports.veyl_phone:GetCitizenByEmail('name@veylid.com') -> citizenid | nil
+exports('GetCitizenByEmail', function(email)
+    if not ready() or type(email) ~= 'string' then return nil end
+    return MySQL.scalar.await('SELECT citizenid FROM veyl_ph_accounts WHERE email = ?', { email:lower() })
+end)
+
 --- exports.veyl_phone:IsReachable(citizenid) -> boolean (online with a phone, not in airplane mode)
 exports('IsReachable', function(citizenid)
     local s = ready() and Phone.byCid[citizenid]

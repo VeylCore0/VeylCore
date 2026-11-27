@@ -14,8 +14,12 @@ export type Call = {
   id: number; state: 'incoming' | 'outgoing' | 'connected' | 'ended'; reason?: string;
   peer: { number: string; display: string }; startedAt: number; answeredAt?: number;
 };
+/** Account and PIN state. `email` is hidden while the phone is locked. */
+export type Security = { email?: string | null; hasPin: boolean; setupDone: boolean; grace: number; domain: string; passwordMin: number };
 export type Hello = {
   number: string; display: string; name: string; settings: Settings; apps: App[];
+  /** A PIN is set and has not been entered: the server sends no personal data until `unlock` succeeds. */
+  locked: boolean; security: Security;
   voice: { available: boolean; provider?: string; reason?: string };
   call: Call | null;
   unread: { messages: number; notifications: number; mail: number };
