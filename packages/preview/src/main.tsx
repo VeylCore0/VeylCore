@@ -266,6 +266,7 @@ function Preview() {
           <button onClick={() => phoneDemo('group')}>+ group msg</button>
           <button onClick={() => phoneDemo('call')}>+ incoming call</button>
           <button onClick={() => phoneDemo('notification')}>+ notification</button>
+          <button onClick={() => phoneDemo('share')}>+ number share</button>
           <button onClick={() => phoneDemo('mail')}>+ mail</button>
           <button onClick={() => devEmit('phone:close')}>close phone</button>
           <button onClick={() => devEmit('phone:open', phoneSession(false))}>open phone</button>

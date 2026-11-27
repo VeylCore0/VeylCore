@@ -11,6 +11,8 @@ The rest of this page is the contract between the two. A UI that follows it need
 
 A tall phone that slides up from the bottom right, with a Dynamic Island for calls, a glass home screen with a time and weather widget, a notification centre (tap the status bar), dark and light themes, five wallpapers, accent colours and phone cases.
 
+**Share my number:** the share button in Contacts lists people next to you; they get a prompt and choose whether to save you. Range, how long the prompt lasts and the per-person cooldown are in `PhoneConfig.Share`.
+
 Built-in apps: **Phone** (keypad, recents, favourites, full-screen call screen), **Messages** (direct and group chats, read receipts, location and contact cards, new chat), **Contacts**, **Mail**, **App Store**, **Settings**, **Calculator** and **Clock** (city time, stopwatch, timer). Apps that other resources register with `RegisterApp` show up on the home screen on their own.
 
 Escape closes the innermost thing first (a sheet, then a thread, then the app, then the phone). The home bar goes home.
@@ -164,6 +166,14 @@ Call as `post('api', { name, args: [...] })`.
 | `callEnd` | `[callId?]` | none (hang up, or cancel while ringing) |
 | `recents` | none | `Recent[]` (last 50) |
 
+**Share my number**
+
+| name | args | data |
+|---|---|---|
+| `nearby` | none | `Nearby[]`: people within `PhoneConfig.Share.Range` (4 m) who have a phone, are not in airplane mode and have not blocked you. Closest first. |
+| `shareNumber` | `[serverId]` | none. Sends them a prompt. Refused when too far, blocked, in airplane mode, or sent to the same person in the last 30 s. |
+| `shareAnswer` | `[id, accept: boolean]` | `{ saved }`. Accepting saves the sender as a contact (an existing contact is left as it is) and notifies them. A decline is never reported back. |
+
 **Mail**
 
 | name | args | data |
@@ -185,6 +195,7 @@ Call as `post('api', { name, args: [...] })`.
 | `conversation` | `{ conversation }` or `{ removed: conversationId }` | Group created, renamed or changed, or you were removed. |
 | `call` | `Call` | The single source of truth for the call screen (states below). |
 | `mail` | `{ mail: MailItem, unread, silent }` | Banner, then update the inbox. |
+| `share` | `ShareRequest` | A nearby player shared their number: show a prompt (save or not), valid until `expires`. Answer with `shareAnswer`. |
 
 **Call states:**
 
@@ -248,6 +259,8 @@ type Call = {
   id: number; state: 'incoming' | 'outgoing' | 'connected' | 'ended'; reason?: string;
   peer: { number: string; display: string }; startedAt: number; answeredAt?: number;
 };
+type Nearby = { id: number; name: string; distance: number };
+type ShareRequest = { id: number; from: { name: string; number: string; display: string }; expires: number };
 type Recent = { id: number; direction: 'in' | 'out'; number: string; display: string; missed: boolean; reason?: string; time: number; duration: number };
 type MailItem = { id: number; from: string; subject: string; preview: string; read: boolean; time: number };
 type Mail = { id: number; from: string; subject: string; body: string; read: boolean; time: number };

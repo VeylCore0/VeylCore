@@ -7,7 +7,7 @@ import { Ico } from '../icons';
 import { useRouteOnce } from '../nav';
 import { useStore } from '../store';
 import { Avatar, Button, Empty, Group, Header, IconButton, Row, SearchField, Sheet, Spinner, TextInput, Toggle, say, toast } from '../ui';
-import type { Contact } from '../types';
+import type { Contact, Nearby } from '../types';
 
 type Edit = { id?: number; name: string; number: string; note: string; favorite: boolean };
 
@@ -17,6 +17,7 @@ export function ContactsApp({ route }: { route?: string }) {
   const [q, setQ] = useState('');
   const [detail, setDetail] = useState<Contact | null>(null);
   const [edit, setEdit] = useState<Edit | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
     const r = await api<Contact[]>('contacts');
@@ -39,7 +40,7 @@ export function ContactsApp({ route }: { route?: string }) {
 
   return (
     <div className="ph-app">
-      <Header title="Contacts" right={<IconButton icon="plus" label="New contact" tone="accent" onClick={() => setEdit({ name: '', number: '', note: '', favorite: false })} />} />
+      <Header title="Contacts" right={<><IconButton icon="share" label="Share my number" onClick={() => setSharing(true)} /><IconButton icon="plus" label="New contact" tone="accent" onClick={() => setEdit({ name: '', number: '', note: '', favorite: false })} /></>} />
       {!!list?.length && <div className="ph-pad"><SearchField value={q} onChange={setQ} /></div>}
       <div className="ph-scroll">
         {list === null && !failed && <Spinner />}
@@ -65,6 +66,7 @@ export function ContactsApp({ route }: { route?: string }) {
       </div>
       {detail && <Detail c={detail} onClose={() => setDetail(null)} onEdit={(c) => { setDetail(null); setEdit({ id: c.id, name: c.name, number: c.number, note: c.note ?? '', favorite: c.favorite }); }}
         onChanged={(next) => { setDetail(next); void load(); }} onDeleted={() => { setDetail(null); void load(); }} />}
+      {sharing && <ShareSheet onClose={() => setSharing(false)} />}
       {edit && <Form e={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void load(); }} />}
     </div>
   );
@@ -127,6 +129,58 @@ function Form({ e, onClose, onSaved }: { e: Edit; onClose: () => void; onSaved: 
         <div className="ph-form-row"><span>Favorite</span><Toggle on={v.favorite} onChange={(favorite) => setV({ ...v, favorite })} label="Favorite" /></div>
         <Button kind="primary" block onClick={save} disabled={!ok || busy}>Save contact</Button>
       </div>
+    </Sheet>
+  );
+}
+
+/** "Share my number": people standing next to you who have a phone. They get a prompt and can save you. */
+function ShareSheet({ onClose }: { onClose: () => void }) {
+  const hello = useStore((s) => s.hello);
+  const streamer = useStore((s) => s.settings.streamer);
+  const airplane = useStore((s) => s.settings.airplane);
+  const [list, setList] = useState<Nearby[] | null>(null);
+  const [sent, setSent] = useState<Set<number>>(new Set());
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const scan = useCallback(async () => {
+    const r = await api<Nearby[]>('nearby');
+    if (r.ok) setList(r.data ?? []); else if (list === null) setList([]);
+  }, [list]);
+  useEffect(() => {
+    void scan();
+    const t = window.setInterval(() => { void scan(); }, 4000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const send = async (p: Nearby) => {
+    setBusy(p.id);
+    const r = await api('shareNumber', p.id);
+    setBusy(null);
+    if (say(r)) setSent((s) => new Set(s).add(p.id));
+  };
+
+  return (
+    <Sheet title="Share my number" onClose={onClose}>
+      <div className="ph-share-me">
+        <span className="ph-share-radar"><i /><i /><Ico name="share" size={22} /></span>
+        <strong>{streamer ? '•••-••••' : hello?.display}</strong>
+        <span className="ph-sub">{airplane ? 'Turn off airplane mode to share' : 'Pick someone next to you. They choose whether to save you.'}</span>
+      </div>
+      {list === null && <Spinner />}
+      {list?.length === 0 && <Empty icon="users" title="No one nearby" text="Stand next to someone who has a phone." />}
+      {!!list?.length && (
+        <Group title="Nearby">
+          {list.map((p) => (
+            <div key={p.id} className="ph-near">
+              <Avatar name={p.name} id={String(p.id)} size={40} />
+              <span><strong>{p.name}</strong><em>{p.distance < 1 ? 'Right here' : `${p.distance.toFixed(1)} m away`}</em></span>
+              {sent.has(p.id) ? <span className="ph-near-sent"><Ico name="check" size={15} stroke={3} /> Sent</span>
+                : <Button kind="primary" onClick={() => send(p)} disabled={busy === p.id || airplane}>Send</Button>}
+            </div>
+          ))}
+        </Group>
+      )}
     </Sheet>
   );
 }

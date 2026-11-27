@@ -52,8 +52,13 @@ export type PushEvent =
   | { event: 'read'; data: { conversationId: number; number: string; lastReadId: number } }
   | { event: 'conversation'; data: { conversation?: Conversation; removed?: number } }
   | { event: 'call'; data: Call }
-  | { event: 'mail'; data: { mail: MailItem; unread: number; silent: boolean } };
+  | { event: 'mail'; data: { mail: MailItem; unread: number; silent: boolean } }
+  | { event: 'share'; data: ShareRequest };
+
+/** Someone nearby is sharing their number with you (expires = unix seconds). */
+export type ShareRequest = { id: number; from: { name: string; number: string; display: string }; expires: number };
+export type Nearby = { id: number; name: string; distance: number };
 
 export type Banner = {
-  id: number; app: string; title: string; body: string; route?: string; kind: 'notification' | 'message' | 'mail' | 'call' | 'timer'; sticky?: boolean;
+  id: number; app: string; title: string; body: string; route?: string; kind: 'notification' | 'message' | 'mail' | 'call' | 'timer' | 'share'; sticky?: boolean;
 };

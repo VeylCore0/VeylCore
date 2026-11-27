@@ -10,6 +10,9 @@ import { Battery, Ico, SignalBars } from './icons';
 import { goBack } from './nav';
 import { Shade } from './Shade';
 import { getState, setState, useStore } from './store';
+import { api } from './api';
+import { useBack } from './nav';
+import { Avatar, Button, say } from './ui';
 import { APP_LOOK, AppIcon, ToastHost, cx } from './ui';
 import type { Banner, ExternalApp, Hello, PushEvent, World } from './types';
 
@@ -97,6 +100,33 @@ function Banners({ inside }: { inside: boolean }) {
   );
 }
 
+/** Someone nearby shared their number: save them or not. Lives on the server for 60 seconds. */
+function SharePrompt() {
+  const share = useStore((s) => s.share);
+  useBack(!!share, () => { setState({ share: null }); return true; });
+  if (!share) return null;
+  const answer = async (accept: boolean) => {
+    setState({ share: null });
+    const r = await api('shareAnswer', share.id, accept);
+    if (accept || !r.ok) say(r);
+  };
+  return (
+    <div className="ph-share-wrap">
+      <div className="ph-share-dim" onClick={() => setState({ share: null })} />
+      <div className="ph-share-card" role="dialog" aria-label="Number shared with you">
+        <Avatar name={share.from.name} id={share.from.number} size={72} />
+        <strong>{share.from.name}</strong>
+        <span>wants to share their number</span>
+        <b>{share.from.display}</b>
+        <div className="ph-share-actions">
+          <Button kind="ghost" onClick={() => answer(false)}>Not now</Button>
+          <Button kind="primary" onClick={() => answer(true)}>Save contact</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppHost() {
   const app = useStore((s) => s.app);
   const route = useStore((s) => s.route);
@@ -160,6 +190,7 @@ export function App() {
             <StatusBar />
             <Banners inside />
             <Shade />
+            <SharePrompt />
             <CallScreen />
             <ToastHost />
             <button className="ph-homebar" onClick={homeBar} aria-label="Home"><span /></button>

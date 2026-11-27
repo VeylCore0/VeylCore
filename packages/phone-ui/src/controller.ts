@@ -1,7 +1,7 @@
 // Everything that talks to the game: messages from Lua, server pushes, and the actions apps trigger.
 // The server owns all state; this file only mirrors it into the store.
 import { api, post } from './api';
-import { clockText, setClockOffset } from './format';
+import { clockText, nowSec, setClockOffset } from './format';
 import { getState, resetState, setState, DEFAULT_SETTINGS } from './store';
 import { playNotify, playTimerDone, startRing, stopRing } from './sound';
 import { say, toast } from './ui';
@@ -24,7 +24,7 @@ export const setActiveThread = (id: number | null) => { activeThread = id; };
 let bannerSeq = 0;
 export function banner(b: Omit<Banner, 'id'>, ms = 4600) {
   const id = ++bannerSeq;
-  setState((s) => ({ banners: [...s.banners.filter((x) => !(b.sticky && x.kind === b.kind)).slice(-2), { ...b, id }] }));
+  setState((s) => ({ banners: [...s.banners.filter((x) => !((b.sticky || b.kind === 'share') && x.kind === b.kind)).slice(-2), { ...b, id }] }));
   if (!b.sticky) window.setTimeout(() => dismissBanner(id), ms);
   return id;
 }
@@ -115,6 +115,14 @@ export function onPushEvent(e: PushEvent) {
       else if (e.data.conversation) setState((st) => ({ conversations: upsertConversation(st.conversations, e.data.conversation!) }));
       break;
     case 'call': applyCall(e.data, true); break;
+    case 'share': {
+      const r = e.data;
+      setState({ share: r });
+      banner({ app: 'contacts', title: `${r.from.name} shared their number`, body: s.open ? 'Save them as a contact?' : 'Open your phone to answer', route: 'share', kind: 'share' }, 7000);
+      playNotify(s.settings, false);
+      window.setTimeout(() => { if (getState().share?.id === r.id) setState({ share: null }); }, Math.max(1000, (r.expires - nowSec()) * 1000));
+      break;
+    }
     case 'mail': {
       const m: MailItem = e.data.mail;
       setState((st) => ({ unread: { ...st.unread, mail: e.data.unread } }));
@@ -192,6 +200,7 @@ export const closePhone = () => { void post('close'); };
 /** Notification / banner tap: open the app and route it names. */
 export function followRoute(app: string, route?: string) {
   if (app === 'phone' && route === 'call') { setState({ callMin: false }); return; }
+  if (route === 'share') return; // the prompt is already on screen
   openApp(app === 'system' ? 'settings' : app, route?.startsWith(`${app}/`) ? route.slice(app.length + 1) : route);
 }
 

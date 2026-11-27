@@ -130,7 +130,7 @@ export function phoneSession(empty: boolean): Hello {
 export function phoneReset(empty: boolean) { reset(empty); devEmit('phone:reset'); }
 
 /** Preview buttons: simulate things the server pushes. */
-export function phoneDemo(kind: 'message' | 'call' | 'notification' | 'mail' | 'group') {
+export function phoneDemo(kind: 'message' | 'call' | 'notification' | 'mail' | 'group' | 'share') {
   if (kind === 'message') {
     const c = convs.find((x) => x.peer === '5550177') ?? convs[0];
     if (!c) return;
@@ -148,6 +148,10 @@ export function phoneDemo(kind: 'message' | 'call' | 'notification' | 'mail' | '
     call = { id: ++seq, state: 'incoming', peer: { number: '5550166', display: 'Marcus Webb' }, startedAt: now(), number: '5550166', dir: 'in' };
     push('call', callView(call));
     callTimers.push(window.setTimeout(() => { if (call?.state === 'incoming') endCall('timeout'); }, 30000));
+  } else if (kind === 'share') {
+    const id = ++seq;
+    pendingShares.set(id, { name: 'Jordan Lee', number: '5550611' });
+    push('share', { id, from: { name: 'Jordan Lee', number: '5550611', display: fmt('5550611') }, expires: now() + 60 });
   } else if (kind === 'notification') {
     const n: Notification = { id: ++seq, app: 'apartments', title: 'Visitor at your door', body: 'Riley Park is asking to come in.', route: 'apartments', read: false, time: now() };
     notifs.unshift(n);
@@ -167,6 +171,9 @@ function endCall(reason: string) {
   recents.unshift({ id: ++seq, direction: c.dir, number: c.number, display: nameOf(c.number), missed: missed && (reason === 'timeout' || reason === 'declined'), reason, time: now(), duration: c.answeredAt ? now() - c.answeredAt : 0 });
   push('call', { id: c.id, state: 'ended', reason, peer: c.peer, startedAt: c.startedAt, answeredAt: c.answeredAt });
 }
+
+const pendingShares = new Map<number, { name: string; number: string }>();
+const NEARBY = [{ id: 14, name: 'Jamie Cole', distance: 0.8 }, { id: 22, name: 'Riley Park', distance: 2.4 }, { id: 31, name: 'Casey Nguyen', distance: 3.6 }];
 
 const CANNED = ['Haha yeah', 'On my way', 'Give me 10 minutes', 'Sounds good to me', 'Send me the location', 'Can you call me?', 'Ok!'];
 
@@ -273,6 +280,20 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
     case 'groupRename': { const c = convs.find((x) => x.id === a[0]); if (c) c.name = String(a[1]); return ok({ name: a[1] }, 'Renamed'); }
     case 'groupAdd': { const c = convs.find((x) => x.id === a[0]); const n = String(a[1]).replace(/\D/g, ''); if (c && !c.members.includes(n)) c.members.push(n); return ok(undefined, 'Added'); }
     case 'groupRemove': { const c = convs.find((x) => x.id === a[0]); if (c) c.members = c.members.filter((n) => n !== a[1]); return ok(undefined, 'Removed'); }
+    case 'nearby': return settings.airplane ? ok([]) : ok(NEARBY);
+    case 'shareNumber': {
+      if (settings.airplane) return err('UNAVAILABLE', 'Turn off airplane mode first');
+      const p = NEARBY.find((x) => x.id === a[0]);
+      return p ? ok(undefined, `Number sent to ${p.name}`) : err('NOT_FOUND', 'That person is not available');
+    }
+    case 'shareAnswer': {
+      const p = pendingShares.get(Number(a[0]));
+      if (!p) return err('NOT_FOUND', 'That request expired');
+      pendingShares.delete(Number(a[0]));
+      if (a[1] !== true) return ok({ saved: false });
+      if (!contacts.some((c) => c.number === p.number)) contacts.push(contact(p.name, p.number));
+      return ok({ saved: true }, 'Contact saved');
+    }
     case 'callStart': {
       if (!voiceOk) return err('VOICE_UNAVAILABLE', 'Calls need a voice resource (start pma-voice).');
       if (call) return err('BUSY', 'You are already in a call');

@@ -1,7 +1,7 @@
 // A tiny global store (no dependency): pushes from the server keep arriving while the phone is closed, so state
 // cannot live inside components.
 import { useSyncExternalStore } from 'react';
-import type { Banner, Call, Conversation, ExternalApp, Hello, Notification, Settings, World } from './types';
+import type { Banner, Call, Conversation, ExternalApp, Hello, Notification, Settings, ShareRequest, World } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black',
@@ -25,12 +25,13 @@ export interface State {
   banners: Banner[];
   conversations: Conversation[] | null;
   notifications: Notification[] | null;
+  share: ShareRequest | null;          // a "share number" prompt waiting for an answer
 }
 
 const initial: State = {
   hello: null, settings: DEFAULT_SETTINGS, open: false, openId: 0, world: null, external: [], badges: {},
   unread: { messages: 0, notifications: 0, mail: 0 }, call: null, callMin: false, app: null, route: undefined, shade: false,
-  banners: [], conversations: null, notifications: null,
+  banners: [], conversations: null, notifications: null, share: null,
 };
 
 let state = initial;

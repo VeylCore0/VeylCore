@@ -200,6 +200,7 @@ local ALLOWED = {
     groupCreate = true, groupRename = true, groupAdd = true, groupRemove = true,
     callStart = true, callAnswer = true, callDecline = true, callEnd = true, recents = true,
     mailList = true, mailRead = true, mailDelete = true,
+    nearby = true, shareNumber = true, shareAnswer = true,
 }
 
 --- api { name, args: [] } -> { ok, code?, message?, data? }

@@ -50,6 +50,7 @@ PhoneConfig = {
         RingSeconds = 30,
         ChannelBase = 5000,           -- pma-voice call channel = ChannelBase + call id
     },
+    Share = { Range = 4.0, ExpireSeconds = 60, CooldownSeconds = 30 },   -- "Share my number": metres, how long the prompt lasts, per-pair cooldown
     Voice = 'auto',                   -- 'auto' = pma-voice when it is started; calls are disabled without a voice resource
 
     -- The tablet item (use handler `phone_tablet`): commands its menu runs.
