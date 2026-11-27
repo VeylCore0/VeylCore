@@ -3,16 +3,18 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_phone'
-description 'VeylCore smartphone: identity, contacts, notifications, messages, voice-adapter calls (milestones 1-3)'
-version '0.1.0'
+description 'VeylCore smartphone (base): numbers, settings, apps, notifications, contacts, messages, calls, mail'
+version '2.0.0'
 
 dependencies { 'oxmysql', 'veyl_lib', 'veyl_core', 'veyl_inventory' }
 
-shared_scripts { '@veyl_lib/init.lua', '@veyl_core/lib/shared.lua', 'config.lua' }
-server_scripts { '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua', 'server/core.lua', 'server/notify.lua', 'server/contacts.lua',
-    'server/messages.lua', 'server/calls.lua', 'server/apps.lua', 'server/flock.lua', 'server/bank.lua', 'server/garage.lua', 'server/market.lua', 'server/phone2.lua',
-    'server/phone3.lua' }
-client_scripts { '@veyl_core/lib/client.lua', 'client/main.lua', 'client/phone3.lua' }
+shared_scripts { '@veyl_lib/init.lua', '@veyl_core/lib/shared.lua', 'config.lua', 'shared/util.lua' }
+server_scripts {
+    '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua',
+    'server/core.lua', 'server/apps.lua', 'server/notify.lua', 'server/contacts.lua', 'server/messages.lua',
+    'server/calls.lua', 'server/mail.lua', 'server/exports.lua', 'server/tablet.lua',
+}
+client_scripts { '@veyl_core/lib/client.lua', 'client/main.lua', 'client/tablet.lua' }
 
 ui_page 'web/dist/index.html'
 files { 'web/dist/index.html', 'web/dist/assets/*' }

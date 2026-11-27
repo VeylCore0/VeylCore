@@ -1,143 +1,62 @@
+-- veyl_phone (base). Everything the phone does is checked on the server; the UI only displays and asks.
+-- The UI contract (every call, push and message) is documented in docs/PHONE.md.
+
 PhoneConfig = {
-    -- Device: a character needs this item to open the phone and to have an active phone session (receive deliveries
-    -- and calls). The account and number belong to the CHARACTER: a replacement phone restores that character's data,
-    -- and holding someone else's phone item never grants access to their account. Set to false to not require an item.
+    -- A character needs this item to open the phone and to be reachable (messages pushed live, calls ring).
+    -- The number belongs to the CHARACTER: a new phone item gives back the same number and data. false = no item needed.
     RequireItem = 'phone',
     OpenKey = 'F1',
+    WalkWhileOpen = true,             -- the player can keep walking with the phone open (camera/combat stay blocked)
 
-    -- Numbers: <prefix><4 digits>, shown as 555-1234. Unique per character, never reused.
+    -- Numbers are <prefix><4 digits> (7 digits), shown as 555-1234. One per character, never reused.
     NumberPrefixes = { '555', '310', '323', '424' },
 
-    -- App registry. Only apps listed here and enabled exist on the phone; order = default home order.
-    -- core = always installed (cannot be removed). Other apps are installed from the App Store, per character;
-    -- preinstalled = installed on a new phone. Apps that are not built yet are simply not listed (no placeholders).
+    -- Built-in apps the UI provides. core = always installed (cannot be removed); preinstalled = on a new phone.
+    -- The UI must only show apps that are listed here (plus apps other resources register with RegisterApp).
     Apps = {
-        { id = 'phone', label = 'Phone', enabled = true, dock = true, core = true },
-        { id = 'messages', label = 'Messages', enabled = true, dock = true, core = true },
-        { id = 'contacts', label = 'Contacts', enabled = true, dock = true, core = true },
-        { id = 'settings', label = 'Settings', enabled = true, dock = true, core = true },
-        { id = 'store', label = 'App Store', enabled = true, core = true, category = 'Utilities',
-          description = 'Find and install apps for your phone.' },
-        { id = 'flock', label = 'Flock', enabled = true, preinstalled = true, category = 'Social',
-          description = 'Short posts from around the city. Follow people, reply, like and mention with @handle.' },
-        { id = 'bank', label = 'Bank', enabled = true, preinstalled = true, category = 'Finance',
-          description = 'Check your balance and activity, and send money to a phone number or account.' },
-        { id = 'garage', label = 'Garage', enabled = true, preinstalled = true, category = 'Vehicles',
-          description = 'See every vehicle you own, where it is, and set a waypoint to it.' },
-        { id = 'market', label = 'Marketplace', enabled = true, preinstalled = false, category = 'Shopping',
-          description = 'Buy and sell with other residents. Post a listing and get messages or calls.' },
-        { id = 'notes', label = 'Notes', enabled = true, preinstalled = false, category = 'Utilities',
-          description = 'Private notes saved to your phone.' },
-        { id = 'calculator', label = 'Calculator', enabled = true, preinstalled = true, category = 'Utilities',
-          description = 'A simple calculator.' },
-        { id = 'maps', label = 'Maps', enabled = true, preinstalled = true, category = 'Navigation',
-          description = 'Saved places, businesses and services, GPS, and sharing your live location.' },
-        { id = 'services', label = 'Services', enabled = true, preinstalled = true, category = 'Utilities',
-          description = 'Call police, EMS, mechanics, taxis and businesses. On duty? See the queue.' },
-        { id = 'mail', label = 'Mail', enabled = true, preinstalled = true, category = 'Utilities',
-          description = 'Receipts, bills, job offers and messages from businesses and the city.' },
-        { id = 'voicemail', label = 'Voicemail', enabled = true, preinstalled = true, category = 'Utilities',
-          description = 'Messages people left when you could not answer, and leaving your own.' },
-        { id = 'camera', label = 'Camera', enabled = true, preinstalled = true, category = 'Photo',
-          description = 'Take photos (needs screenshot-basic) and keep them in your gallery.' },
-        { id = 'jobs', label = 'Jobs', enabled = true, preinstalled = true, category = 'Work',
-          description = 'Your jobs, clock in and out, the city job board and applications.' },
-        { id = 'bills', label = 'Bills', enabled = true, preinstalled = true, category = 'Finance',
-          description = 'Pay invoices and citations, set up standing orders, see your credit score.' },
-        { id = 'music', label = 'Music', enabled = true, preinstalled = false, category = 'Entertainment',
-          description = 'Radio stations in your ears, or out loud for everyone nearby.' },
-        { id = 'news', label = 'News', enabled = true, preinstalled = true, category = 'News',
-          description = 'Weazel News stories and breaking alerts.' },
-        { id = 'racing', label = 'Racing', enabled = true, preinstalled = false, category = 'Vehicles',
-          description = 'Record tracks, host and join races, and the leaderboards.' },
+        { id = 'phone', label = 'Phone', core = true, dock = true },
+        { id = 'messages', label = 'Messages', core = true, dock = true },
+        { id = 'contacts', label = 'Contacts', core = true, dock = true },
+        { id = 'settings', label = 'Settings', core = true, dock = true },
+        { id = 'mail', label = 'Mail', core = true },
+        { id = 'store', label = 'App Store', core = true },
+        { id = 'calculator', label = 'Calculator', preinstalled = true, description = 'A simple calculator.' },
+        { id = 'clock', label = 'Clock', preinstalled = true, description = 'Time, stopwatch and timer.' },
     },
 
-    Flock = { PostLength = 280, PageSize = 20, PostCooldownMs = 5000, MaxMentions = 5 },
-    Bank = { MaxTransfer = 250000 },
-    Market = {
-        TitleLength = 48, BodyLength = 300, MaxPrice = 10000000, ListingDays = 7, MaxActive = 5, PageSize = 25,
-        Categories = { 'vehicles', 'items', 'services', 'property', 'other' },
+    -- Settings the UI may save (anything else is dropped by the server). First value = default for a new phone.
+    Presets = {
+        wallpapers = { 'default', 'sunset', 'aurora', 'midnight', 'mono' },
+        accents = { '#8b63d6', '#4f8cff', '#2fbf8a', '#f2b443', '#ef6f7c', '#e3e3ea' },
+        ringtones = { 'default', 'pulse', 'classic', 'chime' },
+        notifySounds = { 'default', 'tap', 'none' },
+        themes = { 'dark', 'light' },
+        cases = { 'black', 'blue', 'green', 'orange', 'pink', 'purple', 'red', 'yellow' },
     },
-    Notes = { Max = 100, TitleLength = 48, BodyLength = 2000 },
-
-    -- Phone cases: the colour of the in-hand sd-phone prop (sd_phone_<colour>).
-    Cases = { 'black', 'blue', 'green', 'orange', 'pink', 'purple', 'red', 'yellow' },
-
-    -- Services app. dispatch = goes to veyl_dispatch as a call; otherwise on-duty members of the jobs get the request.
-    Services = {
-        { id = 'police', label = 'Police', jobs = { 'police' }, dispatch = 'police', icon = 'shield' },
-        { id = 'ems', label = 'EMS', jobs = { 'ambulance' }, dispatch = 'ems', icon = 'heart' },
-        { id = 'mechanic', label = 'Mechanic', jobs = { 'mechanic' }, icon = 'wrench' },
-        { id = 'taxi', label = 'Taxi', jobs = { 'taxi' }, icon = 'car' },
-        { id = 'beanmachine', label = 'Bean Machine', jobs = { 'beanmachine' }, icon = 'burger' },
-        { id = 'burgershot', label = 'Burger Shot', jobs = { 'burgershot' }, icon = 'burger' },
-    },
-    ServiceCooldownSeconds = 60,
-
-    -- Maps app: places everyone sees (label, category, coords). Saved places are per character.
-    MapPlaces = {
-        { label = 'City Hall', category = 'City', x = -265.0, y = -963.6 },
-        { label = 'Pillbox Hill Medical Center', category = 'Services', x = 308.2, y = -595.4 },
-        { label = 'Mission Row Police', category = 'Services', x = 441.8, y = -982.0 },
-        { label = 'LS Customs', category = 'Services', x = -347.3, y = -133.3 },
-        { label = 'Impound Lot', category = 'Services', x = 400.5, y = -1630.9 },
-        { label = 'Bean Machine', category = 'Food', x = -631.2, y = 233.5 },
-        { label = 'Burger Shot', category = 'Food', x = -1194.9, y = -893.9 },
-        { label = 'Premium Deluxe Motorsport', category = 'Vehicles', x = -56.5, y = -1096.6 },
-        { label = 'Starlite Motel', category = 'Housing', x = 319.0, y = -195.0 },
-        { label = 'Fish market', category = 'Jobs', x = -1612.5, y = -1028.8 },
-    },
-    ShareMinutes = { 15, 30, 60 },
-
-    Mail = { Max = 200 },
-    Voicemail = { Max = 50, Length = 500 },
-
-    -- Phase 2 apps
-    Camera = { Max = 60, Quality = 0.55 },          -- photos per player; JPEG quality (lower = smaller rows)
-    Valet = { Fee = 250 },                           -- bank charge to have a garaged vehicle brought to you
-    Standing = { Max = 5, MaxAmount = 50000 },       -- standing orders per player and per payment
-    Music = {
-        SpeakerRange = 30.0,                         -- metres other players hear a phone playing out loud
-        -- Built-in stations are generated in the phone (no stream needed). Add internet radio with
-        -- { id = 'myradio', label = 'My Radio', url = 'https://...' } (the URL must allow cross-origin audio).
-        Stations = {
-            { id = 'veyl', label = 'Veyl Radio', style = 'synth' },
-            { id = 'lofi', label = 'Lo-Fi Beach', style = 'lofi' },
-            { id = 'night', label = 'Night Drive', style = 'night' },
-        },
-    },
-    News = { Jobs = { 'weazel' } },                  -- jobs allowed to publish (on duty)
-    Racing = { JoinRadius = 60.0 },                  -- metres from the start line to join a race
-    Tablet = { Mdt = 'mdt', Dispatch = 'dispatch' }, -- commands opened from the tablet menu
-
-    Wallpapers = { 'sunset', 'aurora', 'dusk', 'vinewood', 'midnight', 'violet', 'mono' }, -- first = default for new phones
-    Accents = { '#b892f4', '#7aa7ff', '#5fd3a5', '#f2c66d', '#ef8f96', '#e3e3ea' },
-    Ringtones = { 'veyl', 'pulse', 'classic', 'chime' },
-    NotificationSounds = { 'tap', 'bell', 'none' },
 
     Limits = {
         Contacts = 300,
         Blocked = 100,
+        NameLength = 40,
         MessageLength = 500,
         GroupMembers = 12,
         GroupName = 32,
-        PageSize = 30,
+        PageSize = 30,                -- messages / notifications / mail per page
         Notifications = 100,          -- kept per character (oldest removed)
-        PendingDeliveryBatch = 200,   -- undelivered messages pushed on login
+        Mail = 200,                   -- kept per character (oldest removed)
     },
 
     Calls = {
         RingSeconds = 30,
-        ChannelBase = 5000,           -- pma-voice call channels used: ChannelBase + call id
+        ChannelBase = 5000,           -- pma-voice call channel = ChannelBase + call id
     },
+    Voice = 'auto',                   -- 'auto' = pma-voice when it is started; calls are disabled without a voice resource
 
-    -- Integrations (adapters). Only what is really installed is enabled; see docs/PHONE.md.
-    Voice = 'auto',                   -- 'auto' = pma-voice if started; calls are disabled otherwise
-    Weather = 'veyl_world',           -- GlobalState.veylWorld (weather + in-game time)
+    -- The tablet item (use handler `phone_tablet`): commands its menu runs.
+    Tablet = { Mdt = 'mdt', Dispatch = 'dispatch' },
 
     Animations = {
-        -- In-hand prop. sd_phone_black comes from the sd-phone prop pack (ensure sd-phone before veyl_phone); if that
-        -- model is not streamed, the base-game phone is used instead.
+        -- In-hand prop: sd_phone_<case> from the sd-phone prop pack when it is streamed, else the base-game phone.
         prop = 'sd_phone_black',
         fallbackProp = 'prop_npc_phone_02',
         text = { dict = 'cellphone@', clip = 'cellphone_text_read_base' },

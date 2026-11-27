@@ -11,12 +11,10 @@ import { App as TargetApp } from '../../target-ui/src/App';
 import { App as AppearanceApp } from '../../appearance-ui/src/App';
 import { App as VehicleApp } from '../../vehicle-ui/src/App';
 import { App as DrugsApp } from '../../drugs-ui/src/App';
-import { App as PhoneApp } from '../../phone-ui/src/App';
 import { App as ApartmentsApp } from '../../apartments-ui/src/App';
 import { App as DoorsApp } from '../../doorlocks-ui/src/App';
 import { doorEditor, doorHandler, doorManage } from './doorMock';
 import { aptCatalog, aptDashboard, aptFurniture, aptHandler } from './aptMock';
-import { phoneApi, phoneDemo, phoneReset, phoneSession } from './phoneMock';
 import type { AppearanceOpen, Slot } from '../../appearance-ui/src/types';
 import '../../inventory-ui/src/inventory.css';
 import '../../shop-ui/src/shop.css';
@@ -26,22 +24,19 @@ import '../../target-ui/src/target.css';
 import '../../appearance-ui/src/appearance.css';
 import '../../vehicle-ui/src/vehicles.css';
 import '../../drugs-ui/src/drugs.css';
-import '../../phone-ui/src/phone.css';
 import '../../apartments-ui/src/apartments.css';
 import '../../doorlocks-ui/src/doorlocks.css';
 import './preview.css';
 import * as F from './fixtures';
 
-// Phone Garage pictures come from the dev server in the preview (nui:// in FiveM).
-(window as unknown as { __veylVehicleImages?: string }).__veylVehicleImages = '/vehicles';
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer' || s === 'journal' || s === 'grow' || s === 'table';
 const isApt = (s: Screen) => s.startsWith('apt');
 const isDoor = (s: Screen) => s.startsWith('door');
-const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isApt(s) || isDoor(s) ? 'hud' : s);
+const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || isApt(s) || isDoor(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
@@ -51,7 +46,6 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'creator', label: 'Creator', app: AppearanceApp }, { id: 'clothing', label: 'Clothing', app: AppearanceApp }, { id: 'barber', label: 'Barber', app: AppearanceApp },
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
   { id: 'journal', label: 'Journal', app: DrugsApp }, { id: 'table', label: 'Table', app: DrugsApp }, { id: 'grow', label: 'Grow HUD', app: DrugsApp },
-  { id: 'phone', label: 'Phone', app: PhoneApp },
   { id: 'aptLease', label: 'Leasing', app: ApartmentsApp }, { id: 'aptHome', label: 'Home', app: ApartmentsApp },
   { id: 'aptFurn', label: 'Furniture', app: ApartmentsApp }, { id: 'aptDesk', label: 'Desk', app: ApartmentsApp },
   { id: 'aptWardrobe', label: 'Wardrobe', app: ApartmentsApp }, { id: 'aptBell', label: 'Doorbell', app: ApartmentsApp },
@@ -67,17 +61,6 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (action === 'ui:ready') return { ok: true };
     if (isApt(screen)) return aptHandler(action, payload, mode);
     if (isDoor(screen)) return doorHandler(action, payload);
-    if (screen === 'phone') {
-      if (action === 'close') { devEmit('phone:close'); return { ok: true }; }
-      if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };
-      if (action === 'locationLabel') return { ok: true, data: { label: 'Legion Square' } };
-      if (action === 'api') {
-        if (mode === 'pending') await wait(2000);
-        if (mode === 'error') return { ok: false, code: 'DATABASE_ERROR', message: 'Demo: the phone service is unavailable.' };
-        const p = payload as { name: string; args: unknown[] };
-        return phoneApi(p.name, p.args ?? []);
-      }
-    }
     if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : screen === 'journal' || screen === 'table' ? 'drugs:close' : `${screen}:close`); return { ok: true }; }
     if (isAppearance(screen) && (action === 'camera' || action === 'rotate')) return { ok: true };
     if (isAppearance(screen) && action === 'change') {
@@ -210,10 +193,6 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'aptDesk': devEmit('apt:open', { view: 'desk', data: { building: 'starlite', label: 'Starlite Motel front desk', tab: 'directory', directory: true } }); break;
     case 'aptWardrobe': devEmit('apt:open', { view: 'wardrobe', data: { outfits: [{ id: 1, name: 'Work clothes' }, { id: 2, name: 'Night out' }], max: 10 } }); break;
     case 'aptBell': devEmit('apt:open', { view: 'doorbell', data: { id: 7, name: 'Alex Carter', expires: 60 } }); break;
-    case 'phone':
-      phoneReset(empty);
-      if (mode !== 'restricted') devEmit('phone:open', phoneSession(empty));
-      break;
     case 'garage': case 'impound': devEmit('garage:open', F.garageOpen(screen, empty)); break;
     case 'dealer': devEmit('dealer:open', F.dealerOpen(empty)); break;
     case 'journal': devEmit('drugs:journal', F.journal(empty)); break;
@@ -255,18 +234,13 @@ function Preview() {
       {backdrop && <div className="pv-backdrop" style={{ backgroundImage: `url(/concepts/${backdropOf(screen)}.webp)` }} />}
       <div key={`${screen}-${nonce}`} className="pv-stage"><Active /></div>
       {overlay > 0 && <div className="pv-overlay" style={{ backgroundImage: `url(/concepts/${backdropOf(screen)}.webp)`, opacity: overlay / 100 }} />}
-      <div className="pv-bar" style={screen === 'phone' ? { top: 8, bottom: 'auto' } : undefined}>
+      <div className="pv-bar">
         <strong>PREVIEW ONLY</strong>
         {SCREENS.map((s) => <button key={s.id} className={s.id === screen ? 'on' : ''} onClick={() => setScreen(s.id)}>{s.label}</button>)}
         <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>{MODES.map((m) => <option key={m}>{m}</option>)}</select>
         <label><input type="checkbox" checked={backdrop} onChange={(e) => setBackdrop(e.target.checked)} /> concept backdrop</label>
         <label>compare <input type="range" min={0} max={80} value={overlay} onChange={(e) => setOverlay(Number(e.target.value))} /></label>
         <button onClick={() => setNonce((n) => n + 1)}>reopen</button>
-        {screen === 'phone' && <>
-          <button onClick={() => phoneDemo('message')}>+ message</button>
-          <button onClick={() => phoneDemo('call')}>+ call</button>
-          <button onClick={() => phoneDemo('notification')}>+ notification</button>
-        </>}
       </div>
     </>
   );

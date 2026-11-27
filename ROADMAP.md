@@ -23,8 +23,6 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **LS Customs mechanics:** repairs that use parts, and invoices.
 
 ## ✅ Shipped: life in the city
-- **Smartphone:** numbers and contacts, messages with read receipts, group chats, calls, notifications and an App Store.
-- **Phone apps:** Flock (social), Bank, Garage, Marketplace, Notes and Calculator.
 - **Starlite Motel apartments:** 30 rooms you walk into with your key, roommates, guest passes, a doorbell, storage, a wardrobe, furniture, parcels and a noticeboard.
 - **Door locks:** set up in game, access by job, gang, key or item, business hours, lockpicking and police rams.
 - **Growing:** weed, coca and mushrooms, with quality grades, a Grow Journal, supplier stores and processing tables.
@@ -67,27 +65,16 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - ✅ **Crafting:** a foundry, a public workshop, a parts bench and a hidden backroom bench, with crafting levels.
 - ✅ **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
 
-## ✅ Built, now testing: phone 2.0
-- ✅ **Camera and gallery:** take photos and keep them in a gallery (needs the free screenshot-basic resource). Still to come: selfies, and sending photos in messages and on Flock.
-- ✅ **Maps:** GPS to city places, businesses and saved places, and sharing your live location.
-- ✅ **Services:** request police, EMS, mechanics, taxis and businesses, with a queue for whoever is on duty.
-- ✅ **Email:** citations, bills, receipts and job offers from businesses and the city.
-- ✅ **Jobs app:** your jobs, clock in and out, the city job board, applications and an applicant inbox for bosses.
-- ✅ **Property app:** the Apartments app for your home, keys, rent and roommates.
-- ✅ **Garage app 2.0:** vehicle tracking and paid valet delivery to the road next to you. Insurance comes with the vehicles update.
-- ✅ **Bills app:** pay mechanic invoices and police citations, standing orders, and a credit score.
-- ✅ **Music:** Veyl Radio stations, internet radio, and a speaker that people nearby hear.
-- ✅ **News app:** Weazel News stories, a Weazel News job, and breaking alerts on every phone.
-- ✅ **Dark web:** the Silk Road app for black market orders, unlocked by a USB drive.
-- ✅ **Racing app:** record tracks, host and join races, checkpoints checked by the server, and leaderboards.
-- ✅ **Voicemail, call history and blocked numbers.**
-- ✅ **Phone looks:** wallpapers, ringtones, light and dark themes, and phone cases in your hand.
-- ✅ **Tablet:** an item that opens the MDT, dispatch and your home panel.
+## 🛠️ Now building: the new phone
+The phone is being rebuilt from the ground up on a new base.
+- ✅ **New phone base:** keeps your number and contacts, with messages and read receipts, group chats, calls, blocked numbers, notifications, mail, app badges and phone settings.
+- **New phone screen:** being designed now.
+- **Apps coming back one by one** on the new phone: Bank, Garage, Maps, Services, Jobs, Bills, Camera, Music, News, Racing, Flock, Marketplace, Notes and Voicemail.
+- Apps from other parts of the city keep working: Apartments, Invoices, Boosting and the Silk Road.
 
 ## ✅ Built, now testing: customs and polish
 - ✅ **Veyl Customs:** live preview of your own car, Performance / Bodywork / Wheels / Paint / Lighting / Details, a Paint Studio with custom colours and finishes, saved builds with share codes, and server-priced checkout.
 - ✅ **Mechanic business:** quotes the customer approves, service bays, parts stock and orders, a workshop dashboard with team and history.
-- ✅ **New phone look:** a taller phone with a Dynamic Island for calls, weather and calendar widgets, home pages, search and drag-to-rearrange.
 - ✅ **New notifications and progress bars:** clean cards with a time line and counters, a progress card with time left and cancel, and hold-to-interact rings.
 - ✅ **Lockpick mini game** for store registers, safes, door locks and boosting.
 - ✅ **Cash as an item** that stays in sync with your money, so you can hand it over, drop it or stash it.
@@ -101,7 +88,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Clean install** from the txAdmin recipe, start to finish.
 
 ## 🔜 Then: finishing touches
-- **Phone:** sending photos in messages and on Flock, selfies, a drawn map in Maps, contact pictures and favourites, buying straight from Marketplace listings, and recorded voicemail.
+- **Phone:** sending photos in messages, contact pictures, and recorded voicemail.
 - **Customs:** test drives before you buy, a showroom, customer reviews, favourite mechanics, special-order parts, and lift and spray booth animations.
 - **Dealership:** test drives, financing and trade-ins; shared and job garages.
 

@@ -1,397 +1,350 @@
--- Messages: direct and group conversations with honest states.
---   Sent      : the server accepted and stored it (the send callback returned).
---   Delivered : the recipient's live phone session acknowledged it (ack). Offline recipients stay "sent" until they
---               come back with a phone; pending messages are pushed and acknowledged then.
---   Read      : the recipient opened the conversation AND has read receipts enabled.
--- Every read and write checks active membership. Blocking: a recipient who blocked you cannot get new direct
--- messages from you; in groups, a member who blocked you doesn't see your messages (they aren't counted as delivered to
--- them either).
+-- Messages: direct and group conversations between numbers. Everything is stored; online members get a live push.
+-- Read state = each member's last_read_id (read receipts in direct chats). Messages from a number you blocked are
+-- never shown to you (and never pushed), in direct and group chats alike.
 
 Messages = {}
 local L = PhoneConfig.Limits
 
-local function isMember(convId, number)
-    return MySQL.single.await('SELECT role, muted, last_read_id FROM veyl_phone_members WHERE conversation_id = ? AND number = ? AND left_at IS NULL',
-        { convId, number })
+local function directKey(a, b) if a > b then a, b = b, a end return a .. '-' .. b end
+local function inClause(n) return string.rep('?,', n):sub(1, -2) end
+
+--- Contact names for a viewer: { [number] = name }
+local function contactMap(cid)
+    local m = {}
+    for _, r in ipairs(MySQL.query.await('SELECT number, name FROM veyl_ph_contacts WHERE owner_cid = ?', { cid }) or {}) do m[r.number] = r.name end
+    return m
+end
+
+local function membership(convId, number)
+    return MySQL.single.await('SELECT * FROM veyl_ph_members WHERE conversation_id = ? AND number = ? AND left_at IS NULL', { convId, number })
 end
 
 local function activeMembers(convId)
-    return MySQL.query.await('SELECT number, role FROM veyl_phone_members WHERE conversation_id = ? AND left_at IS NULL ORDER BY joined_at', { convId }) or {}
-end
-
-local function blockedSet(cid)
-    local set = {}
-    for _, r in ipairs(MySQL.query.await('SELECT number FROM veyl_phone_blocks WHERE owner_cid = ?', { cid }) or {}) do set[r.number] = true end
-    return set
-end
-
-local function contactNames(cid)
-    local map = {}
-    for _, r in ipairs(MySQL.query.await('SELECT number, name FROM veyl_phone_contacts WHERE owner_cid = ?', { cid }) or {}) do map[r.number] = r.name end
-    return map
-end
-
-local function messageOut(r)
-    return { id = r.id, convId = r.conversation_id, sender = r.sender, kind = r.kind, body = r.body,
-        payload = Phone.Decode(r.payload, nil), at = r.at or os.time() }
-end
-
---- Aggregated receipt state for messages a number sent. Returns map id -> { state, delivered, read, total }.
-local function receiptStates(ids, isDirect)
     local out = {}
-    if #ids == 0 then return out end
-    local placeholders = ('?,'):rep(#ids):sub(1, -2)
-    local rows = MySQL.query.await(([[SELECT message_id, COUNT(*) AS total, SUM(delivered_at IS NOT NULL) AS delivered, SUM(read_at IS NOT NULL) AS readc
-        FROM veyl_phone_receipts WHERE message_id IN (%s) GROUP BY message_id]]):format(placeholders), ids) or {}
-    for _, r in ipairs(rows) do
-        local total, delivered, readc = tonumber(r.total) or 0, tonumber(r.delivered) or 0, tonumber(r.readc) or 0
-        local state = 'sent'
-        if total > 0 and readc == total and isDirect then state = 'read'
-        elseif total > 0 and delivered == total then state = 'delivered' end
-        out[r.message_id] = { state = state, delivered = delivered, read = readc, total = total }
-    end
+    for _, r in ipairs(MySQL.query.await('SELECT number, role, muted, last_read_id FROM veyl_ph_members WHERE conversation_id = ? AND left_at IS NULL',
+        { convId }) or {}) do out[#out + 1] = r end
     return out
 end
 
-local function pushReceipt(messageId)
-    local m = MySQL.single.await('SELECT m.id, m.conversation_id, m.sender, c.kind FROM veyl_phone_messages m JOIN veyl_phone_conversations c ON c.id = m.conversation_id WHERE m.id = ?',
-        { messageId })
-    if not m then return end
-    local s = Phone.SessionByNumber(m.sender)
-    if not s then return end
-    local st = receiptStates({ m.id }, m.kind == 'direct')[m.id]
-    if st then Phone.Push(s.src, 'receipt', { convId = m.conversation_id, id = m.id, state = st.state, delivered = st.delivered, read = st.read, total = st.total }) end
+local function messageView(m, viewerNumber, names)
+    return {
+        id = m.id, conversationId = m.conversation_id, sender = m.sender, kind = m.kind, body = m.body,
+        payload = m.payload and Phone.Decode(m.payload, nil) or nil, time = m.ts, mine = m.sender == viewerNumber,
+        senderDisplay = names and (names[m.sender] or PhoneUtil.Format(m.sender)) or nil,
+    }
+end
+
+local MSG_COLS = 'id, conversation_id, sender, kind, body, payload, UNIX_TIMESTAMP(created_at) AS ts'
+
+--- Conversation summary as `viewer` sees it.
+local function summary(conv, viewer, names)
+    local me = membership(conv.id, viewer.number)
+    local members = activeMembers(conv.id)
+    local title, peer
+    if conv.kind == 'direct' then
+        for _, m in ipairs(MySQL.query.await('SELECT number FROM veyl_ph_members WHERE conversation_id = ?', { conv.id }) or {}) do
+            if m.number ~= viewer.number then peer = m.number end
+        end
+        title = peer and (names[peer] or PhoneUtil.Format(peer)) or 'Unknown'
+    else
+        title = conv.name or 'Group'
+    end
+    local last = MySQL.single.await(([[SELECT %s FROM veyl_ph_messages WHERE conversation_id = ?
+        AND sender NOT IN (SELECT number FROM veyl_ph_blocks WHERE owner_cid = ?) ORDER BY id DESC LIMIT 1]]):format(MSG_COLS), { conv.id, viewer.cid })
+    local unread = MySQL.scalar.await([[SELECT COUNT(*) FROM veyl_ph_messages WHERE conversation_id = ? AND id > ? AND sender <> ?
+        AND sender NOT IN (SELECT number FROM veyl_ph_blocks WHERE owner_cid = ?)]], { conv.id, me and me.last_read_id or 0, viewer.number, viewer.cid }) or 0
+    local memberList, peerRead = {}, nil
+    for _, m in ipairs(members) do
+        memberList[#memberList + 1] = { number = m.number, display = names[m.number] or PhoneUtil.Format(m.number), admin = m.role == 'admin' }
+        if m.number == peer then peerRead = m.last_read_id end
+    end
+    return {
+        id = conv.id, kind = conv.kind, title = title, peer = peer, members = memberList,
+        muted = me and (me.muted == 1 or me.muted == true) or false, admin = me and me.role == 'admin' or false,
+        unread = unread, last = last and messageView(last, viewer.number, names) or nil,
+        peerReadId = conv.kind == 'direct' and peerRead or nil, -- read receipt: the peer has read up to this message id
+    }
 end
 
 function Messages.UnreadTotal(number)
     local cid = Phone.CidByNumber(number)
-    if not cid then return 0 end
-    local n = MySQL.scalar.await([[SELECT COUNT(*) FROM veyl_phone_members mb JOIN veyl_phone_messages m ON m.conversation_id = mb.conversation_id
-        WHERE mb.number = ? AND mb.left_at IS NULL AND m.id > mb.last_read_id AND m.sender <> ? AND m.kind <> 'system'
-        AND m.sender NOT IN (SELECT number FROM veyl_phone_blocks WHERE owner_cid = ?)]], { number, number, cid })
-    return tonumber(n) or 0
+    return MySQL.scalar.await([[SELECT COUNT(*) FROM veyl_ph_messages msg JOIN veyl_ph_members mem ON mem.conversation_id = msg.conversation_id
+        AND mem.number = ? AND mem.left_at IS NULL WHERE msg.id > mem.last_read_id AND msg.sender <> ?
+        AND msg.sender NOT IN (SELECT number FROM veyl_ph_blocks WHERE owner_cid = ?)]], { number, number, cid or '' }) or 0
+end
+
+local function session(src)
+    local s = Phone.Session(src)
+    if not s then return nil, Veyl.Err('NO_SESSION', 'Open your phone first') end
+    return s
 end
 
 ---------------------------------------------------------------------------
--- Conversation list (paginated)
+-- Reading
 ---------------------------------------------------------------------------
-Veyl.RegisterCallback('conversations', function(src, citizenid, offset)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    offset = Veyl.Validate.int(offset, 0, 10000) and offset or 0
-    local rows = MySQL.query.await([[SELECT c.id, c.kind, c.name, c.last_message_id, mb.muted, mb.last_read_id, mb.role
-        FROM veyl_phone_members mb JOIN veyl_phone_conversations c ON c.id = mb.conversation_id
-        WHERE mb.number = ? AND mb.left_at IS NULL AND c.last_message_id IS NOT NULL
-        ORDER BY c.last_message_id DESC LIMIT ? OFFSET ?]], { s.number, L.PageSize, offset }) or {}
-    local names, blocked = contactNames(citizenid), blockedSet(citizenid)
+Veyl.RegisterCallback('conversations', function(src)
+    local s, err = session(src)
+    if not s then return err end
+    local names = contactMap(s.cid)
     local out = {}
-    for _, c in ipairs(rows) do
-        local last = MySQL.single.await('SELECT id, conversation_id, sender, kind, body, payload, UNIX_TIMESTAMP(created_at) AS at FROM veyl_phone_messages WHERE id = ?',
-            { c.last_message_id })
-        local unread = MySQL.scalar.await([[SELECT COUNT(*) FROM veyl_phone_messages WHERE conversation_id = ? AND id > ? AND sender <> ? AND kind <> 'system'
-            AND sender NOT IN (SELECT number FROM veyl_phone_blocks WHERE owner_cid = ?)]], { c.id, c.last_read_id, s.number, citizenid }) or 0
-        local item = { id = c.id, kind = c.kind, muted = c.muted == 1 or c.muted == true, unread = tonumber(unread) or 0,
-            last = last and messageOut(last) or nil, role = c.role }
-        if c.kind == 'direct' then
-            local other = MySQL.scalar.await('SELECT number FROM veyl_phone_members WHERE conversation_id = ? AND number <> ? LIMIT 1', { c.id, s.number })
-            item.number = other
-            item.title = names[other] or Phone.FormatNumber(other)
-            item.blocked = blocked[other] == true
-        else
-            item.title = c.name or 'Group'
-            if last and blocked[last.sender] then item.last = { kind = 'system', body = 'Message hidden (blocked sender)', at = last.at } end
-        end
-        out[#out + 1] = item
+    for _, conv in ipairs(MySQL.query.await([[SELECT c.* FROM veyl_ph_conversations c JOIN veyl_ph_members m ON m.conversation_id = c.id
+        WHERE m.number = ? AND m.left_at IS NULL AND c.last_message_id IS NOT NULL ORDER BY c.last_message_id DESC LIMIT 100]], { s.number }) or {}) do
+        out[#out + 1] = summary(conv, s, names)
     end
-    return Veyl.Ok({ items = out, nextOffset = #rows == L.PageSize and offset + L.PageSize or nil, unreadTotal = Messages.UnreadTotal(s.number) })
-end, { cooldown = 300 })
+    return Veyl.Ok(out)
+end)
+
+--- thread(conversationId, beforeId?) -> { conversation, messages (oldest first), more }
+Veyl.RegisterCallback('thread', function(src, _, convId, beforeId)
+    local s, err = session(src)
+    if not s then return err end
+    convId = tonumber(convId) or 0
+    if not membership(convId, s.number) then return Veyl.Err('NOT_FOUND', 'Conversation not found') end
+    beforeId = tonumber(beforeId) or 0
+    local rows = MySQL.query.await(([[SELECT %s FROM veyl_ph_messages WHERE conversation_id = ? AND (? = 0 OR id < ?)
+        AND sender NOT IN (SELECT number FROM veyl_ph_blocks WHERE owner_cid = ?) ORDER BY id DESC LIMIT ?]]):format(MSG_COLS),
+        { convId, beforeId, beforeId, s.cid, L.PageSize + 1 }) or {}
+    local names = contactMap(s.cid)
+    local list = {}
+    for i = math.min(#rows, L.PageSize), 1, -1 do list[#list + 1] = messageView(rows[i], s.number, names) end
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { convId })
+    return Veyl.Ok({ conversation = summary(conv, s, names), messages = list, more = #rows > L.PageSize })
+end)
+
+--- read(conversationId): marks everything in it as read; the other members get a `read` push (receipts).
+Veyl.RegisterCallback('read', function(src, _, convId)
+    local s, err = session(src)
+    if not s then return err end
+    convId = tonumber(convId) or 0
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { convId })
+    if not conv or not membership(convId, s.number) then return Veyl.Err('NOT_FOUND', 'Conversation not found') end
+    local upTo = conv.last_message_id or 0
+    MySQL.update.await('UPDATE veyl_ph_members SET last_read_id = GREATEST(last_read_id, ?) WHERE conversation_id = ? AND number = ?', { upTo, convId, s.number })
+    for _, m in ipairs(activeMembers(convId)) do
+        if m.number ~= s.number then
+            local other = Phone.byNumber[m.number]
+            if other then Phone.Push(other.src, 'read', { conversationId = convId, number = s.number, lastReadId = upTo }) end
+        end
+    end
+    return Veyl.Ok({ unread = Messages.UnreadTotal(s.number) })
+end)
 
 ---------------------------------------------------------------------------
--- Thread (paginated, newest first)
----------------------------------------------------------------------------
-Veyl.RegisterCallback('thread', function(src, citizenid, convId, beforeId)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid conversation') end
-    local me = isMember(convId, s.number)
-    if not me then return Veyl.Err('NO_PERMISSION', 'You are not in this conversation') end
-    local conv = MySQL.single.await('SELECT id, kind, name FROM veyl_phone_conversations WHERE id = ?', { convId })
-    local rows = MySQL.query.await([[SELECT id, conversation_id, sender, kind, body, payload, UNIX_TIMESTAMP(created_at) AS at FROM veyl_phone_messages
-        WHERE conversation_id = ? AND id < ? ORDER BY id DESC LIMIT ?]], { convId, tonumber(beforeId) or 9e15, L.PageSize }) or {}
-    local blocked = conv.kind == 'group' and blockedSet(citizenid) or {}
-    local items, mine = {}, {}
-    for _, r in ipairs(rows) do
-        if not blocked[r.sender] then
-            items[#items + 1] = messageOut(r)
-            if r.sender == s.number then mine[#mine + 1] = r.id end
-        end
-    end
-    local states = receiptStates(mine, conv.kind == 'direct')
-    for _, m in ipairs(items) do
-        if m.sender == s.number then
-            local st = states[m.id]
-            m.state = st and st.state or 'sent'
-            if conv.kind == 'group' and st then m.deliveredCount, m.total = st.delivered, st.total end
-        end
-    end
-    local names = contactNames(citizenid)
-    local members = {}
-    for _, mb in ipairs(activeMembers(convId)) do
-        members[#members + 1] = { number = mb.number, display = Phone.FormatNumber(mb.number), name = names[mb.number], role = mb.role, me = mb.number == s.number }
-    end
-    local title = conv.name
-    if conv.kind == 'direct' then
-        for _, mb in ipairs(members) do if not mb.me then title = mb.name or mb.display end end
-    end
-    return Veyl.Ok({ conv = { id = conv.id, kind = conv.kind, title = title or 'Group', muted = me.muted == 1 or me.muted == true, role = me.role },
-        members = members, items = items, nextBefore = #rows == L.PageSize and rows[#rows].id or nil })
-end, { cooldown = 200 })
-
----------------------------------------------------------------------------
--- Send
+-- Sending
 ---------------------------------------------------------------------------
 local function directConversation(a, b)
-    local key = a < b and (a .. ':' .. b) or (b .. ':' .. a)
-    local id = MySQL.scalar.await('SELECT id FROM veyl_phone_conversations WHERE direct_key = ?', { key })
-    if id then return id end
-    local ok, newId = pcall(MySQL.insert.await, "INSERT INTO veyl_phone_conversations (kind, direct_key, created_by) VALUES ('direct', ?, ?)", { key, a })
-    if not ok then return MySQL.scalar.await('SELECT id FROM veyl_phone_conversations WHERE direct_key = ?', { key }) end
-    MySQL.insert.await('INSERT IGNORE INTO veyl_phone_members (conversation_id, number) VALUES (?, ?), (?, ?)', { newId, a, newId, b })
-    return newId
+    local key = directKey(a, b)
+    MySQL.query.await("INSERT IGNORE INTO veyl_ph_conversations (kind, direct_key, created_by) VALUES ('direct', ?, ?)", { key, a })
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE direct_key = ?', { key })
+    -- (Re)join both: a hidden direct chat comes back when either side writes.
+    for _, n in ipairs({ a, b }) do
+        MySQL.query.await([[INSERT INTO veyl_ph_members (conversation_id, number) VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE left_at = NULL]], { conv.id, n })
+    end
+    return conv
 end
 
---- Stores a message and fans it out. Returns the stored message (or an error).
-local function store(s, convId, kind, body, payload, clientOp)
-    local okIns, id = pcall(MySQL.insert.await, [[INSERT INTO veyl_phone_messages (conversation_id, sender, kind, body, payload, client_op)
-        VALUES (?, ?, ?, ?, ?, ?)]], { convId, s.number, kind, body, payload and json.encode(payload) or nil, clientOp })
-    if not okIns or not id then
-        -- Same client operation id: the first attempt was stored; return it (no duplicate message).
-        local existing = clientOp and MySQL.single.await([[SELECT id, conversation_id, sender, kind, body, payload, UNIX_TIMESTAMP(created_at) AS at
-            FROM veyl_phone_messages WHERE sender = ? AND client_op = ?]], { s.number, clientOp })
-        if existing then local m = messageOut(existing) m.state = 'sent' return m end
-        return nil
+--- Stores a message and pushes it to every online member who has not blocked the sender. Returns the message row.
+function Messages.Post(conv, senderNumber, kind, body, payload, clientOp)
+    local id = MySQL.insert.await([[INSERT INTO veyl_ph_messages (conversation_id, sender, kind, body, payload, client_op)
+        VALUES (?, ?, ?, ?, ?, ?)]], { conv.id, senderNumber, kind, body, payload and json.encode(payload) or nil, clientOp })
+    MySQL.update.await('UPDATE veyl_ph_conversations SET last_message_id = ? WHERE id = ?', { id, conv.id })
+    if kind ~= 'system' then
+        MySQL.update.await('UPDATE veyl_ph_members SET last_read_id = ? WHERE conversation_id = ? AND number = ?', { id, conv.id, senderNumber })
     end
-    MySQL.update.await('UPDATE veyl_phone_conversations SET last_message_id = ? WHERE id = ?', { id, convId })
-    MySQL.update.await('UPDATE veyl_phone_members SET last_read_id = ? WHERE conversation_id = ? AND number = ?', { id, convId, s.number })
-    local conv = MySQL.single.await('SELECT kind, name FROM veyl_phone_conversations WHERE id = ?', { convId })
-    local msg = { id = id, convId = convId, sender = s.number, kind = kind, body = body, payload = payload, at = os.time(), state = 'sent' }
-    if kind == 'system' then msg.state = nil end
-    for _, mb in ipairs(activeMembers(convId)) do
-        if mb.number ~= s.number then
-            local cid = Phone.CidByNumber(mb.number)
-            if cid and not Blocks.IsBlocked(cid, s.number) then
-                if kind ~= 'system' then MySQL.insert.await('INSERT IGNORE INTO veyl_phone_receipts (message_id, number) VALUES (?, ?)', { id, mb.number }) end
-                local rs = Phone.SessionByNumber(mb.number)
-                if rs then
-                    local names = contactNames(cid)
-                    local title = conv.kind == 'direct' and (names[s.number] or Phone.FormatNumber(s.number)) or (conv.name or 'Group')
-                    local muted = MySQL.scalar.await('SELECT muted FROM veyl_phone_members WHERE conversation_id = ? AND number = ?', { convId, mb.number })
-                    Phone.Push(rs.src, 'message', { message = msg, title = title, senderName = names[s.number] or Phone.FormatNumber(s.number),
-                        kind = conv.kind, muted = muted == 1 or muted == true })
-                end
-            end
+    local msg = MySQL.single.await(('SELECT %s FROM veyl_ph_messages WHERE id = ?'):format(MSG_COLS), { id })
+    for _, m in ipairs(activeMembers(conv.id)) do
+        local s = Phone.byNumber[m.number]
+        if s and Phone.Session(s.src) and (m.number == senderNumber or not Contacts.IsBlocked(s.cid, senderNumber)) then
+            local names = contactMap(s.cid)
+            Phone.Push(s.src, 'message', {
+                conversation = summary(MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { conv.id }), s, names),
+                message = messageView(msg, s.number, names),
+                silent = m.muted == 1 or m.muted == true or s.settings.dnd or s.settings.silent,
+            })
         end
     end
     return msg
 end
-Messages.Store = store
 
---- send({ convId? | to?, kind = 'text'|'contact'|'location', body?, contact? = { name, number }, label?, clientOp })
-Veyl.RegisterCallback('send', function(src, citizenid, req)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if type(req) ~= 'table' or not Veyl.Validate.str(req.clientOp, 8, 64, '^[%w%-]+$') then return Veyl.Err('INVALID_INPUT', 'Invalid message') end
-    if not Phone.Rate(src, 'send', 600) then return Veyl.Err('RATE_LIMITED', 'You are sending too fast') end
-    local convId
-    if req.to then
-        local to = Phone.NormalizeNumber(req.to)
-        if not to or to == s.number then return Veyl.Err('INVALID_INPUT', 'Enter a valid number') end
-        local cid = Phone.CidByNumber(to)
-        if not cid then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
-        if Blocks.IsBlocked(cid, s.number) then return Veyl.Err('UNDELIVERABLE', 'Your message could not be delivered to this number') end
-        convId = directConversation(s.number, to)
-    else
-        convId = Veyl.Validate.int(req.convId, 1) and req.convId or nil
-        if not convId or not isMember(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'You are not in this conversation') end
-        local conv = MySQL.single.await('SELECT kind FROM veyl_phone_conversations WHERE id = ?', { convId })
-        if conv.kind == 'direct' then
-            local other = MySQL.scalar.await('SELECT number FROM veyl_phone_members WHERE conversation_id = ? AND number <> ? LIMIT 1', { convId, s.number })
-            local ocid = other and Phone.CidByNumber(other)
-            if not ocid then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
-            if Blocks.IsBlocked(ocid, s.number) then return Veyl.Err('UNDELIVERABLE', 'Your message could not be delivered to this number') end
-        end
+--- send({ conversationId? | to?, body, kind?, clientOp }) -> { conversation, message }
+--- kind: 'text' (default), 'location' (the server reads your position; body = optional label) or 'contact'
+--- (payload = { number, name }). clientOp (8-64 chars, unique per send) makes retries safe: the same op never posts twice.
+Veyl.RegisterCallback('send', function(src, _, input)
+    local s, err = session(src)
+    if not s then return err end
+    if type(input) ~= 'table' then return Veyl.Err('INVALID_INPUT', 'Invalid message') end
+    if s.settings.airplane then return Veyl.Err('UNAVAILABLE', 'Turn off airplane mode first') end
+    local op = type(input.clientOp) == 'string' and #input.clientOp >= 8 and #input.clientOp <= 64 and input.clientOp or nil
+    if not op then return Veyl.Err('INVALID_INPUT', 'Missing clientOp') end
+    local names = contactMap(s.cid)
+    local dup = MySQL.single.await(('SELECT %s FROM veyl_ph_messages WHERE sender = ? AND client_op = ?'):format(MSG_COLS), { s.number, op })
+    if dup then
+        local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { dup.conversation_id })
+        return Veyl.Ok({ conversation = summary(conv, s, names), message = messageView(dup, s.number, names) })
     end
+    if not Phone.Rate(src, 'send', 700) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
 
-    local kind, body, payload = req.kind, nil, nil
+    local kind = input.kind == 'location' and 'location' or input.kind == 'contact' and 'contact' or 'text'
+    local body, payload
     if kind == 'text' then
-        body = Phone.Clean(req.body, L.MessageLength)
-        if not body then return Veyl.Err('INVALID_INPUT', 'Message is empty') end
-    elseif kind == 'contact' then
-        local c = type(req.contact) == 'table' and req.contact or {}
-        local name, number = Phone.Clean(c.name, 40), Phone.NormalizeNumber(c.number)
-        if not name or not number then return Veyl.Err('INVALID_INPUT', 'Invalid contact card') end
-        body, payload = name, { name = name, number = number }
+        body = PhoneUtil.CleanBody(input.body, L.MessageLength)
+        if not body then return Veyl.Err('INVALID_INPUT', 'Type a message') end
     elseif kind == 'location' then
-        -- The position is the sender's own, read on the server (never client-supplied coordinates).
-        local ped = GetPlayerPed(src)
-        if ped == 0 then return Veyl.Err('INVALID_STATE', 'Location unavailable') end
-        local c = GetEntityCoords(ped)
-        local label = Phone.Clean(req.label, 60) or 'Shared location'
-        body, payload = label, { x = math.floor(c.x * 10) / 10, y = math.floor(c.y * 10) / 10, label = label }
+        local c = Veyl.GetPlayerCoords(src)
+        if not c then return Veyl.Err('UNAVAILABLE', 'Location unavailable') end
+        payload = { x = math.floor(c.x * 10) / 10, y = math.floor(c.y * 10) / 10 }
+        body = PhoneUtil.Clean(input.body, 80) or 'Shared location'
     else
-        return Veyl.Err('INVALID_INPUT', 'Unsupported message type')
+        local p = type(input.payload) == 'table' and input.payload or {}
+        local n = PhoneUtil.Normalize(p.number)
+        if not n then return Veyl.Err('INVALID_INPUT', 'Invalid contact') end
+        payload = { number = n, name = PhoneUtil.Clean(p.name, L.NameLength) or PhoneUtil.Format(n) }
+        body = payload.name
     end
-    local msg = store(s, convId, kind, body, payload, req.clientOp)
-    if not msg then return Veyl.Err('DATABASE_ERROR', 'Message not sent') end
-    return Veyl.Ok(msg)
-end)
 
----------------------------------------------------------------------------
--- Delivery and read receipts
----------------------------------------------------------------------------
---- ack(ids): the recipient's live session confirms delivery.
-Veyl.RegisterCallback('ack', function(src, _, ids)
-    local s = Phone.Session(src)
-    if not s or type(ids) ~= 'table' then return Veyl.Ok() end
-    for i, id in ipairs(ids) do
-        if i > L.PendingDeliveryBatch then break end
-        if Veyl.Validate.int(id, 1) then
-            local n = MySQL.update.await('UPDATE veyl_phone_receipts SET delivered_at = CURRENT_TIMESTAMP WHERE message_id = ? AND number = ? AND delivered_at IS NULL',
-                { id, s.number })
-            if n == 1 then pushReceipt(id) end
+    local conv
+    if input.conversationId then
+        conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { tonumber(input.conversationId) or 0 })
+        if not conv or not membership(conv.id, s.number) then return Veyl.Err('NOT_FOUND', 'Conversation not found') end
+        if conv.kind == 'direct' then
+            -- Bring a hidden direct chat back for the other side too.
+            local peer = MySQL.scalar.await('SELECT number FROM veyl_ph_members WHERE conversation_id = ? AND number <> ?', { conv.id, s.number })
+            if peer then conv = directConversation(s.number, peer) end
         end
+    else
+        local to = PhoneUtil.Normalize(input.to)
+        if not to or to == s.number then return Veyl.Err('INVALID_INPUT', 'Enter a valid number') end
+        if not Phone.CidByNumber(to) then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
+        conv = directConversation(s.number, to)
     end
-    return Veyl.Ok()
-end)
-
---- read(convId, uptoId): marks the conversation read; read receipts only if this reader allows them.
-Veyl.RegisterCallback('read', function(src, citizenid, convId, uptoId)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) or not Veyl.Validate.int(uptoId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid') end
-    if not isMember(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'You are not in this conversation') end
-    MySQL.update.await('UPDATE veyl_phone_members SET last_read_id = GREATEST(last_read_id, ?) WHERE conversation_id = ? AND number = ?', { uptoId, convId, s.number })
-    if s.settings.readReceipts then
-        local ids = MySQL.query.await([[SELECT r.message_id FROM veyl_phone_receipts r JOIN veyl_phone_messages m ON m.id = r.message_id
-            WHERE m.conversation_id = ? AND r.number = ? AND r.read_at IS NULL AND m.id <= ? LIMIT 200]], { convId, s.number, uptoId }) or {}
-        for _, r in ipairs(ids) do
-            MySQL.update.await('UPDATE veyl_phone_receipts SET read_at = CURRENT_TIMESTAMP, delivered_at = COALESCE(delivered_at, CURRENT_TIMESTAMP) WHERE message_id = ? AND number = ?',
-                { r.message_id, s.number })
-            pushReceipt(r.message_id)
-        end
-    end
-    return Veyl.Ok({ unreadTotal = Messages.UnreadTotal(s.number) })
+    local msg = Messages.Post(conv, s.number, kind, body, payload, op)
+    conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { conv.id })
+    return Veyl.Ok({ conversation = summary(conv, s, names), message = messageView(msg, s.number, names) })
 end, { cooldown = 200 })
 
---- When a phone session starts, push undelivered messages (ids) so the client acknowledges them.
-AddEventHandler('veyl_phone:sessionStarted', function(src, s)
-    CreateThread(function()
-        local rows = MySQL.query.await([[SELECT r.message_id FROM veyl_phone_receipts r WHERE r.number = ? AND r.delivered_at IS NULL
-            ORDER BY r.message_id LIMIT ?]], { s.number, L.PendingDeliveryBatch }) or {}
-        if #rows == 0 then return end
-        local ids = {}
-        for i, r in ipairs(rows) do ids[i] = r.message_id end
-        Phone.Push(src, 'pending', { ids = ids })
-    end)
-end)
-
 ---------------------------------------------------------------------------
--- Groups
+-- Groups and conversation settings
 ---------------------------------------------------------------------------
-local function admin(convId, number)
-    local m = isMember(convId, number)
-    return m and m.role == 'admin'
-end
+local function system(conv, actor, text) Messages.Post(conv, actor, 'system', text, nil, nil) end
 
-Veyl.RegisterCallback('groupCreate', function(src, citizenid, name, numbers)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Phone.Rate(src, 'groupCreate', 8000) then return Veyl.Err('RATE_LIMITED', 'Wait a moment before creating another group') end
-    name = Phone.Clean(name, L.GroupName)
-    if not name then return Veyl.Err('INVALID_INPUT', 'Name the group') end
-    if type(numbers) ~= 'table' then return Veyl.Err('INVALID_INPUT', 'Add members') end
-    local list, seen = {}, { [s.number] = true }
-    for _, n in ipairs(numbers) do
-        local nn = Phone.NormalizeNumber(n)
-        if nn and not seen[nn] then
-            seen[nn] = true
-            if not Phone.CidByNumber(nn) then return Veyl.Err('NOT_FOUND', ('%s is not in service'):format(Phone.FormatNumber(nn))) end
-            list[#list + 1] = nn
+local function pushConversation(convId, extraNumbers)
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { convId })
+    local targets = {}
+    for _, m in ipairs(activeMembers(convId)) do targets[m.number] = true end
+    for _, n in ipairs(extraNumbers or {}) do targets[n] = true end
+    for n in pairs(targets) do
+        local s = Phone.byNumber[n]
+        if s then
+            local inside = membership(convId, n) ~= nil
+            Phone.Push(s.src, 'conversation', inside and { conversation = summary(conv, s, contactMap(s.cid)) } or { removed = convId })
         end
     end
-    if #list < 1 then return Veyl.Err('INVALID_INPUT', 'Add at least one member') end
-    if #list + 1 > L.GroupMembers then return Veyl.Err('LIMIT', ('Groups have at most %d members'):format(L.GroupMembers)) end
-    local id = MySQL.insert.await("INSERT INTO veyl_phone_conversations (kind, name, created_by) VALUES ('group', ?, ?)", { name, s.number })
-    MySQL.insert.await("INSERT INTO veyl_phone_members (conversation_id, number, role) VALUES (?, ?, 'admin')", { id, s.number })
-    for _, n in ipairs(list) do MySQL.insert.await('INSERT IGNORE INTO veyl_phone_members (conversation_id, number) VALUES (?, ?)', { id, n }) end
-    store(s, id, 'system', ('%s created "%s"'):format(s.name, name), nil, nil)
-    return Veyl.Ok({ id = id }, 'Group created')
-end)
-
-Veyl.RegisterCallback('groupRename', function(src, _, convId, name)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) or not admin(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'Only the group admin can do that') end
-    name = Phone.Clean(name, L.GroupName)
-    if not name then return Veyl.Err('INVALID_INPUT', 'Name the group') end
-    MySQL.update.await("UPDATE veyl_phone_conversations SET name = ? WHERE id = ? AND kind = 'group'", { name, convId })
-    store(s, convId, 'system', ('%s renamed the group to "%s"'):format(s.name, name), nil, nil)
-    return Veyl.Ok(nil, 'Group renamed')
-end, { cooldown = 2000 })
-
-Veyl.RegisterCallback('groupAdd', function(src, _, convId, number)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) or not admin(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'Only the group admin can do that') end
-    number = Phone.NormalizeNumber(number)
-    if not number or not Phone.CidByNumber(number) then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
-    local count = MySQL.scalar.await('SELECT COUNT(*) FROM veyl_phone_members WHERE conversation_id = ? AND left_at IS NULL', { convId }) or 0
-    if count >= L.GroupMembers then return Veyl.Err('LIMIT', 'The group is full') end
-    MySQL.insert.await([[INSERT INTO veyl_phone_members (conversation_id, number) VALUES (?, ?)
-        ON DUPLICATE KEY UPDATE left_at = NULL, joined_at = CURRENT_TIMESTAMP, role = 'member']], { convId, number })
-    -- New members only see messages from now on.
-    local last = MySQL.scalar.await('SELECT last_message_id FROM veyl_phone_conversations WHERE id = ?', { convId }) or 0
-    MySQL.update.await('UPDATE veyl_phone_members SET last_read_id = ? WHERE conversation_id = ? AND number = ?', { last, convId, number })
-    store(s, convId, 'system', ('%s added %s'):format(s.name, Phone.FormatNumber(number)), nil, nil)
-    return Veyl.Ok(nil, 'Member added')
-end, { cooldown = 1000 })
-
-local function promoteIfNeeded(convId)
-    if MySQL.scalar.await("SELECT 1 FROM veyl_phone_members WHERE conversation_id = ? AND role = 'admin' AND left_at IS NULL", { convId }) then return end
-    local nextAdmin = MySQL.scalar.await('SELECT number FROM veyl_phone_members WHERE conversation_id = ? AND left_at IS NULL ORDER BY joined_at LIMIT 1', { convId })
-    if nextAdmin then MySQL.update.await("UPDATE veyl_phone_members SET role = 'admin' WHERE conversation_id = ? AND number = ?", { convId, nextAdmin }) end
 end
 
-Veyl.RegisterCallback('groupRemove', function(src, _, convId, number)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) or not admin(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'Only the group admin can do that') end
-    number = Phone.NormalizeNumber(number)
-    if not number or number == s.number then return Veyl.Err('INVALID_INPUT', 'Use Leave group to leave') end
-    local n = MySQL.update.await('UPDATE veyl_phone_members SET left_at = CURRENT_TIMESTAMP WHERE conversation_id = ? AND number = ? AND left_at IS NULL', { convId, number })
-    if n ~= 1 then return Veyl.Err('NOT_FOUND', 'Not a member') end
-    store(s, convId, 'system', ('%s removed %s'):format(s.name, Phone.FormatNumber(number)), nil, nil)
-    local rs = Phone.SessionByNumber(number)
-    if rs then Phone.Push(rs.src, 'removed', { convId = convId }) end
-    return Veyl.Ok(nil, 'Member removed')
+--- groupCreate({ name, numbers }) -> conversation
+Veyl.RegisterCallback('groupCreate', function(src, _, input)
+    local s, err = session(src)
+    if not s then return err end
+    if type(input) ~= 'table' or type(input.numbers) ~= 'table' then return Veyl.Err('INVALID_INPUT', 'Pick people to add') end
+    local name = PhoneUtil.Clean(input.name, L.GroupName)
+    if not name then return Veyl.Err('INVALID_INPUT', 'Give the group a name') end
+    local numbers, seen = {}, { [s.number] = true }
+    for _, n in ipairs(input.numbers) do
+        n = PhoneUtil.Normalize(n)
+        if n and not seen[n] and Phone.CidByNumber(n) then seen[n] = true numbers[#numbers + 1] = n end
+    end
+    if #numbers < 1 then return Veyl.Err('INVALID_INPUT', 'Add at least one valid number') end
+    if #numbers + 1 > L.GroupMembers then return Veyl.Err('LIMIT_REACHED', ('Groups have up to %d members'):format(L.GroupMembers)) end
+    if not Phone.Rate(src, 'group', 5000) then return Veyl.Err('RATE_LIMITED', 'Wait a moment') end
+    local id = MySQL.insert.await("INSERT INTO veyl_ph_conversations (kind, name, created_by) VALUES ('group', ?, ?)", { name, s.number })
+    MySQL.insert.await("INSERT INTO veyl_ph_members (conversation_id, number, role) VALUES (?, ?, 'admin')", { id, s.number })
+    for _, n in ipairs(numbers) do MySQL.insert.await('INSERT INTO veyl_ph_members (conversation_id, number) VALUES (?, ?)', { id, n }) end
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { id })
+    system(conv, s.number, ('%s created the group'):format(PhoneUtil.Format(s.number)))
+    pushConversation(id)
+    return Veyl.Ok(summary(MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { id }), s, contactMap(s.cid)), 'Group created')
+end)
+
+local function groupAdmin(s, convId)
+    local conv = MySQL.single.await("SELECT * FROM veyl_ph_conversations WHERE id = ? AND kind = 'group'", { tonumber(convId) or 0 })
+    if not conv then return nil, Veyl.Err('NOT_FOUND', 'Group not found') end
+    local me = membership(conv.id, s.number)
+    if not me then return nil, Veyl.Err('NOT_FOUND', 'Group not found') end
+    if me.role ~= 'admin' then return nil, Veyl.Err('NO_PERMISSION', 'Only group admins can do that') end
+    return conv
+end
+
+Veyl.RegisterCallback('groupRename', function(src, _, convId, name)
+    local s, err = session(src)
+    if not s then return err end
+    local conv, e = groupAdmin(s, convId)
+    if not conv then return e end
+    name = PhoneUtil.Clean(name, L.GroupName)
+    if not name then return Veyl.Err('INVALID_INPUT', 'Enter a name') end
+    MySQL.update.await('UPDATE veyl_ph_conversations SET name = ? WHERE id = ?', { name, conv.id })
+    system(conv, s.number, ('Group renamed to "%s"'):format(name))
+    pushConversation(conv.id)
+    return Veyl.Ok({ name = name }, 'Renamed')
 end, { cooldown = 1000 })
 
-Veyl.RegisterCallback('groupLeave', function(src, _, convId)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) then return Veyl.Err('INVALID_INPUT', 'Invalid conversation') end
-    local conv = MySQL.single.await('SELECT kind FROM veyl_phone_conversations WHERE id = ?', { convId })
-    if not conv or conv.kind ~= 'group' or not isMember(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'You are not in this group') end
-    store(s, convId, 'system', ('%s left'):format(s.name), nil, nil)
-    MySQL.update.await('UPDATE veyl_phone_members SET left_at = CURRENT_TIMESTAMP WHERE conversation_id = ? AND number = ?', { convId, s.number })
-    promoteIfNeeded(convId)
-    return Veyl.Ok(nil, 'You left the group')
-end, { cooldown = 1000 })
+Veyl.RegisterCallback('groupAdd', function(src, _, convId, number)
+    local s, err = session(src)
+    if not s then return err end
+    local conv, e = groupAdmin(s, convId)
+    if not conv then return e end
+    number = PhoneUtil.Normalize(number)
+    if not number or not Phone.CidByNumber(number) then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
+    if membership(conv.id, number) then return Veyl.Err('ALREADY_EXISTS', 'Already in the group') end
+    if #activeMembers(conv.id) >= L.GroupMembers then return Veyl.Err('LIMIT_REACHED', 'The group is full') end
+    MySQL.query.await([[INSERT INTO veyl_ph_members (conversation_id, number, last_read_id) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE left_at = NULL, role = 'member', last_read_id = VALUES(last_read_id)]], { conv.id, number, conv.last_message_id or 0 })
+    system(conv, s.number, ('%s was added'):format(PhoneUtil.Format(number)))
+    pushConversation(conv.id)
+    return Veyl.Ok(nil, 'Added')
+end, { cooldown = 500 })
+
+Veyl.RegisterCallback('groupRemove', function(src, _, convId, number)
+    local s, err = session(src)
+    if not s then return err end
+    local conv, e = groupAdmin(s, convId)
+    if not conv then return e end
+    number = PhoneUtil.Normalize(number)
+    if not number or number == s.number or not membership(conv.id, number) then return Veyl.Err('NOT_FOUND', 'Not in the group') end
+    MySQL.update.await('UPDATE veyl_ph_members SET left_at = NOW() WHERE conversation_id = ? AND number = ?', { conv.id, number })
+    system(conv, s.number, ('%s was removed'):format(PhoneUtil.Format(number)))
+    pushConversation(conv.id, { number })
+    return Veyl.Ok(nil, 'Removed')
+end, { cooldown = 500 })
+
+--- leave(conversationId): leave a group, or hide a direct chat (it comes back when a new message arrives).
+Veyl.RegisterCallback('leave', function(src, _, convId)
+    local s, err = session(src)
+    if not s then return err end
+    local conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { tonumber(convId) or 0 })
+    if not conv or not membership(conv.id, s.number) then return Veyl.Err('NOT_FOUND', 'Conversation not found') end
+    MySQL.update.await('UPDATE veyl_ph_members SET left_at = NOW(), role = \'member\' WHERE conversation_id = ? AND number = ?', { conv.id, s.number })
+    if conv.kind == 'group' then
+        local rest = activeMembers(conv.id)
+        -- A group is never left without an admin.
+        local hasAdmin = false
+        for _, m in ipairs(rest) do if m.role == 'admin' then hasAdmin = true end end
+        if not hasAdmin and rest[1] then
+            MySQL.update.await("UPDATE veyl_ph_members SET role = 'admin' WHERE conversation_id = ? AND number = ?", { conv.id, rest[1].number })
+        end
+        if #rest > 0 then system(conv, s.number, ('%s left'):format(PhoneUtil.Format(s.number))) end
+        pushConversation(conv.id, { s.number })
+    end
+    return Veyl.Ok(nil, conv.kind == 'group' and 'You left the group' or 'Conversation removed')
+end, { cooldown = 500 })
 
 Veyl.RegisterCallback('mute', function(src, _, convId, on)
-    local s = Phone.Session(src)
-    if not s then return Veyl.Err('NO_SESSION', 'Open your phone first') end
-    if not Veyl.Validate.int(convId, 1) or not isMember(convId, s.number) then return Veyl.Err('NO_PERMISSION', 'You are not in this conversation') end
-    MySQL.update.await('UPDATE veyl_phone_members SET muted = ? WHERE conversation_id = ? AND number = ?', { on and 1 or 0, convId, s.number })
-    return Veyl.Ok({ muted = on == true }, on and 'Conversation muted' or 'Conversation unmuted')
-end, { cooldown = 300 })
+    local s, err = session(src)
+    if not s then return err end
+    local n = MySQL.update.await('UPDATE veyl_ph_members SET muted = ? WHERE conversation_id = ? AND number = ? AND left_at IS NULL',
+        { on == true and 1 or 0, tonumber(convId) or 0, s.number })
+    if n == 0 and not membership(tonumber(convId) or 0, s.number) then return Veyl.Err('NOT_FOUND', 'Conversation not found') end
+    return Veyl.Ok({ muted = on == true })
+end)
+
+Messages.InClause = inClause
