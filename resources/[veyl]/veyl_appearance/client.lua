@@ -417,3 +417,15 @@ AddEventHandler('onResourceStop', function(res)
     if editor.cam then DestroyCam(editor.cam, false) end
     FreezeEntityPosition(PlayerPedId(), false)
 end)
+
+-- The inventory put a hat, glasses or mask on or took it off: show it straight away (the server already saved it).
+RegisterNetEvent('veyl_appearance:worn', function(key, d, t)
+    local cat = Appearance.byKey[key]
+    if not cat or type(d) ~= 'number' then return end
+    local ped = PlayerPedId()
+    if cat.kind == 'prop' then
+        if d < 0 then ClearPedProp(ped, cat.id) else SetPedPropIndex(ped, cat.id, d, t or 0, true) end
+    elseif cat.kind == 'component' then
+        SetPedComponentVariation(ped, cat.id, d, t or 0, 0)
+    end
+end)

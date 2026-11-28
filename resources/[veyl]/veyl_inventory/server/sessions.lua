@@ -37,6 +37,7 @@ function Inventory_OnCharacterLoaded(src, citizenid, generation, label)
         backpack = packOpen and Store.View(pk, 'backpack') or nil, equipSlots = Containers.SlotList(), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
     Drops.Sync(src)
     if Cash then CreateThread(function() Cash.Sync(src) end) end
+    if Worn then CreateThread(function() Worn.Reconcile(citizenid) end) end
 end
 
 function Inventory_OnCharacterUnloaded(src)

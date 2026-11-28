@@ -3,7 +3,7 @@ import { kgText, type Def } from './types';
 
 const LABELS: Record<string, string> = {
   quality: 'Quality', grade: 'Grade', varietyLabel: 'Variety', batch: 'Batch', serial: 'Serial', durability: 'Condition', ammo: 'Ammo', created: 'Made',
-  firstname: 'First name', lastname: 'Last name', birthdate: 'Born', citizenid: 'Citizen ID', number: 'Number', label: 'For',
+  d: 'Style', t: 'Colour', firstname: 'First name', lastname: 'Last name', birthdate: 'Born', citizenid: 'Citizen ID', number: 'Number', label: 'For',
 };
 const HIDDEN = new Set(['branch', 'variety', 'sim', 'door', 'rev', 'issued', 'created']);
 

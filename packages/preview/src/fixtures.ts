@@ -31,9 +31,9 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     D('tablet', 'Tablet', 600, { stack: false, equip: 'tablet', category: 'equipment' }),
     D('door_key', 'Key', 20, { stack: false, equip: 'key', category: 'equipment', description: 'Opens one door.' }),
     D('backpack', 'Backpack', 800, { stack: false, equip: 'backpack', category: 'equipment', description: 'Wear it in the backpack slot to open a second container.' }),
-    D('baseball_cap', 'Baseball Cap', 150, { stack: false, equip: 'hat', category: 'equipment', description: 'A plain cap.' }),
-    D('sunglasses', 'Sunglasses', 80, { stack: false, equip: 'glasses', category: 'equipment' }),
-    D('face_mask', 'Face Mask', 60, { stack: false, equip: 'mask', category: 'equipment' }),
+    D('clothing_hat', 'Hat', 150, { stack: false, equip: 'hat', category: 'equipment', description: 'A hat from your look. Wear it in the hat slot.' }),
+    D('clothing_glasses', 'Glasses', 80, { stack: false, equip: 'glasses', category: 'equipment', description: 'Glasses from your look. Wear them in the glasses slot.' }),
+    D('clothing_mask', 'Mask', 60, { stack: false, equip: 'mask', category: 'equipment', description: 'A mask from your look. Wear it in the mask slot.' }),
     D('headset', 'Headset', 200, { stack: false, equip: 'ears', category: 'equipment' }),
     D('armor_vest', 'Body Armour', 3000, { equip: 'armor', category: 'equipment', maxStack: 3, description: 'Full body armour. Wear it in the armour slot.' }),
     D('money', 'Cash', 0, { maxStack: 100000000, description: 'Cold, hard cash.' }),
@@ -47,14 +47,14 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
   ].map((d) => [d.name, d]));
   const at = (list: [string, number, Record<string, unknown>?][], from = 1) => list.map(([name, count, metadata], i) => ({ slot: i + from, name, count, ...(metadata ? { metadata } : {}) }));
   const personal = empty ? [] : [
-    ...at([['phone', 1], ['money', 15845091], ['money', 65747], ['baseball_cap', 1], ['bandage', 5], ['water_bottle', 3]]),
+    ...at([['phone', 1], ['money', 15845091], ['money', 65747], ['clothing_hat', 1, { d: 9, t: 0 }], ['bandage', 5], ['water_bottle', 3]]),
     { slot: 8, name: 'money', count: 111 }, { slot: 10, name: 'money', count: 335672 },
     { slot: 11, name: 'bandage', count: 1 }, { slot: 13, name: 'identity_card', count: 1 }, { slot: 14, name: 'lockpick', count: 2 },
     { slot: 15, name: 'sandwich', count: 2 }, { slot: 7, name: 'prod_pack', count: 12, metadata: { quality: 78, grade: 'Premium', varietyLabel: 'Violet Haze', batch: 'B0003C' } },
     { slot: 9, name: 'sim_card', count: 1 },
   ];
   const pack = empty ? [] : [{ slot: 2, name: 'first_aid_kit', count: 1 }, { slot: 6, name: 'flashlight', count: 1 }];
-  const equip = empty ? [] : [{ slot: 8, name: 'phone', count: 1 }, { slot: 10, name: 'door_key', count: 1, metadata: { label: 'Apartment 4B' } }, { slot: 3, name: 'sunglasses', count: 1 }, { slot: 6, name: 'backpack', count: 1 }];
+  const equip = empty ? [] : [{ slot: 8, name: 'phone', count: 1 }, { slot: 10, name: 'door_key', count: 1, metadata: { label: 'Apartment 4B' } }, { slot: 3, name: 'clothing_glasses', count: 1, metadata: { d: 5, t: 0 } }, { slot: 6, name: 'backpack', count: 1 }];
   const locker = empty ? [] : [{ slot: 15, name: 'bandage', count: 3 }];
   const equipSlots = [
     { slot: 1, id: 'ears', label: 'Headset', icon: 'headset', side: 'left' }, { slot: 2, id: 'mask', label: 'Mask', icon: 'mask', side: 'left' },

@@ -89,6 +89,8 @@ MetadataSchemas = {
     identity_card = { firstname = 'string', lastname = 'string', citizenid = 'string', birthdate = 'string' },
     lab_batch = { product = 'string', brand = 'string', quality = 'number', batch = 'string' },
     licence_card = { firstname = 'string', lastname = 'string', citizenid = 'string', birthdate = 'string', issued = 'string' },
+    -- hat, glasses and mask pieces that mirror the saved look (veyl_appearance): style and colour
+    clothing = { d = 'number', t = 'number' },
     -- veyl_phone: a SIM card that has been used (carries its number and contacts); a new one has no metadata
     sim_card = { sim = 'string', number = 'string' },
     -- veyl_production: quality-graded products

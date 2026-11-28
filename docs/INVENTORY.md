@@ -38,14 +38,18 @@ The icon names the panel knows: `headset`, `mask`, `glasses`, `shield`, `hat`, `
 ## Items (`data/items.lua`)
 
 ```lua
-baseball_cap = { label = 'Baseball Cap', description = 'A plain cap.', image = 'baseball_cap.png', weight = 150, stack = false,
-    equip = 'hat',                                                   -- which equipment slot it fits
-    wear = { kind = 'prop', id = 0, drawable = 9, texture = 0 } },   -- what the character shows while it is worn
+headset = { label = 'Headset', description = 'Over-ear headset.', image = 'headset.png', weight = 200, stack = false,
+    equip = 'ears',                                                 -- which equipment slot it fits
+    wear = { kind = 'prop', id = 2, drawable = 0, texture = 0 } },   -- what the character shows while it is worn
 ```
 
 - `equip` is the slot id from `Equipment`. The server refuses a move into the wrong slot.
 - `wear` is applied by the client while the item is equipped (`kind = 'prop'` for hats 0, glasses 1, ears 2; `'component'` for masks and the like; `'armor'` with `amount`). Taking it off puts the slot back how it was. Drawable and texture numbers depend on the ped model, so tune them.
 - `category` sets the filter chip; otherwise it is worked out (weapons and ammo, consumables, equipment, goods, other).
+
+## Hat, glasses and mask come from your look
+
+These three slots are tied to `veyl_appearance`. What your saved look has on shows up as an item (`clothing_hat`, `clothing_glasses`, `clothing_mask`, carrying its style `d` and colour `t`) in the slot, made for you when you load in or when a clothing store, outfit or the editor changes your look. Move the item out of the slot and it comes off your look (saved, and shown straight away); wear one and its style and colour go on your look. Only these three work this way: every other slot is plain inventory. The link is two small exports in `veyl_appearance` (`GetWorn`, `SetWorn`) and a `veyl_appearance:saved` event, so the look stays the single saved record.
 
 ## Shops in the inventory
 
@@ -57,6 +61,6 @@ Unchanged, plus: `GetItemCount`, `Search`, `GetSlotWithItem` and `TakeItem` span
 
 ## Tests
 
-The server logic runs against a real MariaDB with the framework stubbed (44 checks, plus 13 for the SIM sync in veyl_phone): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, the backpack opening and closing as the bag is worn and removed, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 28 checks in the preview.
+The server logic runs against a real MariaDB with the framework stubbed (52 checks, plus 13 for the SIM sync in veyl_phone): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, the backpack opening and closing as the bag is worn and removed, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 28 checks in the preview.
 
 Not tested in game: the wearable props on a real ped (drawable numbers), hover and drag in CEF at your resolution, and the shop panel against a live `veyl_shops`.

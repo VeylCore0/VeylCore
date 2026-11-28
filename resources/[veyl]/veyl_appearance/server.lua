@@ -107,8 +107,11 @@ local function store(citizenid, a)
     local data = json.decode(json.encode(a))
     local model = data.model
     data.model = nil
-    return pcall(MySQL.query.await, [[INSERT INTO veyl_appearance (citizenid, model, data) VALUES (?, ?, ?)
+    local ok, res = pcall(MySQL.query.await, [[INSERT INTO veyl_appearance (citizenid, model, data) VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE model = VALUES(model), data = VALUES(data)]], { citizenid, model, json.encode(data) })
+    -- Other resources (the inventory's hat, glasses and mask slots) follow the saved look.
+    if ok then TriggerEvent('veyl_appearance:saved', citizenid) end
+    return ok, res
 end
 
 local function outfitsOf(citizenid, model)
@@ -335,4 +338,41 @@ Veyl.AsyncExport('WearOutfit', function(citizenid, id)
     local next = Appearance.normalise(saved)
     if not store(citizenid, next) then return Veyl.Err('DATABASE_ERROR', 'Could not save your look') end
     return Veyl.Ok({ appearance = next, outfits = outfitList(citizenid) }, 'Outfit changed')
+end)
+
+---------------------------------------------------------------------------
+-- Worn pieces: hat, glasses and mask are also inventory items (veyl_inventory keeps the slots in step with the saved look).
+--   exports.veyl_appearance:GetWorn(citizenid) -> { hat = { d, t }?, glasses = { d, t }?, mask = { d, t }? } or nil (no saved look yet)
+--   exports.veyl_appearance:SetWorn(citizenid, key, d, t) -> true | false, reason   (d = -1 takes it off; the change is saved and shown at once)
+---------------------------------------------------------------------------
+local WORN = { hat = true, glasses = true, mask = true }
+
+exports('GetWorn', function(citizenid)
+    if type(citizenid) ~= 'string' then return nil end
+    local saved = load(citizenid)
+    if not saved then return nil end
+    local out = {}
+    for key in pairs(WORN) do
+        local s = Appearance.getSlot(saved, Appearance.byKey[key])
+        -- A prop is worn when d >= 0; the mask is a component where 0 means none.
+        local worn = s.d ~= nil and (Appearance.byKey[key].kind == 'prop' and s.d >= 0 or s.d > 0)
+        if worn then out[key] = { d = s.d, t = s.t or 0 } end
+    end
+    return out
+end)
+
+exports('SetWorn', function(citizenid, key, d, t)
+    if type(citizenid) ~= 'string' or not WORN[key] or not V.int(d, -1, 1000) or not V.int(t or 0, 0, 63) then return false, 'invalid' end
+    local cat = Appearance.byKey[key]
+    local saved = load(citizenid)
+    if not saved then return false, 'no saved look' end
+    local none = cat.kind == 'prop' and -1 or 0
+    if d < 0 then d = none end
+    local before = Appearance.getSlot(saved, cat)
+    if before.d == d and (before.t or 0) == (t or 0) then return true end
+    Appearance.setSlot(saved, cat, { d = d, t = d == none and 0 or (t or 0) })
+    if not store(citizenid, saved) then return false, 'could not save' end
+    local src = exports.veyl_core:GetSourceByCitizenId(citizenid)
+    if src then TriggerClientEvent('veyl_appearance:worn', src, key, d, d == none and 0 or (t or 0)) end
+    return true
 end)

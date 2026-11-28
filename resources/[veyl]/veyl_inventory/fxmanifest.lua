@@ -27,6 +27,7 @@ server_scripts {
     'server/adapter_veylcore.lua',
     'server/exports.lua',
     'server/weapons.lua',
+    'server/worn.lua',
 }
 
 client_scripts {

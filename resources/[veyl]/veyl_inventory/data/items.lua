@@ -171,12 +171,11 @@ return {
     -- (mask 1). The drawable and texture numbers depend on the ped model; change them to taste.
     backpack = { label = 'Backpack', description = 'Wear it in the backpack slot to open a second container. Take it off and the bag closes; what is inside stays saved.',
         image = 'backpack.png', weight = 800, stack = false, equip = 'backpack', wear = { kind = 'component', id = 5, drawable = 45, texture = 0 } },
-    baseball_cap = { label = 'Baseball Cap', description = 'A plain cap.', image = 'baseball_cap.png', weight = 150, stack = false, equip = 'hat',
-        wear = { kind = 'prop', id = 0, drawable = 9, texture = 0 } },
-    sunglasses = { label = 'Sunglasses', description = 'Dark lenses.', image = 'sunglasses.png', weight = 80, stack = false, equip = 'glasses',
-        wear = { kind = 'prop', id = 1, drawable = 5, texture = 0 } },
-    face_mask = { label = 'Face Mask', description = 'Covers the lower face.', image = 'face_mask.png', weight = 60, stack = false, equip = 'mask',
-        wear = { kind = 'component', id = 1, drawable = 51, texture = 0 } },
+    -- Hat, glasses and mask are the pieces from your saved look (veyl_appearance). Wearing one in its slot puts it on and saves it to your look;
+    -- taking it off removes it from your look. They carry the style (d) and colour (t) and are made for you from what you already wear.
+    clothing_hat = { label = 'Hat', description = 'A hat from your look. Wear it in the hat slot.', image = 'clothing_hat.png', weight = 150, stack = false, equip = 'hat', metadataSchema = 'clothing' },
+    clothing_glasses = { label = 'Glasses', description = 'Glasses from your look. Wear them in the glasses slot.', image = 'clothing_glasses.png', weight = 80, stack = false, equip = 'glasses', metadataSchema = 'clothing' },
+    clothing_mask = { label = 'Mask', description = 'A mask from your look. Wear it in the mask slot.', image = 'clothing_mask.png', weight = 60, stack = false, equip = 'mask', metadataSchema = 'clothing' },
     headset = { label = 'Headset', description = 'Over-ear headset.', image = 'headset.png', weight = 200, stack = false, equip = 'ears',
         wear = { kind = 'prop', id = 2, drawable = 0, texture = 0 } },
     qbexample_token = {
