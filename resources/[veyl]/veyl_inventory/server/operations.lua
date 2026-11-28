@@ -124,6 +124,63 @@ function Ops.Transfer(req)
 end
 
 ---------------------------------------------------------------------------
+-- Changing one slot in place (used for equipment slots: a SIM card gets its number written on it, a card is placed in its slot)
+---------------------------------------------------------------------------
+--- Replaces the metadata of the item in `slot` (a single item, never a stack) under the lock, with an operation record.
+function Ops.SetMetadata(inv, slot, metadata, ctx)
+    if not validOp(ctx.opId) then return err('INVALID_INPUT', 'Bad operation id') end
+    local fp = fingerprint({ 'setmeta', inv.id, slot, metadata })
+    local result, lockErr = Store.WithLocks({ inv.id }, function()
+        local stored = dedupe(ctx.opId, ctx.actor, fp)
+        if stored then return stored end
+        local it = inv.items[slot]
+        if not it then return err('NOT_FOUND', 'Nothing in that slot') end
+        if it.count ~= 1 then return err('INVALID_STATE', 'Only a single item can be marked') end
+        local meta, metaErr = CleanMetadata(it.name, metadata)
+        if not meta then return err('INVALID_INPUT', metaErr) end
+        local items = Store.CopyItems(inv)
+        items[slot] = { slot = slot, name = it.name, count = 1, metadata = meta, instance = it.instance }
+        local rev = inv.revision + 1
+        local op = { id = ctx.opId, actor = ctx.actor, kind = 'setmeta', inventories = inv.id, fingerprint = fp, result = true }
+        if not DB.Commit({ { inv = inv, items = items, slots = { slot }, revision = rev } }, op, { { inventory = inv.id, item = it.name, delta = 0, reason = ctx.reason } }) then
+            if DB.GetOperation(ctx.opId) then return dedupe(ctx.opId, ctx.actor, fp) end
+            return err('DATABASE_ERROR', 'Could not save; nothing changed')
+        end
+        Store.Apply(inv, items, { slot }, rev)
+        return ok(true)
+    end)
+    if lockErr then return err('BUSY', 'Inventory busy') end
+    return result
+end
+
+--- Puts one new item into an EMPTY slot (the slot rules still apply).
+function Ops.PlaceInSlot(inv, slot, name, metadata, ctx)
+    if not ItemDefs[name] or not validOp(ctx.opId) then return err('INVALID_INPUT', 'Unknown item or bad operation id') end
+    local meta, metaErr = CleanMetadata(name, metadata)
+    if not meta then return err('INVALID_INPUT', metaErr) end
+    local rule = inv.slotRules and inv.slotRules[slot]
+    if rule and ItemDefs[name].equip ~= rule then return err('INVALID_STATE', 'That does not go there') end
+    local fp = fingerprint({ 'place', inv.id, slot, name, meta })
+    local result, lockErr = Store.WithLocks({ inv.id }, function()
+        local stored = dedupe(ctx.opId, ctx.actor, fp)
+        if stored then return stored end
+        if inv.items[slot] then return err('INVALID_STATE', 'That slot is taken') end
+        local items = Store.CopyItems(inv)
+        items[slot] = { slot = slot, name = name, count = 1, metadata = meta, instance = (not ItemDefs[name].stack) and Store.NewInstance() or nil }
+        local rev = inv.revision + 1
+        local op = { id = ctx.opId, actor = ctx.actor, kind = 'place', inventories = inv.id, fingerprint = fp, result = true }
+        if not DB.Commit({ { inv = inv, items = items, slots = { slot }, revision = rev } }, op, { { inventory = inv.id, item = name, delta = 1, reason = ctx.reason } }) then
+            if DB.GetOperation(ctx.opId) then return dedupe(ctx.opId, ctx.actor, fp) end
+            return err('DATABASE_ERROR', 'Could not save; nothing was added')
+        end
+        Store.Apply(inv, items, { slot }, rev)
+        return ok(true)
+    end)
+    if lockErr then return err('BUSY', 'Inventory busy') end
+    return result
+end
+
+---------------------------------------------------------------------------
 -- Durable add / remove (operation-aware; used by shops, rewards, staff tools)
 ---------------------------------------------------------------------------
 function Ops.Add(inv, name, count, metadata, ctx)

@@ -25,7 +25,7 @@ Veyl.RegisterCallback = function(name, fn, opts)
         end
         if PhoneConfig.Sim and PhoneConfig.Sim.Required and not OFFLINE_OK[name] then
             local s = Phone.sessions[src]
-            if s and not s.sim then return Veyl.Err('NO_SERVICE', 'No service. Insert a SIM card first.') end
+            if s and not s.sim then return Veyl.Err('NO_SERVICE', 'No service. Put a SIM card in the SIM slot of your inventory.') end
         end
         return fn(src, citizenid, ...)
     end, opts)
@@ -183,6 +183,13 @@ local MIGRATIONS = {
                 UNIQUE KEY uq_sim_number (number)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             [[ALTER TABLE veyl_ph_accounts ADD COLUMN sim_id VARCHAR(16) NULL]],
+        },
+    },
+    {
+        -- 1 = the SIM is a real card sitting in the inventory's SIM slot (older characters get one made for them the first time).
+        id = 'v2_007_sim_slot',
+        sql = {
+            [[ALTER TABLE veyl_ph_accounts ADD COLUMN sim_slot TINYINT(1) NOT NULL DEFAULT 0]],
         },
     },
     {

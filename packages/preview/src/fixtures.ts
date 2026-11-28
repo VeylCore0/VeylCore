@@ -26,7 +26,7 @@ export const itemDefs: Record<string, ItemDef> = Object.fromEntries([
 export function inventoryOpen(empty: boolean): InventoryOpen {
   const D = (name: string, label: string, weight: number, extra: Record<string, unknown> = {}) => ({ name, label, weight, usable: false, stack: true, maxStack: 10, image: name + '.png', category: 'misc', ...extra });
   const items: Record<string, unknown> = Object.fromEntries([
-    D('phone', 'Phone', 200, { stack: false, equip: 'phone', category: 'equipment', description: 'Stay connected.', actions: [{ id: 'sim', label: 'SIM card', icon: 'use', tray: true }] }),
+    D('phone', 'Phone', 200, { stack: false, equip: 'phone', category: 'equipment', description: 'Stay connected.' }),
     D('identity_card', 'ID Card', 10, { stack: false, equip: 'id', category: 'equipment', description: 'Government-issued ID.' }),
     D('tablet', 'Tablet', 600, { stack: false, equip: 'tablet', category: 'equipment' }),
     D('door_key', 'Key', 20, { stack: false, equip: 'key', category: 'equipment', description: 'Opens one door.' }),
@@ -43,7 +43,7 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     D('first_aid_kit', 'First Aid Kit', 1200, { category: 'consumables' }),
     D('lockpick', 'Lockpick', 50), D('flashlight', 'Flashlight', 600), D('repair_kit', 'Repair Kit', 2500, { usable: true }),
     D('prod_pack', 'Bagged Weed', 120, { category: 'goods', maxStack: 100 }),
-    D('sim_card', 'SIM Card', 5, { description: 'Right-click your phone and open the SIM card tray to insert it.' }),
+    D('sim_card', 'SIM Card', 5, { stack: false, equip: 'sim', category: 'equipment', description: 'Put it in the SIM slot of your inventory to give your phone service.' }),
   ].map((d) => [d.name, d]));
   const at = (list: [string, number, Record<string, unknown>?][], from = 1) => list.map(([name, count, metadata], i) => ({ slot: i + from, name, count, ...(metadata ? { metadata } : {}) }));
   const personal = empty ? [] : [
@@ -60,12 +60,12 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     { slot: 1, id: 'ears', label: 'Headset', icon: 'headset', side: 'left' }, { slot: 2, id: 'mask', label: 'Mask', icon: 'mask', side: 'left' },
     { slot: 3, id: 'glasses', label: 'Glasses', icon: 'glasses', side: 'left' }, { slot: 4, id: 'armor', label: 'Armour', icon: 'shield', side: 'left' },
     { slot: 5, id: 'hat', label: 'Hat', icon: 'hat', side: 'left' }, { slot: 6, id: 'backpack', label: 'Backpack', icon: 'backpack', side: 'left' }, { slot: 7, id: 'id', label: 'ID card', icon: 'id', side: 'right' },
-    { slot: 8, id: 'phone', label: 'Phone', icon: 'phone', side: 'right' }, { slot: 9, id: 'tablet', label: 'Tablet', icon: 'tablet', side: 'right' }, { slot: 10, id: 'key', label: 'Key', icon: 'key', side: 'right' },
+    { slot: 8, id: 'phone', label: 'Phone', icon: 'phone', side: 'right' }, { slot: 9, id: 'tablet', label: 'Tablet', icon: 'tablet', side: 'right' }, { slot: 10, id: 'key', label: 'Key', icon: 'key', side: 'right' }, { slot: 11, id: 'sim', label: 'SIM card', icon: 'sim', side: 'right' },
   ];
   return {
     primary: { ref: 'primary', id: 'player:DEMO', label: 'Pockets', type: 'player', slots: 30, maxWeight: 55000, weight: empty ? 0 : 1200, revision: 1, items: personal },
     backpack: { ref: 'backpack', id: 'pack:DEMO', label: 'Backpack', type: 'stash', slots: 15, maxWeight: 15000, weight: empty ? 0 : 1800, revision: 1, items: pack },
-    equip: { ref: 'equip', id: 'equip:DEMO', label: 'Equipment', type: 'stash', slots: 10, maxWeight: 100000000, weight: 0, revision: 1, items: equip },
+    equip: { ref: 'equip', id: 'equip:DEMO', label: 'Equipment', type: 'stash', slots: 11, maxWeight: 100000000, weight: 0, revision: 1, items: equip },
     secondary: empty ? { ref: 'secondary', id: 'ground', label: 'Ground', type: 'drop', slots: 20, maxWeight: 200000, weight: 0, revision: 0, items: [] }
       : { ref: 'secondary', id: 'stash:DEMO', label: 'Personal Locker', type: 'stash', slots: 24, maxWeight: 70000, weight: 345, revision: 1, items: locker },
     equipSlots, categories: [{ id: 'all', label: 'All' }, { id: 'weapons', label: 'Weapons' }, { id: 'consumables', label: 'Consumables' }, { id: 'equipment', label: 'Equipment' }, { id: 'goods', label: 'Goods' }, { id: 'misc', label: 'Other' }],

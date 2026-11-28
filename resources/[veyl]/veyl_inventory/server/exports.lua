@@ -228,6 +228,29 @@ asyncExport('TakeItem', function(invoker, citizenid, item, count, metadata, opId
     return Ops.ok({ item = item, count = count })
 end)
 
+--- GetEquipmentSlot(citizenid, slotId) -> { name, count, metadata, slot } or nil: what a character wears in one equipment slot ('sim', 'hat', ...).
+exports('GetEquipmentSlot', function(citizenid, slotId)
+    if type(citizenid) ~= 'string' or type(slotId) ~= 'string' then return nil end
+    return Containers.EquippedIn(citizenid, slotId)
+end)
+
+--- SetEquipmentMetadata(citizenid, slotId, metadata, opId): rewrites the metadata of the single item in an equipment slot
+--- (a SIM card gets the number written on it this way). Durable and idempotent per operation id.
+asyncExport('SetEquipmentMetadata', function(invoker, citizenid, slotId, metadata, opId)
+    local idx = type(slotId) == 'string' and Containers.SlotIndex(slotId)
+    local eq = type(citizenid) == 'string' and idx and Store.Get(Containers.EquipId(citizenid))
+    if not eq then return Ops.err('NOT_FOUND', 'No such equipment slot') end
+    return Ops.SetMetadata(eq, idx, metadata, { opId = opId, actor = invoker, reason = invoker })
+end)
+
+--- PutInEquipment(citizenid, slotId, item, metadata, opId): places a new item in an EMPTY equipment slot.
+asyncExport('PutInEquipment', function(invoker, citizenid, slotId, item, metadata, opId)
+    local idx = type(slotId) == 'string' and Containers.SlotIndex(slotId)
+    local eq = type(citizenid) == 'string' and idx and Store.Get(Containers.EquipId(citizenid))
+    if not eq then return Ops.err('NOT_FOUND', 'No such equipment slot') end
+    return Ops.PlaceInSlot(eq, idx, item, metadata, { opId = opId, actor = invoker, reason = invoker })
+end)
+
 --- GetOperation(opId) -> ok({ status = 'done', kind, ... }) or ok(nil). Operations are atomic with their effect:
 --- a recorded operation happened; a missing one did not.
 asyncExport('GetOperation', function(_, opId)

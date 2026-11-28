@@ -14,6 +14,8 @@ Everything is decided on the server. The page can only ask: move this slot to th
 | Stash, trunk, glovebox, ground | `secondary` | Registered stashes (`RegisterStash`), keyed stashes (`veyl_vehicles` registers `veh_trunk` and `veh_glovebox`) and ground drops. |
 | Shop | (own panel) | Opened by `veyl_shops` when `ShopsConfig.UseInventoryUi` is on. |
 
+**SIM card:** the SIM slot on the body panel takes only SIM cards. The card in it is the phone's SIM (veyl_phone reads the slot through `GetEquipmentSlot` and follows the inventory's `veyl_inventory:changed` event); the inventory also offers `SetEquipmentMetadata` (write a number on the card) and `PutInEquipment` (place an item in an empty slot) for resources that need them.
+
 Pockets, backpack and equipment all count as "you have it" (the backpack only while it is worn): `GetItemCount`, `Search` and `GetSlotWithItem` look through all three, `TakeItem` takes from the pockets first and then the backpack and what is worn, and `GiveItem` falls back to the backpack when the pockets are full. A phone in its equipment slot still counts for the phone app.
 
 ## The screen
@@ -55,6 +57,6 @@ Unchanged, plus: `GetItemCount`, `Search`, `GetSlotWithItem` and `TakeItem` span
 
 ## Tests
 
-The server logic runs against a real MariaDB with the framework stubbed (33 checks): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, the backpack opening and closing as the bag is worn and removed, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 26 checks in the preview.
+The server logic runs against a real MariaDB with the framework stubbed (44 checks, plus 13 for the SIM sync in veyl_phone): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, the backpack opening and closing as the bag is worn and removed, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 28 checks in the preview.
 
 Not tested in game: the wearable props on a real ped (drawable numbers), hover and drag in CEF at your resolution, and the shop panel against a live `veyl_shops`.

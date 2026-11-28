@@ -44,9 +44,8 @@ return {
     flashlight = { label = 'Flashlight', description = 'Lights up the dark.', image = 'flashlight.png', weight = 600, stack = false },
     radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.png', weight = 400, stack = false },
     repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.png', weight = 2500, stack = true, maxStack = 5 },
-    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false, equip = 'phone',
-        actions = { { id = 'sim', label = 'SIM card', icon = 'use', tray = true } } },
-    sim_card = { label = 'SIM Card', description = 'Right-click your phone and open the SIM card tray to insert it. A SIM keeps its number and contacts when you give it away.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10, metadataSchema = 'sim_card' },
+    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false, equip = 'phone' },
+    sim_card = { label = 'SIM Card', description = 'Put it in the SIM slot of your inventory to give your phone service. A SIM keeps its number and contacts when you give it away.', equip = 'sim', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10, metadataSchema = 'sim_card' },
     boosting_tablet = { label = 'Boosting Tablet', description = 'An encrypted tablet for contracts, crews and reputation.', image = 'boosting_tablet.png', weight = 600, stack = false,
         use = { handler = 'boosting_tablet', durationMs = 0, consumeCount = 0 } },
     -- veyl_production (fictional)

@@ -22,6 +22,21 @@ local function ruleMap()
     return rules
 end
 
+--- The slot number of an equipment slot id ('sim', 'hat', ...), or nil.
+function Containers.SlotIndex(slotId)
+    for i, s in ipairs(equipSlots()) do if s.id == slotId then return i end end
+    return nil
+end
+
+--- What sits in one equipment slot of a character that is online: { name, count, metadata } or nil.
+function Containers.EquippedIn(citizenid, slotId)
+    local idx = Containers.SlotIndex(slotId)
+    local eq = idx and Store.Get(Containers.EquipId(citizenid))
+    local it = eq and eq.items[idx]
+    if not it then return nil end
+    return { name = it.name, count = it.count, metadata = vlib.table.deepcopy(it.metadata or {}), slot = idx }
+end
+
 --- Loads (or creates) the equipment and backpack inventories. Returns equip, backpack (backpack is nil when disabled).
 function Containers.Load(citizenid)
     local eq

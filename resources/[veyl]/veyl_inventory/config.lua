@@ -26,6 +26,7 @@ InventoryConfig = {
         { id = 'phone',   label = 'Phone',    icon = 'phone',   side = 'right' },
         { id = 'tablet',  label = 'Tablet',   icon = 'tablet',  side = 'right' },
         { id = 'key',     label = 'Key',      icon = 'key',     side = 'right' },
+        { id = 'sim',     label = 'SIM card', icon = 'sim',     side = 'right' },
     },
 
     -- Item categories for the filter chips. An item definition can set category = '<id>'; otherwise it is worked out from what the item does.
