@@ -53,8 +53,17 @@ end
 ---------------------------------------------------------------------------
 -- Everything ambient is locked
 ---------------------------------------------------------------------------
+-- Locked for players? (Reading the flag we set; an AI driver's own door state is never touched.)
+local function lockedForMe(veh) return GetVehicleDoorsLockedForPlayer(veh, PlayerId()) == true or GetVehicleDoorLockStatus(veh) >= 2 end
+
 local function lock(veh)
     if haveKey(veh) or mine[veh] then return end
+    local driver = GetPedInVehicleSeat(veh, -1)
+    if driver ~= 0 and not IsPedAPlayer(driver) and not IsPedDeadOrDying(driver, true) then
+        -- A pedestrian is driving: only keep players out. A real lock status makes AI drivers panic, climb out and run, so leave it alone.
+        SetVehicleDoorsLockedForAllPlayers(veh, true)
+        return
+    end
     SetVehicleDoorsLocked(veh, 2)
     SetVehicleDoorsLockedForAllPlayers(veh, true)
 end
@@ -73,7 +82,7 @@ CreateThread(function()
             for _, veh in ipairs(GetGamePool('CVehicle')) do
                 if veh ~= mineNow and theft(veh) and #(pc - GetEntityCoords(veh)) <= C.Lock.Radius then
                     -- Look once at every car that comes into range; keep a car locked while it is near unless I own its door.
-                    if not seen[veh] or (GetVehicleDoorLockStatus(veh) < 2 and not mine[veh] and not haveKey(veh) and #(pc - GetEntityCoords(veh)) < 30.0) then
+                    if not seen[veh] or (not lockedForMe(veh) and not mine[veh] and not haveKey(veh) and #(pc - GetEntityCoords(veh)) < 30.0) then
                         local occupied = false
                         for seat = -1, GetVehicleMaxNumberOfPassengers(veh) - 1 do
                             local who = GetPedInVehicleSeat(veh, seat)
@@ -122,7 +131,7 @@ CreateThread(function()
     exports.veyl_target:addGlobalVehicle({
         { name = 'veyl_cartheft_lockpick', label = 'Lockpick the door', icon = 'key', distance = C.Lockpick.Distance, priority = 1,
           canInteract = function(e)
-              if busy or mine[e] or not theft(e) or GetVehicleDoorLockStatus(e) < 2 or haveKey(e) then return false end
+              if busy or mine[e] or not theft(e) or not lockedForMe(e) or haveKey(e) then return false end
               local driver = GetPedInVehicleSeat(e, -1)
               if driver ~= 0 and not IsPedDeadOrDying(driver, true) then return false end
               return (exports.veyl_inventory:GetItemCount(C.Lockpick.Item) or 0) > 0
