@@ -1,5 +1,6 @@
 import type { SlotItem } from '@veyl/ui';
 import { SlotTile, countText, type SlotHandlers } from './Grid';
+import { Figure } from './Figure';
 import { key, kgText, type Def, type EquipSlot, type Profile, type SlotAddress, type View } from './types';
 
 const ICONS: Record<string, string> = {
@@ -18,29 +19,6 @@ const ICONS: Record<string, string> = {
 
 export function SlotIcon({ name }: { name: string }) {
   return <svg className="slot-ghost" viewBox="0 0 24 24" aria-hidden="true"><path d={ICONS[name] ?? ICONS.shield} /></svg>;
-}
-
-/** A stylised skeleton for the middle of the body panel (original line art). */
-function Figure() {
-  return (
-    <svg className="body-figure" viewBox="0 0 120 300" aria-hidden="true">
-      <defs>
-        <linearGradient id="bf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9fb4ae" stopOpacity=".95" /><stop offset="1" stopColor="#4d5b58" stopOpacity=".55" /></linearGradient>
-      </defs>
-      <g fill="none" stroke="url(#bf)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <ellipse cx="60" cy="24" rx="14" ry="18" />
-        <path d="M54 42v10M66 42v10" />
-        <path d="M34 62c6-8 16-10 26-10s20 2 26 10c4 8 6 22 4 40l-3 40-2 20H35l-2-20-3-40c-2-18 0-32 4-40z" />
-        <path d="M40 66c4 10 6 22 6 34M80 66c-4 10-6 22-6 34" opacity=".6" />
-        <path d="M46 112h28M44 124h32M42 136h36" opacity=".6" />
-        <path d="M34 66L22 118l-6 54M86 66l12 52 6 54" />
-        <path d="M16 172l-2 20M104 172l2 20" />
-        <path d="M44 162l-6 70-4 56M76 162l6 70 4 56" />
-        <path d="M40 232h16M64 232h16M30 288h20M70 288h20" />
-        <path d="M60 52v100" opacity=".35" />
-      </g>
-    </svg>
-  );
 }
 
 export function BodyPanel(props: {
