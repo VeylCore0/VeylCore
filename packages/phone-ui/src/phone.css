@@ -348,7 +348,7 @@ button.ph-row { cursor: pointer; transition: background 0.15s; } button.ph-row:h
 
 /* Home screen pages: swipe, scroll sideways, or tap a dot */
 .ph-pages { flex: 1; min-height: 0; overflow: hidden; touch-action: pan-y; }
-.ph-track { display: flex; height: 100%; transition: transform 0.38s cubic-bezier(0.2, 0.85, 0.25, 1); }
+.ph-hpages { display: flex; height: 100%; transition: transform 0.38s cubic-bezier(0.2, 0.85, 0.25, 1); }
 .ph-page { flex: 0 0 100%; width: 100%; box-sizing: border-box; height: 100%; flex-basis: 100%; }
 .ph-grid.later { margin-top: 10px; }
 .ph-dots { position: absolute; left: 0; right: 0; bottom: 124px; display: flex; justify-content: center; gap: 7px; z-index: 3; }

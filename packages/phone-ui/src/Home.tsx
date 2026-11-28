@@ -79,7 +79,7 @@ export function Home() {
           if (pages.length > 1 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5 && now - wheelAt.current > 350) { wheelAt.current = now; go(page + (e.deltaX > 0 ? 1 : -1)); }
         }}
       >
-        <div className="ph-track" style={{ transform: `translateX(-${page * 100}%)` }}>
+        <div className="ph-hpages" style={{ transform: `translateX(-${page * 100}%)` }}>
           {pages.map((tiles, i) => (
             <div key={i} className="ph-page ph-home-scroll" aria-hidden={i !== page}>
               {i === 0 && (
