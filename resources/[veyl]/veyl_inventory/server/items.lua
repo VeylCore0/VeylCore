@@ -52,12 +52,24 @@ local function loadDefinitions()
             d.use.consumeCount = math.max(0, math.floor(tonumber(d.use.consumeCount) or 1))
         end
         d.usable = d.use ~= nil or d.usable == true
+        if d.equip ~= nil then assert(type(d.equip) == 'string', ('veyl_inventory: item %s equip must be a slot id'):format(name)) end
     end
     MergeWeapons(defs)
     return defs
 end
 
 ItemDefs = loadDefinitions()
+
+--- The filter category of an item: its own `category`, else worked out from what it is and does.
+function ItemCategory(d)
+    if d.category then return d.category end
+    if d.equip then return 'equipment' end
+    local n = d.name or ''
+    if n:find('^weapon_') or n:find('^ammo_') or n:find('^att_') then return 'weapons' end
+    if d.use and (d.use.handler == 'consume' or d.use.handler == 'heal') then return 'consumables' end
+    if n:find('^prod_') or n:find('baggie$') or n:find('^fish_') or n == 'joint' then return 'goods' end
+    return 'misc'
+end
 
 --- Client-safe definition view (no handlers, no server effects).
 function ClientItemDefs()
@@ -66,6 +78,7 @@ function ClientItemDefs()
         out[name] = {
             name = name, label = d.label, description = d.description, image = d.image or (name .. '.png'),
             weight = d.weight, stack = d.stack, maxStack = d.maxStack, usable = d.usable, actions = d.actions,
+            equip = d.equip, category = ItemCategory(d), wear = d.wear,
         }
     end
     return out

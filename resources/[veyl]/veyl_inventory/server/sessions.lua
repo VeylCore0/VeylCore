@@ -20,9 +20,13 @@ function Inventory_OnCharacterLoaded(src, citizenid, generation, label)
         TriggerClientEvent('veyl_inventory:unavailable', src)
         return
     end
-    Players[src] = { citizenid = citizenid, generation = generation, invId = inv.id }
+    local eq, pk = Containers.Load(citizenid)
+    Players[src] = { citizenid = citizenid, generation = generation, invId = inv.id, equipId = eq and eq.id or nil, packId = pk and pk.id or nil }
     inv.viewers[src] = 'primary'
-    TriggerClientEvent('veyl_inventory:init', src, { primary = Store.View(inv, 'primary'), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
+    if eq then eq.viewers[src] = 'equip' end
+    if pk then pk.viewers[src] = 'backpack' end
+    TriggerClientEvent('veyl_inventory:init', src, { primary = Store.View(inv, 'primary'), equip = eq and Store.View(eq, 'equip') or nil,
+        backpack = pk and Store.View(pk, 'backpack') or nil, equipSlots = Containers.SlotList(), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
     Drops.Sync(src)
     if Cash then CreateThread(function() Cash.Sync(src) end) end
 end
@@ -38,11 +42,13 @@ function Inventory_OnCharacterUnloaded(src)
     local p = Players[src]
     Players[src] = nil
     if p then
-        local inv = Store.Get(p.invId)
-        if inv then
-            inv.viewers[src] = nil
-            -- Evict once pending writes finish (unload refuses while locked or reserved).
-            SetTimeout(5000, function() if not Players[src] then Store.Unload(p.invId) end end)
+        for _, id in ipairs({ p.invId, p.equipId, p.packId }) do
+            local inv = id and Store.Get(id)
+            if inv then
+                inv.viewers[src] = nil
+                -- Evict once pending writes finish (unload refuses while locked or reserved).
+                SetTimeout(5000, function() if not Players[src] then Store.Unload(id) end end)
+            end
         end
     end
     if GetPlayerName(src) then TriggerClientEvent('veyl_inventory:closed', src, 'unloaded') end
@@ -72,6 +78,8 @@ end
 --- `create` (moving INTO the ground box): makes or joins a drop at the player's position. Returns inv, err|'ATTACHED'.
 local function resolveRef(src, p, ref, create)
     if ref == 'primary' then return Store.Get(p.invId) end
+    if ref == 'equip' then return p.equipId and Store.Get(p.equipId) or nil, 'NOT_FOUND' end
+    if ref == 'backpack' then return p.packId and Store.Get(p.packId) or nil, 'NOT_FOUND' end
     if ref == 'secondary' then
         local s = Sessions[src]
         if not s or not s.secondary then return nil, 'NO_SESSION' end
@@ -149,7 +157,10 @@ vlib.callback.register('veyl_inventory:open', function(src, stashId)
         if prev then prev.viewers[src] = nil Store.Unload(prev.id) end
     end
     Sessions[src] = s
-    return Ops.ok({ primary = Store.View(inv, 'primary'), secondary = secondaryView, items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
+    local eqInv, pkInv = p.equipId and Store.Get(p.equipId), p.packId and Store.Get(p.packId)
+    return Ops.ok({ primary = Store.View(inv, 'primary'), secondary = secondaryView, equip = eqInv and Store.View(eqInv, 'equip') or nil,
+        backpack = pkInv and Store.View(pkInv, 'backpack') or nil, equipSlots = Containers.SlotList(), categories = InventoryConfig.Categories,
+        profile = Containers.Profile(src, p.citizenid), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
 end, { cooldownMs = 300 })
 
 vlib.callback.register('veyl_inventory:close', function(src)
@@ -190,10 +201,10 @@ vlib.callback.register('veyl_inventory:move', function(src, req)
     return res
 end, { cooldownMs = 0 })
 
-vlib.callback.register('veyl_inventory:useStart', function(src, slot)
+vlib.callback.register('veyl_inventory:useStart', function(src, slot, ref)
     local p = actor(src)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
-    local inv = Store.Get(p.invId)
+    local inv = Store.Get((ref == 'backpack' and p.packId) or p.invId)
     if not inv then return err('NOT_READY', 'Inventory unavailable') end
     return Use.Start(src, p.citizenid, p.generation, inv, slot)
 end, { cooldownMs = 500 })
@@ -255,8 +266,10 @@ end)
 vlib.callback.register('veyl_inventory:refresh', function(src)
     local p = actor(src)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
-    local inv = Store.Get(p.invId)
-    if inv then Store.Snapshot(inv, src) end
+    for _, id in ipairs({ p.invId, p.equipId, p.packId }) do
+        local inv = id and Store.Get(id)
+        if inv then Store.Snapshot(inv, src) end
+    end
     local s = Sessions[src]
     if s and s.secondary then
         local sec = Store.Get(s.secondary.invId)
@@ -316,7 +329,7 @@ vlib.callback.register('veyl_inventory:give', function(src, req)
     local target
     for _, n in ipairs(nearbyPlayers(src)) do if n.id == req.target then target = n break end end
     if not target or not Players[req.target] then return err('TOO_FAR', 'That player is no longer nearby') end
-    local from = Store.Get(p.invId)
+    local from = Store.Get((req.ref == 'backpack' and p.packId) or p.invId)
     local to = Store.Get(Players[req.target].invId)
     if not from or not to then return err('NOT_READY', 'Inventory unavailable') end
     local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
@@ -346,7 +359,7 @@ vlib.callback.register('veyl_inventory:drop', function(src, req)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
     if type(req) ~= 'table' then return err('INVALID_INPUT', 'Bad request') end
     if IsPedInAnyVehicle(GetPlayerPed(src), false) then return err('IN_VEHICLE', 'Get out of the vehicle to drop items') end
-    local from = Store.Get(p.invId)
+    local from = Store.Get((req.ref == 'backpack' and p.packId) or p.invId)
     if not from then return err('NOT_READY', 'Inventory unavailable') end
     local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
     if not it then return err('NOT_FOUND', 'Nothing in that slot') end

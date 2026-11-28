@@ -9,6 +9,30 @@ InventoryConfig = {
     HotbarSlots = 5,                  -- keys 1..5 use the item in personal slots 1..5
     GiveDistance = 3.0,
 
+    -- Backpack: a second personal container shown under your pockets. Slots and weight apply to new characters; for existing ones the
+    -- slot count only grows. Set Enabled = false to hide it.
+    Backpack = { Enabled = true, Slots = 15, MaxWeight = 15000, Label = 'Backpack' },
+
+    -- Equipment slots (the body panel). An item goes in a slot only if its definition says equip = '<slot id>' (server-checked on every move).
+    -- Order is the slot number. side/row place them on the body panel; only the order matters to the server.
+    Equipment = {
+        { id = 'ears',    label = 'Headset',  icon = 'headset', side = 'left' },
+        { id = 'mask',    label = 'Mask',     icon = 'mask',    side = 'left' },
+        { id = 'glasses', label = 'Glasses',  icon = 'glasses', side = 'left' },
+        { id = 'armor',   label = 'Armour',   icon = 'shield',  side = 'left' },
+        { id = 'hat',     label = 'Hat',      icon = 'hat',     side = 'left' },
+        { id = 'id',      label = 'ID card',  icon = 'id',      side = 'right' },
+        { id = 'phone',   label = 'Phone',    icon = 'phone',   side = 'right' },
+        { id = 'tablet',  label = 'Tablet',   icon = 'tablet',  side = 'right' },
+        { id = 'key',     label = 'Key',      icon = 'key',     side = 'right' },
+    },
+
+    -- Item categories for the filter chips. An item definition can set category = '<id>'; otherwise it is worked out from what the item does.
+    Categories = {
+        { id = 'all', label = 'All' }, { id = 'weapons', label = 'Weapons' }, { id = 'consumables', label = 'Consumables' },
+        { id = 'equipment', label = 'Equipment' }, { id = 'goods', label = 'Goods' }, { id = 'misc', label = 'Other' },
+    },
+
     -- Ground drops (the right-hand box when no stash is open). Cleared on restart.
     DropSlots = 30,
     DropMaxWeight = 200000,         -- grams

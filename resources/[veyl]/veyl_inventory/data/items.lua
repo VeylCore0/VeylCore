@@ -44,7 +44,7 @@ return {
     flashlight = { label = 'Flashlight', description = 'Lights up the dark.', image = 'flashlight.png', weight = 600, stack = false },
     radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.png', weight = 400, stack = false },
     repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.png', weight = 2500, stack = true, maxStack = 5 },
-    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false,
+    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false, equip = 'phone',
         actions = { { id = 'sim', label = 'SIM card', icon = 'use', tray = true } } },
     sim_card = { label = 'SIM Card', description = 'Right-click your phone and open the SIM card tray to insert it. A SIM keeps its number and contacts when you give it away.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10, metadataSchema = 'sim_card' },
     boosting_tablet = { label = 'Boosting Tablet', description = 'An encrypted tablet for contracts, crews and reputation.', image = 'boosting_tablet.png', weight = 600, stack = false,
@@ -91,9 +91,10 @@ return {
     prod_compound = { label = 'Crystal', description = 'a intermediate from a supplier station.', image = 'prod_compound.png', weight = 100, stack = true, maxStack = 100, metadataSchema = 'prod_product' },
     prod_batch_pack = { label = 'Bagged Meth', description = 'Finished supplier goods. Sells by quality.', image = 'prod_batch_pack.png', weight = 120, stack = true, maxStack = 100, metadataSchema = 'prod_product' },
     prod_access_card = { label = 'Lab Access Card', description = 'Opens a laboratory when cards are required.', image = 'prod_access_card.png', weight = 10, stack = false },
-    tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, description = 'MDT, dispatch and property management on a bigger screen.',
+    tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, equip = 'tablet', description = 'MDT, dispatch and property management on a bigger screen.',
         use = { handler = 'phone_tablet', durationMs = 0, consumeCount = 0 } },
     identity_card = {
+        equip = 'id',
         label = 'Identity Card', description = 'Government-issued ID.', image = 'identity_card.png',
         weight = 10, stack = false, metadataSchema = 'identity_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 },
     },
@@ -150,7 +151,7 @@ return {
     weapon_license = { label = 'Weapon Licence', description = 'Proof you may carry a firearm.', image = 'identity_card.png', weight = 10, stack = false,
         metadataSchema = 'licence_card', use = { handler = 'cityhall_show', durationMs = 0, consumeCount = 0 } },
     -- veyl_doorlocks
-    door_key = { label = 'Key', description = 'Opens one door.', image = 'keys.png', weight = 20, stack = false, metadataSchema = 'door_key' },
+    door_key = { label = 'Key', description = 'Opens one door.', image = 'keys.png', weight = 20, stack = false, metadataSchema = 'door_key', equip = 'key' },
     lockpick = { label = 'Lockpick', description = 'Picks simple locks. Might break.', image = 'lockpick.png', weight = 50, stack = true, maxStack = 10 },
     door_ram = { label = 'Door Ram', description = 'Police breaching tool.', image = 'door_ram.png', weight = 6000, stack = false },
     scrap_metal = { label = 'Scrap Metal', description = 'A stackable crafting material.', image = 'scrap_metal.png', weight = 80, stack = true, maxStack = 100 },
@@ -167,6 +168,16 @@ return {
                 prop = { model = 'prop_sh_joint_01', bone = 47419, pos = vec3(0.015, -0.009, 0.003), rot = vec3(55.0, 0.0, 110.0) } } },
     weed_baggie = { label = 'Bag of Weed', description = 'Packaged for sale.', image = 'weed_baggie.png', weight = 30, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
     coke_baggie = { label = 'Bag of Coke', description = 'Packaged for sale.', image = 'coke_baggie.png', weight = 20, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
+    -- Wearables (equipment slots). wear = what the character shows while it is equipped: a prop (hat 0, glasses 1, ears 2) or a component
+    -- (mask 1). The drawable and texture numbers depend on the ped model; change them to taste.
+    baseball_cap = { label = 'Baseball Cap', description = 'A plain cap.', image = 'baseball_cap.png', weight = 150, stack = false, equip = 'hat',
+        wear = { kind = 'prop', id = 0, drawable = 9, texture = 0 } },
+    sunglasses = { label = 'Sunglasses', description = 'Dark lenses.', image = 'sunglasses.png', weight = 80, stack = false, equip = 'glasses',
+        wear = { kind = 'prop', id = 1, drawable = 5, texture = 0 } },
+    face_mask = { label = 'Face Mask', description = 'Covers the lower face.', image = 'face_mask.png', weight = 60, stack = false, equip = 'mask',
+        wear = { kind = 'component', id = 1, drawable = 51, texture = 0 } },
+    headset = { label = 'Headset', description = 'Over-ear headset.', image = 'headset.png', weight = 200, stack = false, equip = 'ears',
+        wear = { kind = 'prop', id = 2, drawable = 0, texture = 0 } },
     qbexample_token = {
         label = 'QB Example Token', description = 'Demonstrates QB CreateUseableItem on VeylCore.', image = 'token.png',
         weight = 10, stack = true, maxStack = 50, usable = true, -- no use.handler: dispatched to the legacy usable-item registry
@@ -197,7 +208,8 @@ return {
     -- Crafted gear
     fake_plate = { label = 'Fake Plate', image = 'fake_plate.png', weight = 800, stack = true, maxStack = 5, description = 'Hides a vehicle\'s registration. Use it at the back of a vehicle you have keys to.',
         use = { handler = 'fake_plate', durationMs = 0, consumeCount = 0 } },
-    armor_vest = { label = 'Body Armour', image = 'armor_vest.png', weight = 3000, stack = true, maxStack = 3, description = 'Full body armour.',
+    armor_vest = { label = 'Body Armour', image = 'armor_vest.png', weight = 3000, stack = true, maxStack = 3, description = 'Full body armour. Wear it in the armour slot.',
+        equip = 'armor', wear = { kind = 'armor', amount = 100 },
         use = { handler = 'crafting_armor', durationMs = 4000, consumeCount = 1, anim = { dict = 'clothingtie', clip = 'try_tie_negative_a', flag = 49 } } },
     perf_engine = { label = 'Engine Upgrade Kit', image = 'perf_engine.png', weight = 4000, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },
     perf_brakes = { label = 'Brake Upgrade Kit', image = 'perf_brakes.png', weight = 3000, stack = true, maxStack = 5, description = 'Installed by a tuner shop.' },

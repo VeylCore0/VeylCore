@@ -80,6 +80,7 @@ local function ammunation(id, area, coords)
 end
 
 ShopsConfig = {
+    UseInventoryUi = true,   -- open shops inside the inventory screen (needs veyl_inventory); false uses the separate shop screen
     MaxPerLine = 20,
     MaxLines = 12,
     UseDistance = 3.0,

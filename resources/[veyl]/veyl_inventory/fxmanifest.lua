@@ -17,6 +17,7 @@ server_scripts {
     'server/items.lua',
     'server/db.lua',
     'server/store.lua',
+    'server/containers.lua',
     'server/operations.lua',
     'server/use.lua',
     'server/stashes.lua',
@@ -35,6 +36,7 @@ client_scripts {
     'client/stashes.lua',
     'client/drops.lua',
     'client/weapons.lua',
+    'client/equipment.lua',
 }
 
 ui_page 'web/dist/index.html'

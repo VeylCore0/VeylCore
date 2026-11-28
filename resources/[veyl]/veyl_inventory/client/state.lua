@@ -1,6 +1,6 @@
 -- Client view of the player's inventory (server snapshots + deltas only; never edited locally).
 
-InvState = { primary = nil, secondary = nil, items = {}, imagePath = '' }
+InvState = { primary = nil, secondary = nil, equip = nil, backpack = nil, equipSlots = {}, items = {}, imagePath = '' }
 
 local function toMap(view)
     if not view then return nil end
@@ -12,8 +12,9 @@ end
 
 local function pushCounts()
     local counts = {}
-    if InvState.primary then
-        for _, it in pairs(InvState.primary.map) do counts[it.name] = (counts[it.name] or 0) + it.count end
+    -- Pockets, backpack and what you wear all count as "you have it".
+    for _, view in ipairs({ InvState.primary or false, InvState.backpack or false, InvState.equip or false }) do
+        if view then for _, it in pairs(view.map) do counts[it.name] = (counts[it.name] or 0) + it.count end end
     end
     InvState.counts = counts
     TriggerEvent('veyl_inventory:client:counts', counts)
@@ -21,6 +22,9 @@ end
 
 RegisterNetEvent('veyl_inventory:init', function(data)
     InvState.primary = toMap(data.primary)
+    InvState.equip = toMap(data.equip)
+    InvState.backpack = toMap(data.backpack)
+    InvState.equipSlots = data.equipSlots or {}
     InvState.items = data.items or {}
     InvState.imagePath = data.imagePath or ''
     pushCounts()
@@ -32,17 +36,19 @@ local function applyDelta(view, d)
 end
 
 RegisterNetEvent('veyl_inventory:delta', function(d)
-    local view = d.ref == 'primary' and InvState.primary or InvState.secondary
+    local view = InvState[d.ref]
     if not view or view.id ~= d.id then return end
     applyDelta(view, d)
-    if d.ref == 'primary' then pushCounts() end
+    if d.ref ~= 'secondary' then pushCounts() end
+    if d.ref == 'equip' then TriggerEvent('veyl_inventory:client:equipChanged') end
     UI_Forward('delta', d)
 end)
 
 RegisterNetEvent('veyl_inventory:snapshot', function(view)
-    if view.ref == 'primary' then
-        InvState.primary = toMap(view)
+    if view.ref == 'primary' or view.ref == 'equip' or view.ref == 'backpack' then
+        InvState[view.ref] = toMap(view)
         pushCounts()
+        if view.ref == 'equip' then TriggerEvent('veyl_inventory:client:equipChanged') end
     elseif InvState.secondary and (InvState.secondary.id == view.id or (InvState.secondary.type == 'drop' and view.type == 'drop')) then
         -- A ground box can become a real drop (first item dropped) or fall back to an empty Ground box.
         InvState.secondary = toMap(view)
@@ -51,8 +57,9 @@ RegisterNetEvent('veyl_inventory:snapshot', function(view)
 end)
 
 RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
-    InvState.primary, InvState.secondary = nil, nil
+    InvState.primary, InvState.secondary, InvState.equip, InvState.backpack = nil, nil, nil, nil
     pushCounts()
+    TriggerEvent('veyl_inventory:client:equipChanged')
 end)
 
 exports('GetItemCounts', function() return InvState.counts or {} end)

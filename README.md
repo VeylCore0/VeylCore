@@ -38,7 +38,7 @@ A FiveM roleplay framework that should feel familiar to QBCore and QBox develope
 | `veyl_characters` | Character select/create/delete screen. The core validates everything |
 | `veyl_appearance` | Character creator, clothing stores and barbers (blips, prices, saved outfits), saved per `citizenid` |
 | `veyl_spawn` | Bounded spawn stages, last position, hospital respawn, death state in core metadata |
-| `veyl_inventory` | Inventory engine: server-owned items, slots, metadata and revisions; locked transactional moves with operation ids; stashes; reserved item use; React grid UI |
+| `veyl_inventory` | Inventory engine: server-owned items, slots, metadata and revisions; locked transactional moves with operation ids; stashes; reserved item use; React UI with a body and equipment panel, backpack, tooltips, categories and in-screen shops ([docs/INVENTORY.md](docs/INVENTORY.md)) |
 | `veyl_needs` | Hunger/thirst/stress decay and food effects on core metadata (server-side) |
 | `veyl_hud` | Health, armor, needs, stamina, oxygen, voice, money, job, speed/fuel/lock |
 | `veyl_banking` | Bank counters: deposit, withdraw, transfer, history, `/givecash` (all through core money) |

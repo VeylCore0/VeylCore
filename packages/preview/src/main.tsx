@@ -53,7 +53,7 @@ import './preview.css';
 import * as F from './fixtures';
 
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'invshop' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer';
@@ -61,12 +61,13 @@ const isBoost = (s: Screen) => s === 'boosting' || s === 'boostgame';
 const isProd = (s: Screen) => s.startsWith('prod') && s !== 'production' || s === 'production';
 const isApt = (s: Screen) => s.startsWith('apt');
 const isDoor = (s: Screen) => s.startsWith('door');
-const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isBoost(s) || isProd(s) || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
+const backdropOf = (s: Screen) => (s === 'invshop' ? 'inventory' : isAppearance(s) || isVehicle(s) || s === 'phone' || isBoost(s) || isProd(s) || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
+const shopBal = { cash: 420, bank: 12840 };
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
 const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
-  { id: 'inventory', label: 'Inventory', app: InventoryApp }, { id: 'shop', label: 'Shop', app: ShopApp },
+  { id: 'inventory', label: 'Inventory', app: InventoryApp }, { id: 'invshop', label: 'Inv shop', app: InventoryApp }, { id: 'shop', label: 'Shop', app: ShopApp },
   { id: 'bank', label: 'Bank', app: BankApp }, { id: 'hud', label: 'HUD', app: HudApp }, { id: 'target', label: 'Target', app: TargetApp },
   { id: 'creator', label: 'Creator', app: AppearanceApp }, { id: 'clothing', label: 'Clothing', app: AppearanceApp }, { id: 'barber', label: 'Barber', app: AppearanceApp },
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
@@ -123,7 +124,7 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
       }
     }
     if (isDoor(screen)) return doorHandler(action, payload);
-    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : `${screen}:close`); return { ok: true }; }
+    if (action === 'close') { devEmit(isAppearance(screen) ? 'appearance:close' : screen === 'impound' ? 'garage:close' : screen === 'invshop' ? 'inventory:close' : `${screen}:close`); return { ok: true }; }
     if (isAppearance(screen) && (action === 'camera' || action === 'rotate')) return { ok: true };
     if (isAppearance(screen) && action === 'change') {
       const p = payload as { key: string; value: Slot };
@@ -133,10 +134,24 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (mode === 'pending') await wait(2000);
     if (mode === 'error') return { ok: false, code: 'DATABASE_ERROR', message: 'Demo: the server rejected this request.' };
     if (mode === 'restricted') return { ok: false, code: 'NO_PERMISSION', message: 'Demo: you do not have access to this.' };
-    switch (`${screen}:${action}`) {
+    switch (`${screen === 'invshop' ? 'inventory' : screen}:${action}`) {
+      case 'inventory:shopBuy': {
+        const p = payload as { index: number; count: number; method: 'cash' | 'bank'; expectedTotal: number };
+        shopBal[p.method] -= p.expectedTotal;
+        devEmit('inventory:shop', { ...F.shopOpen(false), balances: { ...shopBal } });
+        return { ok: true, message: `Paid $${p.expectedTotal} (demo)` };
+      }
       case 'inventory:move': {
-        const { from, to, count } = payload as { from: { ref: 'primary' | 'secondary'; slot: number }; to: { ref: 'primary' | 'secondary'; slot: number }; count?: number };
-        const o = inv.current;
+        type R = 'primary' | 'secondary' | 'equip' | 'backpack';
+        const { from, to, count } = payload as { from: { ref: R; slot: number }; to: { ref: R; slot: number }; count?: number };
+        type V = { items: { slot: number; name: string; count: number; metadata?: Record<string, unknown> }[]; revision: number };
+        const o = inv.current as unknown as Record<R, V> & { equipSlots?: { slot: number; id: string }[]; items: Record<string, { equip?: string }> };
+        {
+          // Equipment slots only take the matching item, one at a time (the server enforces the same rule).
+          const srcItem = o[from.ref]?.items.find((i: { slot: number }) => i.slot === from.slot);
+          const rule = to.ref === 'equip' ? (o.equipSlots ?? []).find((s: { slot: number }) => s.slot === to.slot)?.id : undefined;
+          if (srcItem && rule && (o.items[srcItem.name]?.equip !== rule || (count ?? srcItem.count) !== 1)) return { ok: false, code: 'INVALID_STATE', message: 'That does not go there' };
+        }
         const src = o[from.ref]!.items.find((i) => i.slot === from.slot);
         if (!src) return { ok: false, code: 'NOT_FOUND', message: 'Nothing in that slot' };
         const n = Math.min(count ?? src.count, src.count);
@@ -147,11 +162,11 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         if (dst && dst.name === src.name) toItems.push({ ...dst, count: dst.count + n });
         else { toItems.push({ slot: to.slot, name: src.name, count: n }); if (dst && n === src.count) { if (from.ref === to.ref) toItems.push({ ...dst, slot: from.slot }); else fromItems.push({ ...dst, slot: from.slot }); } }
         if (from.ref === to.ref) toItems = toItems.filter((i, idx, arr) => arr.findIndex((j) => j.slot === i.slot) === idx);
-        const next = { ...o, [from.ref]: { ...o[from.ref]!, items: from.ref === to.ref ? toItems : fromItems, revision: o[from.ref]!.revision + 1 } };
+        const next: Record<string, unknown> = { ...o, [from.ref]: { ...o[from.ref]!, items: from.ref === to.ref ? toItems : fromItems, revision: o[from.ref]!.revision + 1 } };
         if (from.ref !== to.ref) next[to.ref] = { ...o[to.ref]!, items: toItems, revision: o[to.ref]!.revision + 1 };
-        inv.current = next as InventoryOpen;
-        devEmit('inventory:snapshot', next[from.ref]);
-        if (from.ref !== to.ref) devEmit('inventory:snapshot', next[to.ref]);
+        inv.current = next as unknown as InventoryOpen;
+        devEmit('inventory:snapshot', (next as any)[from.ref]);
+        if (from.ref !== to.ref) devEmit('inventory:snapshot', (next as any)[to.ref]);
         return { ok: true };
       }
       case 'inventory:use': return { ok: true };
@@ -249,6 +264,7 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   const empty = mode === 'empty';
   switch (screen) {
     case 'inventory': inv.current = F.inventoryOpen(empty); devEmit('inventory:open', inv.current); break;
+    case 'invshop': shopBal.cash = 420; shopBal.bank = 12840; inv.current = { ...F.inventoryOpen(false), secondary: undefined }; devEmit('inventory:open', { ...inv.current, shop: F.shopOpen(false) }); break;
     case 'shop':
       if (mode === 'loading') devEmit('shop:open', null);
       else if (mode === 'restricted') { devEmit('shop:open', null); devEmit('shop:error', { message: 'This store is staff-only (demo).', restricted: true }); }

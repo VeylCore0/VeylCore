@@ -10,6 +10,19 @@ local function resolve(target)
     return nil
 end
 
+--- For a player source: pockets first, then the backpack, then what they wear. Anything else is a single inventory.
+local function allOf(target)
+    if type(target) == 'number' then
+        local p = Players[target]
+        if not p then return {} end
+        local out = {}
+        for _, id in ipairs({ p.invId, p.packId, p.equipId }) do local inv = id and Store.Get(id) if inv then out[#out + 1] = inv end end
+        return out
+    end
+    local inv = resolve(target)
+    return inv and { inv } or {}
+end
+
 local function slotOut(it)
     if not it then return nil end
     local d = ItemDefs[it.name]
@@ -48,8 +61,9 @@ exports('GetInventoryItems', function(target)
 end)
 
 exports('GetItemCount', function(target, item, metadata)
-    local inv = resolve(target)
-    return inv and countOf(inv, item, metadata) or 0
+    local n = 0
+    for _, inv in ipairs(allOf(target)) do n = n + countOf(inv, item, metadata) end
+    return n
 end)
 
 exports('GetSlot', function(target, slot)
@@ -58,10 +72,10 @@ exports('GetSlot', function(target, slot)
 end)
 
 exports('GetSlotWithItem', function(target, item)
-    local inv = resolve(target)
-    if not inv then return nil end
-    for s = 1, inv.slots do
-        if inv.items[s] and inv.items[s].name == item then return slotOut(inv.items[s]) end
+    for _, inv in ipairs(allOf(target)) do
+        for s = 1, inv.slots do
+            if inv.items[s] and inv.items[s].name == item then return slotOut(inv.items[s]) end
+        end
     end
     return nil
 end)
@@ -78,12 +92,17 @@ end)
 
 --- Search(target, 'count' | 'slots', item)
 exports('Search', function(target, mode, item)
-    local inv = resolve(target)
-    if not inv then return mode == 'count' and 0 or {} end
-    if mode == 'count' then return countOf(inv, item) end
+    local list = allOf(target)
+    if mode == 'count' then
+        local n = 0
+        for _, inv in ipairs(list) do n = n + countOf(inv, item) end
+        return n
+    end
     local out = {}
-    for s = 1, inv.slots do
-        if inv.items[s] and inv.items[s].name == item then out[#out + 1] = slotOut(inv.items[s]) end
+    for _, inv in ipairs(list) do
+        for s = 1, inv.slots do
+            if inv.items[s] and inv.items[s].name == item then out[#out + 1] = slotOut(inv.items[s]) end
+        end
     end
     return out
 end)
@@ -137,20 +156,37 @@ local function playerInv(citizenid)
         slots = InventoryConfig.PlayerSlots, maxWeight = InventoryConfig.PlayerMaxWeight })
 end
 
+--- The backpack of a character that is online, if they have one.
+local function packInv(citizenid)
+    return InventoryConfig.Backpack and InventoryConfig.Backpack.Enabled and Store.Get(Containers.PackId(citizenid)) or nil
+end
+
+local function fits(inv, item, count, metadata)
+    local items = Store.PlanAdd(inv, Store.CopyItems(inv), item, count, metadata or {})
+    return items ~= nil and Store.ComputeWeight(items) <= inv.maxWeight
+end
+
 asyncExport('CanCarry', function(_, citizenid, item, count, metadata)
     local inv = playerInv(citizenid)
     if not inv then return Ops.err('NOT_FOUND', 'Unknown character') end
     if not ItemDefs[item] or not vlib.validate.int(count, 1, InventoryConfig.MaxCount or 1000000000) then return Ops.err('INVALID_INPUT', 'Unknown item') end
-    local items = Store.PlanAdd(inv, Store.CopyItems(inv), item, count, metadata or {})
-    if not items or Store.ComputeWeight(items) > inv.maxWeight then return Ops.err('INVENTORY_FULL', 'Not enough space') end
-    return Ops.ok(true)
+    if fits(inv, item, count, metadata) then return Ops.ok(true) end
+    local pk = packInv(citizenid)
+    if pk and fits(pk, item, count, metadata) then return Ops.ok(true) end
+    return Ops.err('INVENTORY_FULL', 'Not enough space')
 end)
 
 --- GiveItem(citizenid, item, count, metadata, opId) — delivery and its operation record commit together.
 asyncExport('GiveItem', function(invoker, citizenid, item, count, metadata, opId)
     local inv = playerInv(citizenid)
     if not inv then return Ops.err('NOT_FOUND', 'Unknown character') end
-    return Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+    local res = Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+    -- Pockets full: try the backpack with the same operation id (the failed attempt recorded nothing).
+    if not res.ok and res.code == 'INVENTORY_FULL' then
+        local pk = packInv(citizenid)
+        if pk then return Ops.Add(pk, item, count, metadata, { opId = opId, actor = invoker, reason = invoker }) end
+    end
+    return res
 end)
 
 --- GiveToStash(stashId, item, count, metadata, opId) — into a registered shared stash (no owner, not keyed), loading it
@@ -167,7 +203,29 @@ end)
 asyncExport('TakeItem', function(invoker, citizenid, item, count, metadata, opId)
     local inv = playerInv(citizenid)
     if not inv then return Ops.err('NOT_FOUND', 'Unknown character') end
-    return Ops.Remove(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+    local res = Ops.Remove(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+    if res.ok or res.code ~= 'NOT_ENOUGH_ITEMS' then return res end
+    -- Not enough in the pockets: take from the pockets, the backpack and what they wear together, in that order.
+    local list = { inv }
+    local pk = packInv(citizenid)
+    if pk then list[#list + 1] = pk end
+    local eq = Store.Get(Containers.EquipId(citizenid))
+    if eq then list[#list + 1] = eq end
+    local have = {}
+    local total = 0
+    for i, c in ipairs(list) do have[i] = countOf(c, item, metadata) total = total + have[i] end
+    if total < count then return Ops.err('NOT_ENOUGH_ITEMS', 'Not enough items') end
+    local left, first = count, true
+    for i, c in ipairs(list) do
+        local take = math.min(left, have[i])
+        if take > 0 then
+            local r = Ops.Remove(c, item, take, metadata, { opId = first and opId or (opId .. ':' .. i), actor = invoker, reason = invoker })
+            if not r.ok then return r end
+            first = false
+            left = left - take
+        end
+    end
+    return Ops.ok({ item = item, count = count })
 end)
 
 --- GetOperation(opId) -> ok({ status = 'done', kind, ... }) or ok(nil). Operations are atomic with their effect:

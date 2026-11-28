@@ -24,18 +24,53 @@ export const itemDefs: Record<string, ItemDef> = Object.fromEntries([
 ].map((d) => [d.name, d]));
 
 export function inventoryOpen(empty: boolean): InventoryOpen {
+  const D = (name: string, label: string, weight: number, extra: Record<string, unknown> = {}) => ({ name, label, weight, usable: false, stack: true, maxStack: 10, image: name + '.png', category: 'misc', ...extra });
+  const items: Record<string, unknown> = Object.fromEntries([
+    D('phone', 'Phone', 200, { stack: false, equip: 'phone', category: 'equipment', description: 'Stay connected.', actions: [{ id: 'sim', label: 'SIM card', icon: 'use', tray: true }] }),
+    D('identity_card', 'ID Card', 10, { stack: false, equip: 'id', category: 'equipment', description: 'Government-issued ID.' }),
+    D('tablet', 'Tablet', 600, { stack: false, equip: 'tablet', category: 'equipment' }),
+    D('door_key', 'Key', 20, { stack: false, equip: 'key', category: 'equipment', description: 'Opens one door.' }),
+    D('baseball_cap', 'Baseball Cap', 150, { stack: false, equip: 'hat', category: 'equipment', description: 'A plain cap.' }),
+    D('sunglasses', 'Sunglasses', 80, { stack: false, equip: 'glasses', category: 'equipment' }),
+    D('face_mask', 'Face Mask', 60, { stack: false, equip: 'mask', category: 'equipment' }),
+    D('headset', 'Headset', 200, { stack: false, equip: 'ears', category: 'equipment' }),
+    D('armor_vest', 'Body Armour', 3000, { equip: 'armor', category: 'equipment', maxStack: 3, description: 'Full body armour. Wear it in the armour slot.' }),
+    D('money', 'Cash', 0, { maxStack: 100000000, description: 'Cold, hard cash.' }),
+    D('water_bottle', 'Water Bottle', 500, { usable: true, category: 'consumables', description: 'Restores thirst' }),
+    D('sandwich', 'Sandwich', 300, { usable: true, category: 'consumables', description: 'Restores hunger' }),
+    D('bandage', 'Bandage', 100, { usable: true, category: 'consumables', description: 'Stops light bleeding' }),
+    D('first_aid_kit', 'First Aid Kit', 1200, { category: 'consumables' }),
+    D('lockpick', 'Lockpick', 50), D('flashlight', 'Flashlight', 600), D('repair_kit', 'Repair Kit', 2500, { usable: true }),
+    D('prod_pack', 'Bagged Weed', 120, { category: 'goods', maxStack: 100 }),
+    D('sim_card', 'SIM Card', 5, { description: 'Right-click your phone and open the SIM card tray to insert it.' }),
+  ].map((d) => [d.name, d]));
+  const at = (list: [string, number, Record<string, unknown>?][], from = 1) => list.map(([name, count, metadata], i) => ({ slot: i + from, name, count, ...(metadata ? { metadata } : {}) }));
   const personal = empty ? [] : [
-    ['phone', 1], ['radio', 1], ['water_bottle', 3], ['sandwich', 2], ['bandage', 5],
-    ['identity_card', 1], ['sim_card', 1], ['flashlight', 1], ['repair_kit', 1], ['keys', 1], ['lockpick', 2],
-  ].map(([name, count], i) => ({ slot: i + 1, name: name as string, count: count as number }));
-  const trunk = empty ? [] : [['first_aid_kit', 1], ['duct_tape', 2], ['wrench_kit', 1], ['jacket', 1], ['missing_art', 1]]
-    .map(([name, count], i) => ({ slot: i + 1, name: name as string, count: count as number }));
+    ...at([['phone', 1], ['money', 15845091], ['money', 65747], ['baseball_cap', 1], ['bandage', 5], ['water_bottle', 3]]),
+    { slot: 8, name: 'money', count: 111 }, { slot: 10, name: 'money', count: 335672 },
+    { slot: 11, name: 'bandage', count: 1 }, { slot: 13, name: 'identity_card', count: 1 }, { slot: 14, name: 'lockpick', count: 2 },
+    { slot: 15, name: 'sandwich', count: 2 }, { slot: 7, name: 'prod_pack', count: 12, metadata: { quality: 78, grade: 'Premium', varietyLabel: 'Violet Haze', batch: 'B0003C' } },
+    { slot: 9, name: 'sim_card', count: 1 },
+  ];
+  const pack = empty ? [] : [{ slot: 2, name: 'first_aid_kit', count: 1 }, { slot: 6, name: 'flashlight', count: 1 }];
+  const equip = empty ? [] : [{ slot: 8, name: 'phone', count: 1 }, { slot: 9, name: 'door_key', count: 1, metadata: { label: 'Apartment 4B' } }, { slot: 3, name: 'sunglasses', count: 1 }];
+  const locker = empty ? [] : [{ slot: 15, name: 'bandage', count: 3 }];
+  const equipSlots = [
+    { slot: 1, id: 'ears', label: 'Headset', icon: 'headset', side: 'left' }, { slot: 2, id: 'mask', label: 'Mask', icon: 'mask', side: 'left' },
+    { slot: 3, id: 'glasses', label: 'Glasses', icon: 'glasses', side: 'left' }, { slot: 4, id: 'armor', label: 'Armour', icon: 'shield', side: 'left' },
+    { slot: 5, id: 'hat', label: 'Hat', icon: 'hat', side: 'left' }, { slot: 6, id: 'id', label: 'ID card', icon: 'id', side: 'right' },
+    { slot: 7, id: 'phone', label: 'Phone', icon: 'phone', side: 'right' }, { slot: 8, id: 'tablet', label: 'Tablet', icon: 'tablet', side: 'right' }, { slot: 9, id: 'key', label: 'Key', icon: 'key', side: 'right' },
+  ];
   return {
-    primary: { ref: 'primary', id: 'player:DEMO', label: 'Pockets', type: 'player', slots: 25, maxWeight: 30000, weight: empty ? 0 : 12400, revision: 1, items: personal },
+    primary: { ref: 'primary', id: 'player:DEMO', label: 'Pockets', type: 'player', slots: 30, maxWeight: 55000, weight: empty ? 0 : 1200, revision: 1, items: personal },
+    backpack: { ref: 'backpack', id: 'pack:DEMO', label: 'Backpack', type: 'stash', slots: 15, maxWeight: 15000, weight: empty ? 0 : 1800, revision: 1, items: pack },
+    equip: { ref: 'equip', id: 'equip:DEMO', label: 'Equipment', type: 'stash', slots: 9, maxWeight: 100000000, weight: 0, revision: 1, items: equip },
     secondary: empty ? { ref: 'secondary', id: 'ground', label: 'Ground', type: 'drop', slots: 20, maxWeight: 200000, weight: 0, revision: 0, items: [] }
-      : { ref: 'secondary', id: 'trunk:DEMO', label: 'Vehicle Trunk', type: 'trunk', slots: 25, maxWeight: 60000, weight: 7800, revision: 1, items: trunk },
-    items: itemDefs, imagePath: '/items', hotbarSlots: 5,
-  };
+      : { ref: 'secondary', id: 'stash:DEMO', label: 'Personal Locker', type: 'stash', slots: 24, maxWeight: 70000, weight: 345, revision: 1, items: locker },
+    equipSlots, categories: [{ id: 'all', label: 'All' }, { id: 'weapons', label: 'Weapons' }, { id: 'consumables', label: 'Consumables' }, { id: 'equipment', label: 'Equipment' }, { id: 'goods', label: 'Goods' }, { id: 'misc', label: 'Other' }],
+    profile: { cid: 'AZZ21893', name: 'Lucas Enembe', phone: '8452336311', job: 'Paramedic' },
+    items, imagePath: '/items', hotbarSlots: 5,
+  } as unknown as InventoryOpen;
 }
 
 export const shopOpen = (empty: boolean): ShopOpen => ({

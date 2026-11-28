@@ -83,6 +83,16 @@ function Ops.Transfer(req)
             fromItems[req.fromSlot] = { slot = req.fromSlot, name = dst.name, count = dst.count, metadata = dst.metadata, instance = dst.instance }
         end
 
+        -- Equipment slots take only the item type they are for, one at a time.
+        local function fits(inv, slot, item)
+            local rule = inv.slotRules and inv.slotRules[slot]
+            if not rule or not item then return true end
+            local def = ItemDefs[item.name]
+            return def ~= nil and def.equip == rule and item.count == 1
+        end
+        if not fits(to, req.toSlot, toItems[req.toSlot]) then return err('INVALID_STATE', 'That does not go there') end
+        if not fits(from, req.fromSlot, fromItems[req.fromSlot]) then return err('INVALID_STATE', 'That does not go there') end
+
         if from ~= to then
             if Store.ComputeWeight(toItems) > to.maxWeight then return err('INVENTORY_FULL', 'Not enough space') end
             if Store.ComputeWeight(fromItems) > from.maxWeight then return err('INVENTORY_FULL', 'Not enough space for the swap') end

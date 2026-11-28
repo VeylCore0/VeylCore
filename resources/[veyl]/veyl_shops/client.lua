@@ -3,17 +3,24 @@
 local screen = vlib.createScreen({ name = 'shop' })
 local currentShop = nil
 
+local function inventoryUi()
+    return ShopsConfig.UseInventoryUi ~= false and GetResourceState('veyl_inventory') == 'started'
+end
+
 local function openShop(shopId)
     if screen:isOpen() or not Veyl.IsLoaded() then return end
     local res = Veyl.Callback('veyl_shops', 'catalog', shopId)
     if not res.ok then return Veyl.NotifyResult(res) end
     currentShop = shopId
+    -- With the inventory running, the shop opens beside your pockets so you can see what you carry while you buy.
+    if inventoryUi() and pcall(function() exports.veyl_inventory:openShop(res.data, shopId) end) then return end
     local ok, reason = screen:open('shop:open', res.data)
     if not ok then Veyl.Notify(reason == 'busy' and 'Close the open menu first.' or 'Shop UI unavailable.', 'warning') end
 end
 
-RegisterNUICallback('checkout', function(data, cb)
-    if not screen:isOpen() or type(data) ~= 'table' or type(data.lines) ~= 'table' then return cb({ ok = false, code = 'INVALID_INPUT' }) end
+--- One checkout request to the server (prices, stock, licences and money are all decided there).
+local function doCheckout(shopId, data)
+    if type(data) ~= 'table' or type(data.lines) ~= 'table' then return { ok = false, code = 'INVALID_INPUT' } end
     local lines = {}
     for i, l in ipairs(data.lines) do
         if i > 20 or type(l) ~= 'table' then break end
@@ -21,7 +28,7 @@ RegisterNUICallback('checkout', function(data, cb)
     end
     local opId = tostring(data.opId or '')
     local res = Veyl.CallbackTimeout('veyl_shops', 'checkout', 20000, {
-        opId = opId, shopId = currentShop, method = data.method == 'bank' and 'bank' or 'cash',
+        opId = opId, shopId = shopId, method = data.method == 'bank' and 'bank' or 'cash',
         lines = lines, expectedTotal = tonumber(data.expectedTotal),
     })
     -- A transport timeout does not prove failure: ask for the stored outcome before the player retries.
@@ -29,8 +36,17 @@ RegisterNUICallback('checkout', function(data, cb)
         local status = Veyl.CallbackTimeout('veyl_shops', 'status', 10000, opId)
         if status.ok or (status.code ~= 'TIMEOUT' and status.code ~= 'NOT_FOUND') then res = status end
     end
-    cb({ ok = res.ok, code = res.code, message = res.message, data = res.data })
+    return { ok = res.ok, code = res.code, message = res.message, data = res.data }
+end
+
+RegisterNUICallback('checkout', function(data, cb)
+    if not screen:isOpen() then return cb({ ok = false, code = 'INVALID_INPUT' }) end
+    cb(doCheckout(currentShop, data))
 end)
+
+-- Used by veyl_inventory's shop panel: the same checkout and catalog, without this resource's own screen.
+exports('Checkout', function(shopId, data) return doCheckout(shopId, data) end)
+exports('Catalog', function(shopId) return Veyl.Callback('veyl_shops', 'catalog', shopId) end)
 
 AddEventHandler('veyl_shops:open', function(args) if args then CreateThread(function() openShop(args.id) end) end end)
 
