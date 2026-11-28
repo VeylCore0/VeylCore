@@ -141,10 +141,6 @@ function Plants.mine(cid)
     return out
 end
 
-local function tick(cid)
-    -- Persist simulated rows lazily when something touches them (see save calls); nothing runs in the background.
-end
-
 ---------------------------------------------------------------------------
 -- Actions
 ---------------------------------------------------------------------------
@@ -200,6 +196,7 @@ local function target(src, cid, id)
     if not Prod.Sec.near(src, row, C.Distance.Plant) then return nil, Veyl.Err('TOO_FAR', 'Get closer') end
     if not canTend(cid, row) then Prod.Sec.invalid(src, cid, 'plant_not_yours', { id = id }) return nil, Veyl.Err('NO_PERMISSION', 'That is not your plant') end
     Plants.simulate(row, os.time())
+    save(row) -- the database must agree with what the player just saw (claims below depend on `state`)
     return row
 end
 

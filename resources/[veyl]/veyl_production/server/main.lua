@@ -38,7 +38,10 @@ AddEventHandler('onResourceStart', function(res)
     if res == 'veyl_inventory' then CreateThread(function() Wait(2000) registerUse() if Prod.ready then Prod.Props.registerStashes() end end) end
 end)
 
-AddEventHandler('playerDropped', function() Prod.Prog.forget(Veyl.GetCitizenId(source)) end)
+AddEventHandler('playerDropped', function()
+    local cid = Veyl.GetCitizenId(source)
+    if cid then Prod.Prog.forget(cid) end
+end)
 
 ---------------------------------------------------------------------------
 -- /prodadmin: diag | fix
