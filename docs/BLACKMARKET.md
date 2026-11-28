@@ -37,7 +37,7 @@ The page can only ask for `view` and `buy`. Everything else is checked on the se
 - street reputation: each item has a `level`, compared with your veyl_production reputation;
 - amount is a whole number from 1 to `MaxPerLine`; anything else is refused and logged;
 - a cooldown between purchases (`PurchaseCooldown`);
-- stock: held per item, restocks `restock` units every `RestockMinutes`, stored in `veyl_blackmarket_stock` so a restart does not refill it;
+- stock: with `UnlimitedStock = true` (the default) dealers never run out and the stock numbers are ignored. Set it to `false` for limited stock that restocks `restock` units every `RestockMinutes`, stored in `veyl_blackmarket_stock` so a restart does not refill it;
 - room to carry it, checked before you pay;
 - payment is a durable debit with an operation id, delivery is a durable item grant with the same id, and a failed delivery refunds the money and puts the stock back. A retry never charges twice.
 
@@ -53,4 +53,4 @@ Items with `level` above 0 need that reputation level from veyl_production (`exp
 
 ## Tests
 
-86 checks of the server rules run against a real database: the catalogue is valid, view and buy, distance, reputation, cash, bad amounts and unknown items, a full inventory, stock running out and restocking, a failed delivery refunding, the cooldown, the access item and the level gate when veyl_production is missing. The menu has 18 browser checks (categories, search, quantity, buying, locked and sold-out items, Esc). Not tested in game: the dealer peds, the screen opening over the world, and the item images in the live inventory (four of them, Veyl-X, the two chemicals and the door ram, were missing and were added).
+89 checks of the server rules run against a real database: the catalogue is valid, view and buy, distance, reputation, cash, bad amounts and unknown items, a full inventory, stock running out and restocking, a failed delivery refunding, the cooldown, the access item and the level gate when veyl_production is missing. The menu has 18 browser checks (categories, search, quantity, buying, locked and sold-out items, Esc). Not tested in game: the dealer peds, the screen opening over the world, and the item images in the live inventory (four of them, Veyl-X, the two chemicals and the door ram, were missing and were added).

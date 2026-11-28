@@ -3,7 +3,7 @@ import { announceReady, nui, useNuiMessage, type NuiResponse } from '@veyl/ui';
 
 interface Entry { item: string; label: string; description?: string; image?: string; price: number; category: string; stock: number; max: number; level: number; locked: boolean }
 interface Category { id: string; label: string; icon: string }
-interface View { id: string; label: string; categories: Category[]; items: Entry[]; cash: number; level: number | null; maxPerLine: number }
+interface View { unlimited?: boolean; id: string; label: string; categories: Category[]; items: Entry[]; cash: number; level: number | null; maxPerLine: number }
 
 const api = <T,>(name: string, ...args: unknown[]) => nui<T>('api', { name, args }) as Promise<NuiResponse<T>>;
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -77,9 +77,9 @@ export function App() {
   }, [view, cat, query]);
 
   const entry = view?.items.find((e) => e.item === sel) ?? null;
-  const maxQty = entry ? Math.max(1, Math.min(view?.maxPerLine ?? 50, entry.stock)) : 1;
+  const maxQty = entry ? Math.max(1, Math.min(view?.maxPerLine ?? 50, view?.unlimited ? 9999 : entry.stock)) : 1;
   const total = entry ? entry.price * qty : 0;
-  const can = !!entry && !entry.locked && entry.stock > 0 && total <= (view?.cash ?? 0) && !busy;
+  const can = !!entry && !entry.locked && (view?.unlimited || entry.stock > 0) && total <= (view?.cash ?? 0) && !busy;
 
   const buy = async () => {
     if (!entry || !can) return;
@@ -115,11 +115,11 @@ export function App() {
           </header>
           <div className="bm-grid" role="list">
             {shown.map((e) => (
-              <button key={e.item} role="listitem" className={`bm-card${sel === e.item ? ' on' : ''}${e.locked ? ' locked' : ''}${e.stock <= 0 ? ' out' : ''}`} onClick={() => { setSel(e.item); setQty(1); }}>
+              <button key={e.item} role="listitem" className={`bm-card${sel === e.item ? ' on' : ''}${e.locked ? ' locked' : ''}${!view.unlimited && e.stock <= 0 ? ' out' : ''}`} onClick={() => { setSel(e.item); setQty(1); }}>
                 <Img item={e.item} image={e.image} size={64} />
                 <b>{e.label}</b>
                 <span className="bm-price">{usd(e.price)}</span>
-                <small>{e.locked ? <><Ico name="lock" size={12} /> Needs rep {e.level}</> : e.stock <= 0 ? 'Sold out' : `${e.stock} in stock`}</small>
+                <small>{e.locked ? <><Ico name="lock" size={12} /> Needs rep {e.level}</> : !view.unlimited && e.stock <= 0 ? 'Sold out' : view.unlimited ? 'In stock' : `${e.stock} in stock`}</small>
               </button>
             ))}
             {shown.length === 0 && <div className="bm-empty"><Ico name="search" size={26} /><strong>Nothing matches</strong><span>Try another category or search.</span></div>}
@@ -134,7 +134,7 @@ export function App() {
               <p>{entry.description ?? 'No questions asked.'}</p>
               <dl>
                 <div><dt>Price</dt><dd>{usd(entry.price)}</dd></div>
-                <div><dt>In stock</dt><dd>{entry.stock} / {entry.max}</dd></div>
+                <div><dt>In stock</dt><dd>{view.unlimited ? 'Unlimited' : `${entry.stock} / ${entry.max}`}</dd></div>
                 {entry.level > 0 && <div><dt>Reputation</dt><dd className={entry.locked ? 'bad' : ''}>{entry.level}</dd></div>}
               </dl>
               <div className="bm-qty" role="group" aria-label="Amount">
@@ -144,7 +144,7 @@ export function App() {
                 <button className="max" onClick={() => setQty(maxQty)}>Max</button>
               </div>
               <button className="bm-buy" disabled={!can} onClick={() => void buy()}>
-                {entry.locked ? `Needs reputation ${entry.level}` : entry.stock <= 0 ? 'Sold out' : total > view.cash ? `Not enough cash (${usd(total)})` : busy ? 'Dealing…' : `Buy for ${usd(total)}`}
+                {entry.locked ? `Needs reputation ${entry.level}` : !view.unlimited && entry.stock <= 0 ? 'Sold out' : total > view.cash ? `Not enough cash (${usd(total)})` : busy ? 'Dealing…' : `Buy for ${usd(total)}`}
               </button>
             </>
           ) : (

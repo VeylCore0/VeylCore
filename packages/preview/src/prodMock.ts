@@ -186,6 +186,11 @@ export const prodDemo = {
   shop() { devEmit('production:open', { view: 'shop', data: prodShop() }); },
   buyer() { devEmit('production:open', { view: 'buyer', data: prodShop() }); },
   bench() { devEmit('production:open', { view: 'bench', data: bench() }); },
+  cards() { devEmit('production:cards', [
+    { id: 1, x: 0.3, y: 0.55, label: 'OG Kush', stage: 5, stages: 5, state: 'growing', health: 100, growth: 0.45, water: 25, nutrient: 59 },
+    { id: 2, x: 0.62, y: 0.4, label: 'Violet Haze', stage: 5, stages: 5, state: 'ready', health: 90, growth: 1, water: 60, nutrient: 70 },
+    { id: 3, x: 0.82, y: 0.7, label: 'Coca Bush', stage: 2, stages: 4, state: 'dead', health: 0, growth: 0.2, water: 0, nutrient: 0 },
+  ]); },
   placement(valid: boolean) { devEmit('production:placement', { visible: true, valid, reason: valid ? undefined : 'Too close to something else', label: 'Violet Haze' }); },
   crewOn() { crewOn = true; },
   run() { supRun = { id: 1, supplier: 'harbour_contact', state: 'picked', kits: 4, expiresAt: now() + 900, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 }, drop: { label: 'Auto yard', x: 1017, y: -2528, z: 28 } }; },

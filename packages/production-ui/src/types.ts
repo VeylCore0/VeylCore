@@ -43,6 +43,6 @@ export interface TabletState {
 }
 
 export interface ShopItem { item: string; label: string; price: number; stock: number; max: number; level: number; locked: boolean }
-export interface ShopView { id?: string; label?: string; items: ShopItem[]; sell: { item: string; label: string; base: number; price?: number; trend?: 'high' | 'low' | 'steady' }[]; quality: { max: number; label: string; mult: number }[]; restockMinutes: number }
+export interface ShopView { unlimited?: boolean; id?: string; label?: string; items: ShopItem[]; sell: { item: string; label: string; base: number; price?: number; trend?: 'high' | 'low' | 'steady' }[]; quality: { max: number; label: string; mult: number }[]; restockMinutes: number }
 
 export type View = { view: 'tablet'; data: { state: TabletState; page?: string } } | { view: 'shop' | 'buyer'; data: ShopView } | { view: 'bench'; data: Bench };

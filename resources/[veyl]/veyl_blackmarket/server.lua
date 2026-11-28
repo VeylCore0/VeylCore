@@ -93,12 +93,12 @@ Veyl.RegisterCallback('view', function(src, cid, dealerId)
     local lv = level(cid)
     local items = {}
     for _, e in ipairs(C.Catalog) do
-        restock(e)
+        if not C.UnlimitedStock then restock(e) end
         local def = (function() local ok, x = pcall(function() return exports.veyl_inventory:GetItemDefinition(e.item) end) return ok and type(x) == 'table' and x or {} end)()
         items[#items + 1] = { item = e.item, label = def.label or e.item, description = def.description, image = def.image, price = e.price, category = e.category,
-            stock = stock[e.item].n, max = e.stock, level = e.level or 0, locked = lv ~= nil and (e.level or 0) > lv }
+            stock = C.UnlimitedStock and e.stock or stock[e.item].n, max = e.stock, level = e.level or 0, locked = lv ~= nil and (e.level or 0) > lv }
     end
-    return Veyl.Ok({ id = d.id, label = d.label, categories = C.Categories, items = items, cash = exports.veyl_core:GetMoney(src, C.Payment) or 0, level = lv, maxPerLine = C.MaxPerLine })
+    return Veyl.Ok({ id = d.id, label = d.label, unlimited = C.UnlimitedStock == true, categories = C.Categories, items = items, cash = exports.veyl_core:GetMoney(src, C.Payment) or 0, level = lv, maxPerLine = C.MaxPerLine })
 end)
 
 Veyl.RegisterCallback('buy', function(src, cid, dealerId, item, qty)
@@ -112,31 +112,31 @@ Veyl.RegisterCallback('buy', function(src, cid, dealerId, item, qty)
     if lv ~= nil and (e.level or 0) > lv then return Veyl.Err('LEVEL_REQUIRED', ('He wants a reputation of %d first'):format(e.level)) end
     if os.time() - (lastBuy[cid] or 0) < C.PurchaseCooldown then return Veyl.Err('RATE_LIMITED', 'Slow down') end
     lastBuy[cid] = os.time()
-    restock(e)
+    if not C.UnlimitedStock then restock(e) end
     local s = stock[e.item]
-    if s.n < qty then return Veyl.Err('OUT_OF_STOCK', s.n > 0 and ('Only %d left'):format(s.n) or 'Sold out') end
+    if not C.UnlimitedStock and s.n < qty then return Veyl.Err('OUT_OF_STOCK', s.n > 0 and ('Only %d left'):format(s.n) or 'Sold out') end
     local can = Veyl.Await('veyl_inventory', 'CanCarry', 10000, cid, e.item, qty, nil)
     if not (can and can.ok) then return Veyl.Err('INVENTORY_FULL', 'You cannot carry that') end
     local total = e.price * qty
-    s.n = s.n - qty   -- reserve first (no yield between the check and the take)
+    if not C.UnlimitedStock then s.n = s.n - qty end   -- reserve first (no yield between the check and the take)
     local tag = ('blackmarket:%s:%s'):format(cid, Veyl.NewId())
     local pay = Veyl.Await('veyl_core', 'DebitOnce', 15000, cid, C.Payment, total, ('Black market: %dx %s'):format(qty, e.item), tag)
     if not (pay and pay.ok) then
-        s.n = s.n + qty
+        if not C.UnlimitedStock then s.n = s.n + qty end
         return Veyl.Err(pay and pay.code or 'INSUFFICIENT_FUNDS', 'You cannot afford that')
     end
     local give = Veyl.Await('veyl_inventory', 'GiveItem', 15000, cid, e.item, qty, nil, tag)
     if not (give and give.ok) then
-        s.n = s.n + qty
+        if not C.UnlimitedStock then s.n = s.n + qty end
         Veyl.Await('veyl_core', 'CreditOnce', 15000, cid, C.Payment, total, 'Black market refund', tag .. ':refund')
         return Veyl.Err('FAILED', 'The deal fell through. You were refunded.')
     end
-    MySQL.update('UPDATE veyl_blackmarket_stock SET stock = ? WHERE item = ?', { s.n, e.item })
+    if not C.UnlimitedStock then MySQL.update('UPDATE veyl_blackmarket_stock SET stock = ? WHERE item = ?', { s.n, e.item }) end
     Veyl.Audit(src, 'blackmarket_buy', { dealer = d.id, item = e.item, qty = qty, total = total })
     TriggerEvent('veyl_blackmarket:purchased', src, cid, e.item, qty, total)
     if C.Police.Enabled and math.random() < C.Police.Chance and GetResourceState(C.Police.Resource) == 'started' then
         local p = d.ped.coords
         pcall(function() exports[C.Police.Resource][C.Police.Export](exports[C.Police.Resource], { code = C.Police.Code, message = C.Police.Message, coords = vector3(p.x, p.y, p.z) }) end)
     end
-    return Veyl.Ok({ stock = s.n, cash = exports.veyl_core:GetMoney(src, C.Payment) or 0 }, ('Bought %dx %s for $%d'):format(qty, label(e.item), total))
+    return Veyl.Ok({ stock = C.UnlimitedStock and e.stock or s.n, cash = exports.veyl_core:GetMoney(src, C.Payment) or 0 }, ('Bought %dx %s for $%d'):format(qty, label(e.item), total))
 end)

@@ -162,3 +162,17 @@
 
 .pr-input { width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); color: inherit; font: inherit; }
 .pr-input:focus { outline: none; border-color: var(--pr-acc); }
+
+/* Floating plant stat cards */
+.pc-card { position: fixed; transform: translate(-50%, -100%); z-index: 4; pointer-events: none; min-width: 168px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(18, 20, 26, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); color: #f2f4f8; font-family: 'Inter', system-ui, sans-serif; }
+.pc-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.pc-card header strong { font-size: 13px; } .pc-card header em { font-style: normal; font-size: 9px; letter-spacing: 0.14em; color: #9aa3b2; }
+.pc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 10px; }
+.pc-dial { position: relative; width: 64px; height: 76px; margin: 0 auto; text-align: center; }
+.pc-dial svg { display: block; } .pc-track { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 6; }
+.pc-arc { fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.4s; }
+.pc-dial b { position: absolute; left: 0; right: 0; top: 22px; font-size: 13px; }
+.pc-dial small { display: block; margin-top: 2px; font-size: 9px; letter-spacing: 0.1em; color: #9aa3b2; }
+.pc-note { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 6px; font-weight: 700; font-size: 14px; }
+.pc-note span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 2px solid currentColor; }
+.pc-note.ok { color: #37d39a; } .pc-note.bad { color: #ff6b6b; }

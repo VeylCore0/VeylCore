@@ -130,11 +130,57 @@ CreateThread(function()
     while true do
         Wait(2500)
         sync()
-        if GetGameTimer() - lastPull > 60000 then lastPull = GetGameTimer() ProdClient.refreshWorld() end
+        if GetGameTimer() - lastPull > (ProdClient.cardNear and 15000 or 60000) then lastPull = GetGameTimer() ProdClient.refreshWorld() end
     end
 end)
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     for id in pairs(spawned) do despawn(id) end
+end)
+
+---------------------------------------------------------------------------
+-- Floating stat cards over the plants you tend (health, growth, water, nutrients). The numbers come from the server's plant list; this only
+-- places a card on the screen above each plant that is close enough.
+---------------------------------------------------------------------------
+CreateThread(function()
+    local O = C.Overlay or { Enabled = true, Distance = 7.0, Max = 4, Height = 0.9 }
+    local shown = false
+    while true do
+        local sleep = 500
+        if O.Enabled ~= false and not ProdClient.screen:isOpen() then
+            local pc = GetEntityCoords(PlayerPedId())
+            local list = {}
+            for id, p in pairs(ProdClient.plants) do
+                local s = spawned[id]
+                if s and p.tend and p.label and here(p) then
+                    local d = #(pc - vector3(p.x, p.y, p.z))
+                    if d <= O.Distance then
+                        local on, sx, sy = GetScreenCoordFromWorldCoord(p.x, p.y, p.z + O.Height)
+                        if on then list[#list + 1] = { id = id, d = d, x = sx, y = sy, p = p } end
+                    end
+                end
+            end
+            ProdClient.cardNear = #list > 0
+            if #list > 0 then
+                sleep = 33
+                table.sort(list, function(a, b) return a.d < b.d end)
+                local out = {}
+                for i = 1, math.min(O.Max, #list) do
+                    local e = list[i]
+                    local p = e.p
+                    out[i] = { id = e.id, x = e.x, y = e.y, label = p.label, stage = p.stage, stages = p.stages, state = p.state, health = p.health, growth = p.growth, water = p.water, nutrient = p.nutrient }
+                end
+                SendNUIMessage({ action = 'production:cards', data = out })
+                shown = true
+            elseif shown then
+                SendNUIMessage({ action = 'production:cards', data = {} })
+                shown = false
+            end
+        elseif shown then
+            SendNUIMessage({ action = 'production:cards', data = {} })
+            shown = false
+        end
+        Wait(sleep)
+    end
 end)

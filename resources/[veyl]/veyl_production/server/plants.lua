@@ -128,6 +128,13 @@ function Plants.list(cid)
         Plants.simulate(r, now)
         out[#out + 1] = { id = r.id, variety = r.variety, x = r.x, y = r.y, z = r.z, heading = r.heading, property = r.property_id,
             stage = Plants.stage(r), state = r.state, mine = r.owner_cid == cid, tend = canTend(cid, r) }
+        -- Stats for the floating card over the plant, only for people who tend it.
+        if out[#out].tend then
+            local v = varietyOf(r)
+            local st = Plants.status(r)
+            local e = out[#out]
+            e.label, e.stages, e.growth, e.health, e.water, e.nutrient = st.label, v and #v.stages or 1, st.growth, st.health, st.water, st.nutrient
+        end
     end
     return out
 end

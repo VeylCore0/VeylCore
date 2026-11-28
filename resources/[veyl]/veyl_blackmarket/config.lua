@@ -3,6 +3,7 @@
 -- `level` is the street reputation needed (veyl_production progression); 0 = anyone. Delete a line to stop selling that item.
 
 BlackmarketConfig = {
+    UnlimitedStock = true,       -- true: dealers never run out (the stock numbers below are ignored). false: limited stock that restocks
     Payment = 'cash',            -- money type charged
     Distance = 4.0,              -- how close you must stand to the dealer (server checked)
     PurchaseCooldown = 1,        -- seconds between purchases

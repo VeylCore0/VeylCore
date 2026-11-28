@@ -12,20 +12,21 @@ export function Shop({ view, mode, run }: { view: ShopView; mode: 'shop' | 'buye
   );
   return (
     <div className="pr-page">
-      <div className="pr-page-head"><div><h2>{mode === 'shop' ? (view.label ?? 'Supply Shop') : 'Buyer'}</h2><p>{mode === 'shop' ? `Stock refills every ${view.restockMinutes} minutes.` : 'Pays cash. Better quality pays more.'}</p></div></div>
+      <div className="pr-page-head"><div><h2>{mode === 'shop' ? (view.label ?? 'Supply Shop') : 'Buyer'}</h2><p>{mode === 'shop' ? (view.unlimited ? 'Always in stock.' : `Stock refills every ${view.restockMinutes} minutes.`) : 'Pays cash. Better quality pays more.'}</p></div></div>
       {mode === 'shop' ? (
         <div className="pr-shopgrid">
           {view.items.map((i) => {
-            const low = i.stock > 0 && i.stock / i.max < 0.25;
+            const out = !view.unlimited && i.stock === 0;
+            const low = !view.unlimited && i.stock > 0 && i.stock / i.max < 0.25;
             return (
-              <article key={i.item} className={i.locked || i.stock === 0 ? 'pr-shopitem locked' : 'pr-shopitem'}>
+              <article key={i.item} className={i.locked || out ? 'pr-shopitem locked' : 'pr-shopitem'}>
                 <div className="pr-halo"><ItemImg item={i.item} size={64} /></div>
                 <strong>{i.label}</strong>
                 <div className="pr-price">{usd(i.price)}</div>
-                <Bar value={i.stock / i.max} color={i.stock === 0 ? '#e0576a' : low ? '#f2b443' : undefined} label="Stock" />
-                <span className={low || i.stock === 0 ? 'pr-sub warn' : 'pr-sub'}>{i.stock === 0 ? 'Sold out' : low ? `Only ${i.stock} left` : `${i.stock} in stock`}</span>
+                {!view.unlimited && <Bar value={i.stock / i.max} color={i.stock === 0 ? '#e0576a' : low ? '#f2b443' : undefined} label="Stock" />}
+                <span className={low || out ? 'pr-sub warn' : 'pr-sub'}>{view.unlimited ? 'In stock' : i.stock === 0 ? 'Sold out' : low ? `Only ${i.stock} left` : `${i.stock} in stock`}</span>
                 {i.locked ? <Chip tone="warn"><Ico name="lock" size={12} />Level {i.level}</Chip> : (
-                  <div className="pr-buyrow"><Stepper k={i.item} /><Button kind="primary" disabled={i.stock === 0} onClick={() => void run('shopBuy', view.id, i.item, q(i.item))}>Buy</Button></div>
+                  <div className="pr-buyrow"><Stepper k={i.item} /><Button kind="primary" disabled={out} onClick={() => void run('shopBuy', view.id, i.item, q(i.item))}>Buy</Button></div>
                 )}
               </article>
             );

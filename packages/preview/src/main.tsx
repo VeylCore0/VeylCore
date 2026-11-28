@@ -56,7 +56,7 @@ import './preview.css';
 import * as F from './fixtures';
 
 
-type Screen = 'inventory' | 'invshop' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'blackmarket' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'invshop' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'blackmarket' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | 'prodcards' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer';
@@ -78,7 +78,7 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
   { id: 'phone', label: 'Phone', app: PhoneApp },
   { id: 'production', label: 'Production', app: ProductionApp }, { id: 'prodshop', label: 'Prod shop', app: ProductionApp }, { id: 'prodbuyer', label: 'Prod buyer', app: ProductionApp },
-  { id: 'prodbench', label: 'Prod bench', app: ProductionApp }, { id: 'prodplace', label: 'Prod placing', app: ProductionApp },
+  { id: 'prodbench', label: 'Prod bench', app: ProductionApp }, { id: 'prodplace', label: 'Prod placing', app: ProductionApp }, { id: 'prodcards', label: 'Plant cards', app: ProductionApp },
   { id: 'boosting', label: 'Boosting', app: BoostingApp }, { id: 'boostgame', label: 'Boost puzzle', app: BoostingApp }, { id: 'blackmarket', label: 'Black market', app: BlackmarketApp },
   { id: 'cityhall', label: 'City Hall', app: CityhallApp }, { id: 'management', label: 'Management', app: ManagementApp }, { id: 'emotes', label: 'Emotes', app: EmotesApp },
   { id: 'medical', label: 'Death screen', app: MedicalApp }, { id: 'dispatch', label: 'Dispatch', app: DispatchApp }, { id: 'mdt', label: 'MDT', app: MdtApp },
@@ -307,6 +307,7 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'prodshop': prodDemo.reset(); prodDemo.shop(); break;
     case 'prodbuyer': prodDemo.buyer(); break;
     case 'prodbench': prodDemo.bench(); break;
+    case 'prodcards': prodDemo.cards(); break;
     case 'prodplace': prodDemo.placement(mode !== 'error'); break;
     case 'boosting': boostDemo.reset(); if (empty) boostDemo.emptyState(); if (mode === 'restricted') boostDemo.hot(); boostDemo.open(); break;
     case 'blackmarket': bmDemo.open(empty ? 500 : 60000); break;

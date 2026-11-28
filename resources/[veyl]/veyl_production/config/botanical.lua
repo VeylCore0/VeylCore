@@ -9,6 +9,12 @@ local function weedStages(colour)
     return { p .. '_01_small_01a', p .. '_01_small_01c', p .. '_med_01b', p .. '_lrg_01b' }
 end
 
+-- Floating stat cards over the plants you tend: how close you must be, how many show at once and how high above the plant they float.
+-- true: the supply shops never run out (stock numbers and restocking are ignored). false: limited stock that refills over time.
+ProductionConfig.UnlimitedStock = true
+
+ProductionConfig.Overlay = { Enabled = true, Distance = 7.0, Max = 4, Height = 0.9 }
+
 ProductionConfig.Botanical = {
     -- Plant varieties. Times are minutes of growth (care allowing). Decay is per minute. `stages` are the props shown as the plant grows
     -- (stage 1 = sprout ... last = ready); any valid model works, unknown models fall back to FallbackProp.

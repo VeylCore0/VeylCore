@@ -7,6 +7,7 @@ import { Botanical, Crew, Dashboard, Production, Progression, Stats, Street, Sup
 import { Properties } from './Properties';
 import { BenchPanel } from './Bench';
 import { Shop } from './Shop';
+import { PlantCardView, type PlantCard } from './PlantCard';
 
 const NAV: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }, { id: 'botanical', label: 'Weed', icon: 'leaf' }, { id: 'field', label: 'Coke & Mushrooms', icon: 'pin' }, { id: 'supplier', label: 'Chemistry', icon: 'bag' }, { id: 'street', label: 'Street', icon: 'chart' }, { id: 'crew', label: 'Crew', icon: 'users' }, { id: 'production', label: 'Production', icon: 'gear' },
@@ -21,6 +22,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [placement, setPlacement] = useState<{ visible: boolean; valid?: boolean; reason?: string; label?: string }>({ visible: false });
+  const [cards, setCards] = useState<PlantCard[]>([]);
   const [hazard, setHazard] = useState<{ level: number; warn: number }>({ level: 0, warn: 40 });
   const timer = useRef<number>();
   const openRef = useRef<Open | null>(null);
@@ -56,6 +58,7 @@ export function App() {
     else if (d.view === 'bench') setOpen({ view: 'bench', bench: d.data, labels: ITEM_LABELS });
   });
   useNuiMessage<{ level: number; warn: number }>('production:hazard', (d) => setHazard(d));
+  useNuiMessage<PlantCard[]>('production:cards', (d) => setCards(Array.isArray(d) ? d : []));
   useNuiMessage('production:close', () => setOpen(null));
   useNuiMessage('production:refresh', () => { void refresh(); });
   useNuiMessage<typeof placement>('production:placement', (d) => setPlacement(d));
@@ -80,6 +83,7 @@ export function App() {
 
   return (
     <>
+      {cards.map((c) => <PlantCardView key={c.id} c={c} />)}
       {placement.visible && (
         <div className={cx('pr-placement', placement.valid ? 'ok' : 'bad')} role="status">
           <b>{placement.label}</b>

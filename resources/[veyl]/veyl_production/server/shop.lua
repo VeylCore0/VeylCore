@@ -62,7 +62,7 @@ function Shop.def(id) return Shop.defs[id] end
 
 --- The shop page. With no id: the buyer's page.
 function Shop.view(cid, id)
-    local out = { id = id, items = {}, quality = C.Quality.Tiers }
+    local out = { id = id, items = {}, quality = C.Quality.Tiers, unlimited = C.UnlimitedStock == true }
     local d = id and Shop.defs[id]
     if d then
         out.label = d.label
@@ -94,24 +94,24 @@ function Shop.buy(src, cid, shopId, item, qty)
     if not Prod.Sec.try(cid, 'purchase', C.Cooldowns.Purchase) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
     refresh(d, e)
     local s = stock[d.id][e.item]
-    if s.stock < qty then return Veyl.Err('OUT_OF_STOCK', ('Only %d left'):format(s.stock)) end
+    if not C.UnlimitedStock and s.stock < qty then return Veyl.Err('OUT_OF_STOCK', ('Only %d left'):format(s.stock)) end
     if not Prod.Inv.canCarry(cid, e.item, qty) then return Veyl.Err('INVENTORY_FULL', 'You cannot carry that') end
     local total = e.price * qty
     -- Reserve the stock first (in memory, no yielding between check and take), then charge, then deliver; any failure puts it back.
-    s.stock = s.stock - qty
+    if not C.UnlimitedStock then s.stock = s.stock - qty end
     local tag = ('prodbuy:%s:%s'):format(cid, Veyl.NewId())
     local pay = Prod.Inv.debit(cid, total, ('%s: %dx %s'):format(d.label, qty, e.item), tag)
     if not (pay and pay.ok) then
-        s.stock = s.stock + qty
+        if not C.UnlimitedStock then s.stock = s.stock + qty end
         return Veyl.Err(pay and pay.code or 'INSUFFICIENT_FUNDS', 'You cannot afford that')
     end
     local give = Prod.Inv.give(cid, e.item, qty, nil, tag)
     if not (give and give.ok) then
-        s.stock = s.stock + qty
+        if not C.UnlimitedStock then s.stock = s.stock + qty end
         Prod.Inv.credit(cid, total, 'Shop refund', tag .. ':refund')
         return Veyl.Err('FAILED', 'Could not deliver it. You were refunded.')
     end
-    MySQL.update('UPDATE veyl_prod_stock SET stock = ? WHERE shop = ? AND item = ?', { s.stock, d.id, e.item })
+    if not C.UnlimitedStock then MySQL.update('UPDATE veyl_prod_stock SET stock = ? WHERE shop = ? AND item = ?', { s.stock, d.id, e.item }) end
     Prod.Prog.stat(cid, 'purchases')
     Prod.Prog.stat(cid, 'money_spent', total)
     Prod.Log.event('purchase', cid, ('bought %dx %s for $%d'):format(qty, e.item, total))
