@@ -8,6 +8,7 @@ import { useBack, useRouteOnce } from '../nav';
 import { getState, setState, useStore } from '../store';
 import { Avatar, Button, Empty, Group, Header, IconButton, Row, SearchField, Sheet, Spinner, TextInput, cx, say, toast } from '../ui';
 import type { Contact, Conversation, Message } from '../types';
+import { GalleryPicker, PhotoSheet, useContactPhotos, useGalleryImage, useMessagePhoto } from './photos';
 
 const SYSTEM_NUMBER = '0000000';
 type View = { k: 'list' } | { k: 'new' } | { k: 'thread'; id: number | null; to?: string; title?: string };
@@ -17,7 +18,7 @@ const titleOf = (c: Conversation) => (c.peer === SYSTEM_NUMBER ? 'City Services'
 
 const previewOf = (m: Message | null) => {
   if (!m) return 'No messages yet';
-  const t = m.kind === 'location' ? 'Shared a location' : m.kind === 'contact' ? `Contact: ${m.body}` : m.body;
+  const t = m.kind === 'location' ? 'Shared a location' : m.kind === 'contact' ? `Contact: ${m.body}` : m.kind === 'photo' ? (m.body && m.body !== 'Photo' ? `📷 ${m.body}` : '📷 Photo') : m.body;
   return `${m.mine ? 'You: ' : ''}${t}`;
 };
 
@@ -31,6 +32,7 @@ async function markRead(id: number) {
 }
 
 export function MessagesApp({ route }: { route?: string }) {
+  const { photoOf } = useContactPhotos();
   const [view, setView] = useState<View>({ k: 'list' });
   const conversations = useStore((s) => s.conversations);
   const [failed, setFailed] = useState(false);
@@ -75,7 +77,7 @@ export function MessagesApp({ route }: { route?: string }) {
           {filtered.map((c) => (
             <li key={c.id}>
               <button className="ph-conv" onClick={() => setView({ k: 'thread', id: c.id })}>
-                <Avatar name={c.kind === 'group' ? '' : titleOf(c)} id={c.peer ?? String(c.id)} group={c.kind === 'group'} size={48} />
+                <Avatar name={c.kind === 'group' ? '' : titleOf(c)} id={c.peer ?? String(c.id)} group={c.kind === 'group'} size={48} photo={c.kind === 'direct' ? photoOf(c.peer) : null} />
                 <span className="ph-conv-main">
                   <span className="ph-conv-top"><strong>{titleOf(c)}</strong><time>{c.last ? listTime(c.last.time) : ''}</time></span>
                   <span className="ph-conv-bot">
@@ -191,7 +193,7 @@ function Thread({ id: initialId, to, title: draftTitle, onBack, onOpened }: { id
   const [messages, setMessages] = useState<Message[] | null>(initialId ? null : []);
   const [more, setMore] = useState(false);
   const [text, setText] = useState('');
-  const [sheet, setSheet] = useState<'info' | 'attach' | 'contact' | null>(null);
+  const [sheet, setSheet] = useState<'info' | 'attach' | 'contact' | 'photo' | null>(null);
   const [loadError, setLoadError] = useState(false);
   const conv = useStore((s) => (id ? s.conversations?.find((c) => c.id === id) ?? null : null));
   const maxLen = useStore((s) => s.hello?.limits.message ?? 500);
@@ -279,6 +281,9 @@ function Thread({ id: initialId, to, title: draftTitle, onBack, onOpened }: { id
     const label = loc.data?.label || 'Shared location';
     void sendInput({ kind: 'location', body: label }, mk('location', label));
   };
+  const sendPhoto = (photoId: number) => {
+    void sendInput({ kind: 'photo', payload: { photoId }, body: '' }, mk('photo', 'Photo', { payload: { photoId } }));
+  };
   const shareContact = (c: Contact) => {
     setSheet(null);
     void sendInput({ kind: 'contact', payload: { number: c.number, name: c.name } }, mk('contact', c.name, { payload: { number: c.number, name: c.name } }));
@@ -345,17 +350,39 @@ function Thread({ id: initialId, to, title: draftTitle, onBack, onOpened }: { id
         <Sheet title="Share" onClose={() => setSheet(null)}>
           <Group>
             <Row icon="pin" iconColor="#e0576a" title="Location" sub="Where you are right now" onClick={shareLocation} chevron />
+            <Row icon="image" iconColor="#4a8dff" title="Photo" sub="Send a picture from your gallery" onClick={() => setSheet('photo')} chevron />
             <Row icon="users" iconColor="#d98a45" title="Contact" sub="Send a saved contact" onClick={() => setSheet('contact')} chevron />
           </Group>
         </Sheet>
       )}
       {sheet === 'contact' && <ContactPicker onPick={shareContact} onClose={() => setSheet(null)} />}
+      {sheet === 'photo' && <GalleryPicker title="Send a photo" onPick={(pid) => { setSheet(null); sendPhoto(pid); }} onClose={() => setSheet(null)} />}
       {sheet === 'info' && conv && <ConversationInfo conv={conv} onClose={() => setSheet(null)} onLeft={() => { setSheet(null); onBack(); }} />}
     </div>
   );
 }
 
+function PhotoBubble({ m, onRetry }: { m: Message; onRetry: () => void }) {
+  const mine = m.mine;
+  const pending = !!m.pending || (m.id < 0);
+  // Your own photo while it is still sending comes from the gallery; once sent (and for received ones) the message id fetches it.
+  const local = useGalleryImage(pending && m.payload?.photoId ? m.payload.photoId : -1);
+  const remote = useMessagePhoto(m.id, !pending);
+  const src = local ?? remote.src;
+  const [open, setOpen] = useState(false);
+  const caption = m.body && m.body !== 'Photo' ? m.body : '';
+  return (
+    <div className={cx('ph-bubble photo', pending && 'pending', m.failed && 'failed')}>
+      <button className="ph-msgphoto" onClick={() => src && setOpen(true)} aria-label="Open photo">{src ? <img src={src} alt="" /> : <span className="ph-thumb-load">{remote.failed ? 'Photo unavailable' : ''}</span>}</button>
+      {caption && <span className="ph-photo-cap">{caption}</span>}
+      {m.failed && <button className="ph-retry" onClick={onRetry}>Not delivered. Tap to retry</button>}
+      {open && src && <PhotoSheet src={src} messageId={pending ? undefined : m.id} mine={mine} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 function Bubble({ m, onRetry }: { m: Message; onRetry: () => void }) {
+  if (m.kind === 'photo') return <PhotoBubble m={m} onRetry={onRetry} />;
   if (m.kind === 'location') {
     const p = m.payload;
     return (

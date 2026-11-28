@@ -46,11 +46,11 @@ export function AppIcon({ icon, color, size = 58, badge }: { icon: string; color
   );
 }
 
-export function Avatar({ name, size = 44, group, id }: { name: string; size?: number; group?: boolean; id?: string }) {
+export function Avatar({ name, size = 44, group, id, photo }: { name: string; size?: number; group?: boolean; id?: string; photo?: string | null }) {
   const ini = initials(name);
   return (
-    <span className="ph-avatar" style={{ width: size, height: size, fontSize: size * 0.38, background: avatarBg(id ?? name) }}>
-      {group ? <Ico name="users" size={size * 0.5} /> : ini || <Ico name="user" size={size * 0.52} />}
+    <span className="ph-avatar" style={{ width: size, height: size, fontSize: size * 0.38, background: avatarBg(id ?? name), overflow: 'hidden' }}>
+      {photo && !group ? <img src={photo} alt="" width={size} height={size} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : group ? <Ico name="users" size={size * 0.5} /> : ini || <Ico name="user" size={size * 0.52} />}
     </span>
   );
 }

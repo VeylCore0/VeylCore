@@ -34,11 +34,11 @@ export type Hello = {
   open?: { app?: string; route?: string };
 };
 export type Notification = { id: number; app: string; title: string; body: string; route?: string; read: boolean; time: number };
-export type Contact = { id: number; name: string; number: string; display: string; note?: string; favorite: boolean };
+export type Contact = { id: number; name: string; number: string; display: string; note?: string; favorite: boolean; photo?: string | null };
 export type Message = {
   id: number; conversationId: number; sender: string; senderDisplay?: string; mine: boolean; time: number;
-  kind: 'text' | 'location' | 'contact' | 'system'; body: string;
-  payload?: { x?: number; y?: number; number?: string; name?: string };
+  kind: 'text' | 'location' | 'contact' | 'system' | 'photo'; body: string;
+  payload?: { x?: number; y?: number; number?: string; name?: string; photo?: number; photoId?: number };
   // client only
   pending?: boolean; failed?: boolean; clientOp?: string;
 };

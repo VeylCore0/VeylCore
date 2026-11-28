@@ -5,7 +5,15 @@ local L = PhoneConfig.Limits
 
 local function view(r)
     return { id = r.id, name = r.name, number = r.number, display = PhoneUtil.Format(r.number), note = r.note,
-        favorite = r.favorite == 1 or r.favorite == true }
+        favorite = r.favorite == 1 or r.favorite == true, photo = r.photo }
+end
+
+--- A contact picture: a small JPEG data URL. Returns the clean string, false when it should be cleared, or nil when it was not sent (keep what is there).
+local function cleanPhoto(v)
+    if v == nil then return nil end
+    if v == false or v == '' then return false end
+    if type(v) ~= 'string' or #v > L.ContactPhoto or not v:match('^data:image/jpe?g;base64,[%w+/=]+$') then return nil, 'That picture is not allowed' end
+    return v
 end
 
 function Contacts.IsBlocked(ownerCid, number)
@@ -33,12 +41,14 @@ Veyl.RegisterCallback('contactSave', function(src, citizenid, input)
     if number == s.number then return Veyl.Err('INVALID_INPUT', 'That is your own number') end
     local note = PhoneUtil.Clean(input.note, 80)
     local fav = input.favorite == true and 1 or 0
+    local photo, photoErr = cleanPhoto(input.photo)
+    if photoErr then return Veyl.Err('INVALID_INPUT', photoErr) end
     local id = tonumber(input.id)
     if id then
         local clash = MySQL.scalar.await('SELECT id FROM veyl_ph_contacts WHERE owner_cid = ? AND number = ? AND id <> ?', { citizenid, number, id })
         if clash then return Veyl.Err('ALREADY_EXISTS', 'You already have a contact with that number') end
-        local n = MySQL.update.await('UPDATE veyl_ph_contacts SET name = ?, number = ?, note = ?, favorite = ? WHERE id = ? AND owner_cid = ?',
-            { name, number, note, fav, id, citizenid })
+        local n = MySQL.update.await('UPDATE veyl_ph_contacts SET name = ?, number = ?, note = ?, favorite = ?' .. (photo ~= nil and ', photo = ?' or '') .. ' WHERE id = ? AND owner_cid = ?',
+            photo ~= nil and { name, number, note, fav, photo or nil, id, citizenid } or { name, number, note, fav, id, citizenid })
         if n == 0 and not MySQL.scalar.await('SELECT 1 FROM veyl_ph_contacts WHERE id = ? AND owner_cid = ?', { id, citizenid }) then
             return Veyl.Err('NOT_FOUND', 'Contact not found')
         end
@@ -46,8 +56,8 @@ Veyl.RegisterCallback('contactSave', function(src, citizenid, input)
         local count = MySQL.scalar.await('SELECT COUNT(*) FROM veyl_ph_contacts WHERE owner_cid = ?', { citizenid }) or 0
         local existing = MySQL.scalar.await('SELECT id FROM veyl_ph_contacts WHERE owner_cid = ? AND number = ?', { citizenid, number })
         if not existing and count >= L.Contacts then return Veyl.Err('LIMIT_REACHED', ('You can save up to %d contacts'):format(L.Contacts)) end
-        MySQL.query.await([[INSERT INTO veyl_ph_contacts (owner_cid, name, number, note, favorite) VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE name = VALUES(name), note = VALUES(note), favorite = VALUES(favorite)]], { citizenid, name, number, note, fav })
+        MySQL.query.await([[INSERT INTO veyl_ph_contacts (owner_cid, name, number, note, favorite, photo) VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE name = VALUES(name), note = VALUES(note), favorite = VALUES(favorite)]] .. (photo ~= nil and ', photo = VALUES(photo)' or ''), { citizenid, name, number, note, fav, photo or nil })
     end
     local r = MySQL.single.await('SELECT * FROM veyl_ph_contacts WHERE owner_cid = ? AND number = ?', { citizenid, number })
     return Veyl.Ok(view(r), 'Contact saved')

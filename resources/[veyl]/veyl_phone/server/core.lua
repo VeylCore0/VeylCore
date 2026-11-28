@@ -319,6 +319,24 @@ local MIGRATIONS = {
     },
     {
         -- Flock needs a sign-up or login: accounts get a password, and each character is logged in to one account (or none) at a time.
+        -- Photos in messages, contact pictures and recorded voicemail.
+        id = 'v2_009_media',
+        sql = {
+            [[ALTER TABLE veyl_ph_messages MODIFY kind ENUM('text','location','contact','system','photo') NOT NULL DEFAULT 'text']],
+            [[CREATE TABLE IF NOT EXISTS veyl_ph_message_photos (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    conversation_id INT UNSIGNED NOT NULL,
+                    sender VARCHAR(7) NOT NULL,
+                    image MEDIUMTEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_conv (conversation_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[ALTER TABLE veyl_ph_contacts ADD COLUMN photo MEDIUMTEXT NULL]],
+            [[ALTER TABLE veyl_phone_voicemail ADD COLUMN audio MEDIUMTEXT NULL, ADD COLUMN seconds SMALLINT UNSIGNED NULL]],
+        },
+    },
+    {
         id = 'v2_008_flock_accounts',
         sql = {
             [[ALTER TABLE veyl_phone_flock_profiles ADD COLUMN pass_hash VARCHAR(160) NULL]],

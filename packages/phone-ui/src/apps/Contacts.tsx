@@ -8,8 +8,9 @@ import { useRouteOnce } from '../nav';
 import { useStore } from '../store';
 import { Avatar, Button, Empty, Group, Header, IconButton, Row, SearchField, Sheet, Spinner, TextInput, Toggle, say, toast } from '../ui';
 import type { Contact, Nearby } from '../types';
+import { GalleryPicker, galleryImage, resetContactPhotos, squareThumb } from './photos';
 
-type Edit = { id?: number; name: string; number: string; note: string; favorite: boolean };
+type Edit = { id?: number; name: string; number: string; note: string; favorite: boolean; photo?: string | null; photoChanged?: boolean };
 
 export function ContactsApp({ route }: { route?: string }) {
   const [list, setList] = useState<Contact[] | null>(null);
@@ -54,7 +55,7 @@ export function ContactsApp({ route }: { route?: string }) {
               {items.map((c) => (
                 <li key={c.id}>
                   <button className="ph-conv" onClick={() => setDetail(c)}>
-                    <Avatar name={c.name} id={c.number} size={40} />
+                    <Avatar name={c.name} id={c.number} size={40} photo={c.photo} />
                     <span className="ph-conv-main"><strong>{c.name}</strong></span>
                     {c.favorite && <Ico name="star" size={14} style={{ color: 'var(--ph-gold)' }} />}
                   </button>
@@ -64,10 +65,10 @@ export function ContactsApp({ route }: { route?: string }) {
           </section>
         ))}
       </div>
-      {detail && <Detail c={detail} onClose={() => setDetail(null)} onEdit={(c) => { setDetail(null); setEdit({ id: c.id, name: c.name, number: c.number, note: c.note ?? '', favorite: c.favorite }); }}
+      {detail && <Detail c={detail} onClose={() => setDetail(null)} onEdit={(c) => { setDetail(null); setEdit({ id: c.id, name: c.name, number: c.number, note: c.note ?? '', favorite: c.favorite, photo: c.photo ?? null }); }}
         onChanged={(next) => { setDetail(next); void load(); }} onDeleted={() => { setDetail(null); void load(); }} />}
       {sharing && <ShareSheet onClose={() => setSharing(false)} />}
-      {edit && <Form e={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void load(); }} />}
+      {edit && <Form e={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); resetContactPhotos(); void load(); }} />}
     </div>
   );
 }
@@ -91,7 +92,7 @@ function Detail({ c, onClose, onEdit, onChanged, onDeleted }: { c: Contact; onCl
   return (
     <Sheet title="Contact" onClose={onClose} actions={<button className="ph-link" onClick={() => onEdit(c)}>Edit</button>}>
       <div className="ph-info-head">
-        <Avatar name={c.name} id={c.number} size={76} />
+        <Avatar name={c.name} id={c.number} size={76} photo={c.photo} />
         <strong>{c.name}</strong>
         <span className="ph-sub">{c.display}</span>
         {c.note && <span className="ph-note">{c.note}</span>}
@@ -113,22 +114,40 @@ function Form({ e, onClose, onSaved }: { e: Edit; onClose: () => void; onSaved: 
   const [v, setV] = useState(e);
   const [busy, setBusy] = useState(false);
   const limits = useStore((s) => s.hello?.limits);
+  const [picking, setPicking] = useState(false);
   const ok = v.name.trim().length > 0 && v.number.replace(/\D/g, '').length === 7;
+  const choose = async (photoId: number) => {
+    setPicking(false);
+    const full = await galleryImage(photoId);
+    const thumb = full ? await squareThumb(full) : null;
+    if (thumb) setV((x) => ({ ...x, photo: thumb, photoChanged: true })); else say({ ok: false, message: 'Could not use that photo' } as never);
+  };
   const save = async () => {
     setBusy(true);
-    const r = await api('contactSave', { id: v.id, name: v.name, number: v.number.replace(/\D/g, ''), note: v.note || undefined, favorite: v.favorite });
+    // The picture is only sent when it was changed here (a new one, or false to remove it); otherwise the server keeps the old one.
+    const body: Record<string, unknown> = { id: v.id, name: v.name, number: v.number.replace(/\D/g, ''), note: v.note || undefined, favorite: v.favorite };
+    if (v.photoChanged) body.photo = v.photo ?? false;
+    const r = await api('contactSave', body);
     setBusy(false);
     if (say(r)) onSaved();
   };
   return (
     <Sheet title={v.id ? 'Edit contact' : 'New contact'} onClose={onClose}>
       <div className="ph-form">
+        <div className="ph-contactpic">
+          <Avatar name={v.name} id={v.number} size={84} photo={v.photo} />
+          <div>
+            <button className="ph-link" onClick={() => setPicking(true)}>{v.photo ? 'Change photo' : 'Add photo'}</button>
+            {v.photo && <button className="ph-link danger" onClick={() => setV({ ...v, photo: null, photoChanged: true })}>Remove photo</button>}
+          </div>
+        </div>
         <label>Name<TextInput value={v.name} onChange={(name) => setV({ ...v, name })} placeholder="Name" maxLength={limits?.name ?? 40} autoFocus={!v.name} /></label>
         <label>Number<TextInput value={formatDigits(v.number)} onChange={(number) => setV({ ...v, number })} placeholder="555-1234" inputMode="tel" autoFocus={!!v.name && !v.number} /></label>
         <label>Note<TextInput value={v.note} onChange={(note) => setV({ ...v, note })} placeholder="Optional" maxLength={80} /></label>
         <div className="ph-form-row"><span>Favorite</span><Toggle on={v.favorite} onChange={(favorite) => setV({ ...v, favorite })} label="Favorite" /></div>
         <Button kind="primary" block onClick={save} disabled={!ok || busy}>Save contact</Button>
       </div>
+      {picking && <GalleryPicker title="Contact photo" onPick={(id) => void choose(id)} onClose={() => setPicking(false)} />}
     </Sheet>
   );
 }

@@ -1,7 +1,7 @@
 // Preview-only phone backend: an in-memory stand-in for veyl_phone's server (same names, shapes and pushes as docs/PHONE.md),
 // so every screen of the phone UI can be used in the browser. Never shipped to FiveM.
 import { devEmit, type NuiResponse } from '@veyl/ui';
-import { appsApi, appsReset } from './appsMock';
+import { appsApi, appsReset, mockGalleryPhoto, randomPhoto, setMessagePhoto } from './appsMock';
 import type { App, Call, Contact, Conversation, Hello, MailFull, MailItem, Message, Notification, Recent, Settings } from '../../phone-ui/src/types';
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -307,9 +307,11 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
       if (!p.name?.trim()) return err('INVALID_INPUT', 'Enter a name');
       if (number.length !== 7) return err('INVALID_INPUT', 'Enter a 7-digit number');
       if (number === ME) return err('INVALID_INPUT', 'That is your own number');
+      const pic = (a[0] as { photo?: string | false }).photo;
+      if (typeof pic === 'string' && !/^data:image\/jpe?g;base64,[\w+/=]+$/.test(pic)) return err('INVALID_INPUT', 'That picture is not allowed');
       const existing = contacts.find((c) => c.id === p.id) ?? contacts.find((c) => c.number === number);
-      if (existing) { Object.assign(existing, { name: p.name.trim(), number, display: fmt(number), note: p.note, favorite: p.favorite ?? existing.favorite }); return ok(existing, 'Contact saved'); }
-      const c = contact(p.name.trim(), number, !!p.favorite, p.note); contacts.push(c); return ok(c, 'Contact saved');
+      if (existing) { Object.assign(existing, { name: p.name.trim(), number, display: fmt(number), note: p.note, favorite: p.favorite ?? existing.favorite }); if (pic !== undefined) existing.photo = pic || null; return ok(existing, 'Contact saved'); }
+      const c = contact(p.name.trim(), number, !!p.favorite, p.note); if (typeof pic === 'string') c.photo = pic; contacts.push(c); return ok(c, 'Contact saved');
     }
     case 'contactDelete': contacts = contacts.filter((c) => c.id !== a[0]); return ok(undefined, 'Contact deleted');
     case 'blocks': return ok(blocked.map((n) => ({ number: n, display: nameOf(n) })));
@@ -346,17 +348,22 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
       if (settings.airplane) return err('UNAVAILABLE', 'Turn off airplane mode first');
       c.hidden = false;
       const kind = p.kind ?? 'text';
-      const body = kind === 'contact' ? String(p.payload?.name ?? '') : String(p.body ?? '').trim();
+      let image: string | null = null;
+      if (kind === 'photo') { image = mockGalleryPhoto(Number(p.payload?.photoId)); if (!image) return err('NOT_FOUND', 'That photo is not in your gallery'); }
+      const body = kind === 'contact' ? String(p.payload?.name ?? '') : kind === 'photo' ? (String(p.body ?? '').trim() || 'Photo') : String(p.body ?? '').trim();
       if (!body) return err('INVALID_INPUT', 'Type a message');
-      const payload = kind === 'location' ? { x: 215.4, y: -810.2 } : p.payload;
+      const payload = kind === 'location' ? { x: 215.4, y: -810.2 } : kind === 'photo' ? { photo: ++seq } : p.payload;
       const m = msg(c.id, ME, body, 0, { kind, payload });
+      if (image) setMessagePhoto(m.id, image);
       c.msgs.push(m); c.read[ME] = m.id;
       const target = c;
       // Pretend the other side reads and answers.
       if (target.peer && target.peer !== '0000000' && !blocked.includes(target.peer)) {
         window.setTimeout(() => { target.read[target.peer!] = m.id; push('read', { conversationId: target.id, number: target.peer, lastReadId: m.id }); }, 1100);
         window.setTimeout(() => {
-          const r = msg(target.id, target.peer!, CANNED[Math.floor(Math.random() * CANNED.length)], 0);
+          // After a photo, the other side sends one back so the receiving side can be tried too.
+          const r = image ? msg(target.id, target.peer!, 'Nice shot!', 0, { kind: 'photo', payload: { photo: ++seq } }) : msg(target.id, target.peer!, CANNED[Math.floor(Math.random() * CANNED.length)], 0);
+          if (image) setMessagePhoto(r.id, randomPhoto(3));
           target.msgs.push(r);
           push('message', { conversation: summary(target), message: r, silent: target.muted });
         }, 2600);

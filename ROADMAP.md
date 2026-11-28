@@ -79,6 +79,7 @@ The phone is being rebuilt from the ground up on a new base.
 - ✅ **Phone account and PIN:** first-run setup, an email and password account like an Apple ID, and a 4-digit PIN lock that the server enforces, with lockouts and a password reset for a forgotten PIN.
 - ✅ **New phone screen:** a tall phone with a Dynamic Island for calls, a glass home screen, a notification centre with quick settings, dark and light themes, wallpapers, accent colours and phone cases. Phone, Messages, Contacts (with sharing your number to people next to you), Mail, App Store, Settings, Calculator and Clock are built.
 - ✅ **Apps are back with new designs:** Bank (send money, history), Garage (with valet), Maps (places, saved spots, live location sharing), Services (police, EMS, mechanic, taxi requests and a queue for the people on duty), Jobs (clock in, job board, applications), Bills (pay invoices and fines, standing orders, credit score), Camera and Gallery, Music (live-generated stations, play out loud), News, Racing (record tracks, host and join races), Flock, Marketplace, Notes and Voicemail.
+- ✅ **Phone pictures and voice:** send a photo from your gallery in a message (the other side can open it and save it), give a contact a picture, and leave a recorded voicemail you can play back (30 seconds, or type one instead).
 - ✅ **SIM cards:** buy a SIM card, right-click your phone in the inventory and open the SIM card tray to insert it or take the old one out. The SIM carries your number and contacts, so if you give your SIM to another player they get your number and contacts. No SIM means no calls, texts or online apps; notes, contacts and settings still work.
 - Apps from other parts of the city keep working: Apartments, Invoices, Boosting and the Silk Road.
 
@@ -98,7 +99,6 @@ The phone is being rebuilt from the ground up on a new base.
 - **Clean install** from the txAdmin recipe, start to finish.
 
 ## 🔜 Then: finishing touches
-- **Phone:** sending photos in messages, contact pictures, and recorded voicemail.
 - **Customs:** test drives before you buy, a showroom, customer reviews, favourite mechanics, special-order parts, and lift and spray booth animations.
 - **Dealership:** test drives, financing and trade-ins; shared and job garages.
 

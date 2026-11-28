@@ -44,6 +44,7 @@ const ICONS: Record<string, ReactNode[]> = {
   more: [p('M5 12h.01M12 12h.01M19 12h.01')],
   play: [p('M5 3l14 9-14 9V3z')],
   pause: [p('M6 4h4v16H6zM14 4h4v16h-4z')],
+  stop: [p('M6 6h12v12H6z')],
   reset: [p('M1 4v6h6'), p('M3.51 15a9 9 0 1 0 2.13-9.36L1 10')],
   flag: [p('M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'), p('M4 22v-7')],
   timer: [circle(12, 13, 8), p('M12 9v4l2 2M9 2h6')],

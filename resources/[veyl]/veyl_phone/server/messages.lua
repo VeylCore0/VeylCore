@@ -168,8 +168,8 @@ function Messages.Post(conv, senderNumber, kind, body, payload, clientOp)
 end
 
 --- send({ conversationId? | to?, body, kind?, clientOp }) -> { conversation, message }
---- kind: 'text' (default), 'location' (the server reads your position; body = optional label) or 'contact'
---- (payload = { number, name }). clientOp (8-64 chars, unique per send) makes retries safe: the same op never posts twice.
+--- kind: 'text' (default), 'location' (the server reads your position; body = optional label), 'contact'
+--- (payload = { number, name }) or 'photo' (payload = { photoId } one of your gallery photos; body = optional caption). clientOp (8-64 chars, unique per send) makes retries safe: the same op never posts twice.
 Veyl.RegisterCallback('send', function(src, _, input)
     local s, err = session(src)
     if not s then return err end
@@ -185,9 +185,17 @@ Veyl.RegisterCallback('send', function(src, _, input)
     end
     if not Phone.Rate(src, 'send', 700) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
 
-    local kind = input.kind == 'location' and 'location' or input.kind == 'contact' and 'contact' or 'text'
-    local body, payload
-    if kind == 'text' then
+    local kind = input.kind == 'location' and 'location' or input.kind == 'contact' and 'contact' or input.kind == 'photo' and 'photo' or 'text'
+    local body, payload, photoImage
+    if kind == 'photo' then
+        local p = type(input.payload) == 'table' and input.payload or {}
+        local gid = tonumber(p.photoId)
+        if not gid or gid ~= math.floor(gid) then return Veyl.Err('INVALID_INPUT', 'Pick a photo') end
+        if not Phone.Rate(src, 'sendPhoto', 2500) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
+        photoImage = MySQL.scalar.await('SELECT image FROM veyl_phone_photos WHERE id = ? AND citizenid = ?', { gid, s.cid })
+        if not photoImage then return Veyl.Err('NOT_FOUND', 'That photo is not in your gallery') end
+        body = PhoneUtil.CleanBody(input.body, 120) or 'Photo'
+    elseif kind == 'text' then
         body = PhoneUtil.CleanBody(input.body, L.MessageLength)
         if not body then return Veyl.Err('INVALID_INPUT', 'Type a message') end
     elseif kind == 'location' then
@@ -218,10 +226,50 @@ Veyl.RegisterCallback('send', function(src, _, input)
         if not Phone.CidByNumber(to) then return Veyl.Err('NOT_FOUND', 'That number is not in service') end
         conv = directConversation(s.number, to)
     end
+    if photoImage then
+        -- The picture is copied into the conversation, so deleting it from the gallery later does not take it from the people who got it.
+        local pid = MySQL.insert.await('INSERT INTO veyl_ph_message_photos (conversation_id, sender, image) VALUES (?, ?, ?)', { conv.id, s.number, photoImage })
+        if not pid then return Veyl.Err('DATABASE_ERROR', 'Could not send the photo') end
+        payload = { photo = pid }
+    end
     local msg = Messages.Post(conv, s.number, kind, body, payload, op)
     conv = MySQL.single.await('SELECT * FROM veyl_ph_conversations WHERE id = ?', { conv.id })
     return Veyl.Ok({ conversation = summary(conv, s, names), message = messageView(msg, s.number, names) })
 end, { cooldown = 200 })
+
+--- The picture of a photo message, for someone in that conversation who has not blocked the sender.
+local function photoOf(s, messageId)
+    messageId = tonumber(messageId)
+    if not messageId or messageId ~= math.floor(messageId) then return nil, Veyl.Err('INVALID_INPUT', 'Invalid message') end
+    local m = MySQL.single.await("SELECT conversation_id, sender, payload FROM veyl_ph_messages WHERE id = ? AND kind = 'photo'", { messageId })
+    if not m or not membership(m.conversation_id, s.number) then return nil, Veyl.Err('NOT_FOUND', 'Photo not found') end
+    if m.sender ~= s.number and Contacts.IsBlocked(s.cid, m.sender) then return nil, Veyl.Err('NOT_FOUND', 'Photo not found') end
+    local p = Phone.Decode(m.payload, nil)
+    local img = p and tonumber(p.photo) and MySQL.scalar.await('SELECT image FROM veyl_ph_message_photos WHERE id = ? AND conversation_id = ?', { tonumber(p.photo), m.conversation_id })
+    if not img then return nil, Veyl.Err('NOT_FOUND', 'Photo not found') end
+    return img
+end
+
+Veyl.RegisterCallback('messagePhoto', function(src, _, messageId)
+    local s, err = session(src)
+    if not s then return err end
+    local img, e = photoOf(s, messageId)
+    if not img then return e end
+    return Veyl.Ok({ image = img })
+end, { cooldown = 40 })
+
+--- messagePhotoSave(messageId): keeps a copy of a photo someone sent in your own gallery.
+Veyl.RegisterCallback('messagePhotoSave', function(src, citizenid, messageId)
+    local s, err = session(src)
+    if not s then return err end
+    local img, e = photoOf(s, messageId)
+    if not img then return e end
+    if (MySQL.scalar.await('SELECT COUNT(*) FROM veyl_phone_photos WHERE citizenid = ?', { citizenid }) or 0) >= PhoneConfig.Camera.Max then
+        return Veyl.Err('LIMIT', ('Your gallery is full (%d photos)'):format(PhoneConfig.Camera.Max))
+    end
+    MySQL.insert.await('INSERT INTO veyl_phone_photos (citizenid, image) VALUES (?, ?)', { citizenid, img })
+    return Veyl.Ok(nil, 'Saved to Gallery')
+end, { cooldown = 800 })
 
 ---------------------------------------------------------------------------
 -- Groups and conversation settings

@@ -21,15 +21,15 @@ end
 
 --- Copies the contacts into the SIM (as JSON) so they travel with it.
 local function snapshotContacts(cid)
-    local rows = MySQL.query.await('SELECT name, number, note, favorite FROM veyl_ph_contacts WHERE owner_cid = ? ORDER BY name', { cid }) or {}
+    local rows = MySQL.query.await('SELECT name, number, note, favorite, photo FROM veyl_ph_contacts WHERE owner_cid = ? ORDER BY name', { cid }) or {}
     return json.encode(rows)
 end
 
 local function restoreContacts(cid, encoded)
     local rows = type(encoded) == 'string' and json.decode(encoded) or nil
     for _, c in ipairs(rows or {}) do
-        MySQL.update.await('INSERT IGNORE INTO veyl_ph_contacts (owner_cid, name, number, note, favorite) VALUES (?, ?, ?, ?, ?)',
-            { cid, c.name, c.number, c.note, (c.favorite == 1 or c.favorite == true) and 1 or 0 })
+        MySQL.update.await('INSERT IGNORE INTO veyl_ph_contacts (owner_cid, name, number, note, favorite, photo) VALUES (?, ?, ?, ?, ?, ?)',
+            { cid, c.name, c.number, c.note, (c.favorite == 1 or c.favorite == true) and 1 or 0, type(c.photo) == 'string' and c.photo or nil })
     end
 end
 

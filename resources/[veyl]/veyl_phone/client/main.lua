@@ -210,7 +210,7 @@ local ALLOWED = {
     flockMe = true, flockSetup = true, flockSignup = true, flockLogin = true, flockLogout = true, flockClaim = true, flockFeed = true, flockThread = true, flockUser = true, flockPost = true, flockLike = true, flockDelete = true, flockFollow = true,
     mapsData = true, placeSave = true, placeDelete = true, shareLocation = true,
     servicesData = true, serviceRequest = true, serviceTake = true, serviceClose = true,
-    voicemailList = true, voicemailLeave = true, voicemailRead = true, voicemailDelete = true,
+    voicemailList = true, voicemailAudio = true, messagePhoto = true, messagePhotoSave = true, voicemailLeave = true, voicemailRead = true, voicemailDelete = true,
     photoSave = true, photoList = true, photoGet = true, photoDelete = true,
     jobsData = true, jobsDuty = true, jobsPrimary = true, jobsApply = true, jobsAppClose = true,
     billsData = true, billPay = true, standingCreate = true, standingCancel = true,

@@ -52,6 +52,7 @@ PhoneConfig = {
         Contacts = 300,
         Blocked = 100,
         NameLength = 40,
+        ContactPhoto = 30000,           -- a contact picture is a small JPEG, at most this many characters
         MessageLength = 500,
         GroupMembers = 12,
         GroupName = 32,
@@ -99,7 +100,7 @@ PhoneConfig = {
     },
     ShareMinutes = { 15, 30, 60 },
 
-    Voicemail = { Max = 50, Length = 500 },
+    Voicemail = { Max = 50, Length = 500, AudioSeconds = 30, AudioChars = 400000 },   -- a recording: at most this long and this big (base64 characters)
 
     -- Phase 2 apps
     Camera = { Max = 60, Quality = 0.55 },          -- photos per player; JPEG quality (lower = smaller rows)

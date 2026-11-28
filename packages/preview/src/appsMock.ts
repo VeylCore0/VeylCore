@@ -38,6 +38,8 @@ export function appsReset(empty: boolean) {
   pendingPayee = null; following.clear();
   bank = { name: 'Alex Morgan', bank: 12840, cash: 420, account: 'VC00000482', accountMasked: '•••• 0482', max: 250000 };
   if (empty) { notes = []; activity = []; listings = []; posts = []; flockMe = null; flockLegacy = { handle: 'oldtimer', display: 'Old Timer' }; vehicles = []; return; }
+  photos = empty ? [] : [0, 1, 2].map((i) => ({ id: ++seq, at: now() - 3600 * (i + 1), image: fakePhoto(i) }));
+  msgPhotos.clear(); vmAudio.clear();
   notes = [
     { id: 1, title: 'Shopping list', body: 'Milk\nEggs\nCoffee beans\nBandages x5', at: now() - 3600 },
     { id: 2, title: 'Heist ideas (just kidding)', body: 'Never. Honest work only. Maybe take the taxi job this weekend.', at: now() - 90000 },
@@ -95,7 +97,8 @@ const SERVICES = [
   { id: 'mechanic', label: 'Mechanic', icon: 'wrench', onDuty: 2 }, { id: 'taxi', label: 'Taxi', icon: 'car', onDuty: 0 },
 ];
 let svcMine: { id: number; service: string; message: string; status: 'open' | 'taken' | 'closed'; taken_by: string | null; at: number }[] = [];
-let vms: { id: number; from_number: string; from_name: string | null; body: string; is_read: number; at: number }[] = [
+let vms: { id: number; from_number: string; from_name: string | null; body: string; is_read: number; at: number; recorded?: number; seconds?: number | null }[] = [
+  { id: 3, from_number: '5550123', from_name: 'Riley Park', body: 'Voice message', is_read: 0, recorded: 1, seconds: 1, at: now() - 600 },
   { id: 1, from_number: '5550177', from_name: 'Jamie Cole', body: 'Hey, your car is ready at the shop. Come grab it before six, I close early today.', is_read: 0, at: now() - 1800 },
   { id: 2, from_number: '5550911', from_name: null, body: 'This is a message about your vehicle extended warranty.', is_read: 1, at: now() - 90000 },
 ];
@@ -103,6 +106,32 @@ export function appsReset2() { mapSaved = mapSaved.slice(0, 2); svcMine = []; }
 
 // ---- Group 3 state: camera, jobs, bills, news, racing
 let photos: { id: number; at: number; image: string }[] = [];
+/** A little generated picture, so the gallery has something to show in the preview. */
+function fakePhoto(i: number): string {
+  const c = document.createElement('canvas'); c.width = 320; c.height = 220;
+  const g = c.getContext('2d')!;
+  const hues = [210, 20, 140, 290];
+  const grad = g.createLinearGradient(0, 0, 320, 220); grad.addColorStop(0, `hsl(${hues[i % 4]},70%,55%)`); grad.addColorStop(1, `hsl(${(hues[i % 4] + 60) % 360},70%,25%)`);
+  g.fillStyle = grad; g.fillRect(0, 0, 320, 220);
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.arc(90 + i * 40, 90, 34, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 160, 320, 60);
+  return c.toDataURL('image/jpeg', 0.6);
+}
+/** A one second beep as a WAV data URL, for the preview's recorded voicemail. */
+function beep(): string {
+  const rate = 8000, n = rate, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o: number, t: string) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.sin((i / rate) * 2 * Math.PI * 440) * 9000 * (1 - i / n), true);
+  let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
+const msgPhotos = new Map<number, string>();
+const vmAudio = new Map<number, string>();
+/** For the messages mock: the picture of one of the gallery photos, and where photo messages keep theirs. */
+export const mockGalleryPhoto = (id: number) => photos.find((p) => p.id === id)?.image ?? null;
+export const setMessagePhoto = (messageId: number, image: string) => { msgPhotos.set(messageId, image); };
+export const randomPhoto = (i: number) => fakePhoto(i);
 export function previewShot(): string {
   const c = document.createElement('canvas'); c.width = 240; c.height = 320;
   const g = c.getContext('2d');
@@ -166,7 +195,14 @@ export function appsApi(name: string, a: unknown[]): NuiResponse | undefined {
     case 'voicemailList': return ok([...vms].sort((x, y) => y.at - x.at));
     case 'voicemailRead': { const v = vms.find((x) => x.id === a[0]); if (v) v.is_read = 1; return ok(); }
     case 'voicemailDelete': vms = vms.filter((x) => x.id !== a[0]); return ok(undefined, 'Voicemail deleted');
-    case 'voicemailLeave': { if (!payees[String(a[0]).replace(/\D/g, '')]) return err('NOT_FOUND', 'No phone with that number'); return ok(undefined, 'Voicemail sent'); }
+    case 'voicemailLeave': {
+      if (!payees[String(a[0]).replace(/\D/g, '')]) return err('NOT_FOUND', 'No phone with that number');
+      if (a[2]) { const secs = Number(a[3]); if (!(secs >= 1 && secs <= 32)) return err('INVALID_INPUT', 'That recording is not allowed'); }
+      return ok(undefined, 'Voicemail sent');
+    }
+    case 'voicemailAudio': { const v = vms.find((x) => x.id === a[0] && x.recorded); if (!v) return err('NOT_FOUND', 'No recording'); return ok({ audio: vmAudio.get(v.id) ?? (vmAudio.set(v.id, beep()), vmAudio.get(v.id)!) }); }
+    case 'messagePhoto': { const img = msgPhotos.get(Number(a[0])); return img ? ok({ image: img }) : err('NOT_FOUND', 'Photo not found'); }
+    case 'messagePhotoSave': { const img = msgPhotos.get(Number(a[0])); if (!img) return err('NOT_FOUND', 'Photo not found'); photos.unshift({ id: ++seq, at: now(), image: img }); return ok(undefined, 'Saved to Gallery'); }
     // ---- camera
     case 'photoSave': { if (photos.length >= 40) return err('LIMIT', 'Your gallery is full (40 photos)'); const id = ++seq; photos.unshift({ id, at: now(), image: String(a[0]) }); return ok({ id }, 'Saved to Gallery'); }
     case 'photoList': return ok(photos.map((p) => ({ id: p.id, at: p.at })));
