@@ -113,6 +113,37 @@ CreateThread(function()
     if back.ok and back.data then teleport(back.data.x, back.data.y, back.data.z, back.data.w) end
 end)
 
+-- Map blips for the labs I own or work at. Pulled from the server (never guessed), refreshed after any property action and every minute.
+local blips = {}
+local function syncBlips()
+    local B = C.Properties and C.Properties.Blip
+    local r = Veyl.CallbackTimeout('veyl_production', 'propMine', 15000)
+    local want = {}
+    if r.ok and type(r.data) == 'table' and B and B.Show then for _, p in ipairs(r.data) do want[p.id] = p end end
+    for id, b in pairs(blips) do
+        if not want[id] then if DoesBlipExist(b) then RemoveBlip(b) end blips[id] = nil end
+    end
+    for id, p in pairs(want) do
+        if not blips[id] or not DoesBlipExist(blips[id]) then
+            local b = AddBlipForCoord(p.x + 0.0, p.y + 0.0, p.z + 0.0)
+            SetBlipSprite(b, B.Sprite) SetBlipColour(b, B.Colour) SetBlipScale(b, B.Scale) SetBlipAsShortRange(b, true)
+            BeginTextCommandSetBlipName('STRING') AddTextComponentSubstringPlayerName(p.label) EndTextCommandSetBlipName(b)
+            blips[id] = b
+        end
+    end
+end
+ProdClient.syncLabBlips = function() CreateThread(syncBlips) end
+
+CreateThread(function()
+    while not Veyl.IsLoaded() do Wait(1000) end
+    while true do
+        syncBlips()
+        Wait(60000)
+    end
+end)
+AddEventHandler('veyl_production:propChanged', function() CreateThread(function() Wait(500) syncBlips() end) end)
+RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function() for id, b in pairs(blips) do if DoesBlipExist(b) then RemoveBlip(b) end blips[id] = nil end end)
+
 -- The server let us out (sold, transferred, access removed).
 RegisterNetEvent('veyl_production:leave', function(pos) CreateThread(function() leaveTo(pos) end) end)
 
@@ -120,12 +151,14 @@ RegisterNetEvent('veyl_production:transferOffer', function(offer)
     CreateThread(function()
         local choice = vlib.alertDialog({ title = 'Laboratory offer', message = ('%s wants to give you %s.'):format(offer.from, offer.property), confirmLabel = 'Accept', cancelLabel = 'Decline' })
         Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_production', 'propTransferAnswer', 15000, choice == 'confirm'))
+        TriggerEvent('veyl_production:propChanged')
     end)
 end)
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     removeInsideZone()
+    for id, b in pairs(blips) do if DoesBlipExist(b) then RemoveBlip(b) end end
     for _, id in ipairs(doorIds) do pcall(function() exports.veyl_interact:Remove(id) end) end
     if ProdClient.inside then DoScreenFadeIn(0) end
 end)

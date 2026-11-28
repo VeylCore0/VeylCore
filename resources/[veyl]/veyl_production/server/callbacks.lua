@@ -106,6 +106,7 @@ register('wsClaim', function(src, cid, id) return Prod.Ws.claim(src, cid, id) en
 register('wsCancel', function(src, cid, id, batch) return Prod.Ws.cancel(src, cid, id, batch) end, 600)
 
 -- Properties
+register('propMine', function(src, cid) return Veyl.Ok(Prod.Props.mineList(cid)) end, 1500)
 register('propList', function(src, cid) return Veyl.Ok(Prod.Props.publicList()) end, 2000)
 register('propBuy', function(src, cid, id) return Prod.Props.purchase(src, cid, Sec.str(id, 32, '^[%w_]+$')) end, 1200)
 register('propSell', function(src, cid, id) return Prod.Props.sell(src, cid, Sec.str(id, 32, '^[%w_]+$')) end, 1200)

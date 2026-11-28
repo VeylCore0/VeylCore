@@ -45,6 +45,7 @@ RegisterNUICallback('api', function(data, cb)
     CreateThread(function()
         local res = Veyl.CallbackTimeout('veyl_production', data.name, 20000, table.unpack(args, 1, 4))
         reply(cb, res)
+        if res.ok and type(data.name) == 'string' and data.name:sub(1, 4) == 'prop' then TriggerEvent('veyl_production:propChanged') end
         -- A regular agreed to meet: the street script sets the GPS, the blip and the meeting spot.
         if data.name == 'regularCall' and res.ok and res.data then TriggerEvent('veyl_production:meetSet', res.data) end
         -- The storage is a veyl_inventory stash: close the tablet and open it (the inventory asks the server again).

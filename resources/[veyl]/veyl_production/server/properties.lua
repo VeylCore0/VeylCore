@@ -151,6 +151,19 @@ local function ownedBy(cid)
     return n
 end
 
+--- The labs this player may use (owner, employee or guest): the client puts a map blip on each. Never anyone else's.
+function Props.mineList(cid)
+    local out = {}
+    for _, id in ipairs(order) do
+        local role = Props.role(cid, id)
+        if role then
+            local d = def(id)
+            out[#out + 1] = { id = id, label = d.label, role = role, x = d.entry.x, y = d.entry.y, z = d.entry.z }
+        end
+    end
+    return out
+end
+
 --- The street doors, for the client to create entrances (labels and state only).
 function Props.publicList()
     local out = {}

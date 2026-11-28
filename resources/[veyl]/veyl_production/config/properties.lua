@@ -35,6 +35,9 @@ ProductionConfig.Properties = {
         },
     },
 
+    -- A map blip on each laboratory you own or work at (and only those). Set Show = false to turn them off.
+    Blip = { Show = true, Sprite = 473, Colour = 25, Scale = 0.85, Label = 'Laboratory' },
+
     -- Properties for sale. `entry` is the street door (a vector4). Add as many as you like.
     Catalogue = {
         { id = 'puerta_lab', label = 'La Puerta Lab', interior = 'biker_warehouse', price = 60000, level = 1, branch = 'botanical',

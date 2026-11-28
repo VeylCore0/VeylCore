@@ -153,3 +153,5 @@ Not tested in game: target options on pedestrians, the reactions (turning, stand
 
 - **Stat cards:** stand near a plant you tend and a card floats over it with health, growth, water and fertiliser rings, the variety and its stage. A ripe plant says *Ready to harvest*, a dead one *Dead*. Tune `ProductionConfig.Overlay` (`Distance`, `Max` cards at once, `Height`, `Enabled`). The numbers come from the server's plant list, refreshed every 15 seconds while a card is showing and after each water, feed or harvest.
 - **Unlimited supplies:** `ProductionConfig.UnlimitedStock = true` (default) means the supply shops never run out and stock is not tracked. Set it to `false` for the old limited stock that refills over time.
+
+- **Map blips:** a blip appears on each laboratory you own or work at, and only those (a lab you have not bought shows nothing). It appears after you buy, goes when you sell or lose access, and refreshes every minute otherwise. Tune or turn off with `ProductionConfig.Properties.Blip`.
