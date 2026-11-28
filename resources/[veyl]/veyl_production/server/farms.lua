@@ -9,7 +9,11 @@ local C = ProductionConfig
 
 local function cfg() return C.Farms end
 
-function F.isAdmin(src) return src ~= nil and Veyl.HasPermission(src, cfg().Permission) end
+-- Staff: the production.admin permission, or the general veyl.admin one that group.admin already has (full admins need no extra line).
+function F.isAdmin(src)
+    if src == nil then return false end
+    return Veyl.HasPermission(src, cfg().Permission) or Veyl.HasPermission(src, 'admin')
+end
 
 local function denied(src, cid, what)
     Prod.Log.suspicious(src, cid, 'admin_denied', { action = what })

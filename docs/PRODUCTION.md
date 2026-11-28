@@ -155,3 +155,5 @@ Not tested in game: target options on pedestrians, the reactions (turning, stand
 - **Unlimited supplies:** `ProductionConfig.UnlimitedStock = true` (default) means the supply shops never run out and stock is not tracked. Set it to `false` for the old limited stock that refills over time.
 
 - **Map blips:** a blip appears on each laboratory you own or work at, and only those (a lab you have not bought shows nothing). It appears after you buy, goes when you sell or lose access, and refreshes every minute otherwise. Tune or turn off with `ProductionConfig.Properties.Blip`.
+
+- **Who can use `/drugadmin` and `/prodadmin`:** anyone with the `production.admin` permission, and also anyone with the general `veyl.admin` permission (the one `group.admin` gets in `server.cfg`), so full admins need no extra line.

@@ -59,7 +59,7 @@ end)
 -- /prodadmin: diag | fix
 ---------------------------------------------------------------------------
 RegisterCommand('prodadmin', function(src, args)
-    if src ~= 0 and not Veyl.HasPermission(src, 'production.admin') then return end
+    if src ~= 0 and not Prod.Farms.isAdmin(src) then return end
     local function say(t) if src == 0 then print('[veyl_production] ' .. t) else Veyl.Notify(src, t, 'info') end end
     if args[1] == 'diag' or args[1] == 'fix' then
         local d = Prod.Ws.diagnose()
