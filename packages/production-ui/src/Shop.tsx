@@ -37,7 +37,7 @@ export function Shop({ view, mode, run }: { view: ShopView; mode: 'shop' | 'buye
             {view.sell.map((s) => (
               <li key={s.item}>
                 <div className="pr-halo sm"><ItemImg item={s.item} size={44} /></div>
-                <span className="pr-sell-main"><strong>{s.label}</strong><em>Base {usd(s.base)} each, × quality</em></span>
+                <span className="pr-sell-main"><strong>{s.label}</strong><em>{usd(s.price ?? s.base)} each now{s.trend && s.trend !== 'steady' ? (s.trend === 'high' ? ', demand is high' : ', market is flooded') : ''}, × quality</em></span>
                 <Stepper k={s.item} />
                 <Button kind="primary" onClick={() => void run('shopSell', s.item, q(s.item))}>Sell</Button>
               </li>

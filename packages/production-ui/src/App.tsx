@@ -3,13 +3,13 @@ import { announceReady, nui, useNuiMessage, type NuiResponse } from '@veyl/ui';
 import type { Ctx, Page } from './ctx';
 import type { Bench, ShopView, TabletState } from './types';
 import { api, Bar, Button, cx, ErrorBox, Ico, ITEM_LABELS, Loading, Ring, Toast } from './ui';
-import { Botanical, Dashboard, Production, Progression, Stats, Supplier } from './Pages';
+import { Botanical, Crew, Dashboard, Production, Progression, Stats, Street, Supplier } from './Pages';
 import { Properties } from './Properties';
 import { BenchPanel } from './Bench';
 import { Shop } from './Shop';
 
 const NAV: { id: Page; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }, { id: 'botanical', label: 'Botanical', icon: 'leaf' }, { id: 'field', label: 'Field Operations', icon: 'pin' }, { id: 'supplier', label: 'Supplier Operations', icon: 'bag' }, { id: 'production', label: 'Production', icon: 'gear' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }, { id: 'botanical', label: 'Weed', icon: 'leaf' }, { id: 'field', label: 'Coke & Mushrooms', icon: 'pin' }, { id: 'supplier', label: 'Chemistry', icon: 'bag' }, { id: 'street', label: 'Street', icon: 'chart' }, { id: 'crew', label: 'Crew', icon: 'users' }, { id: 'production', label: 'Production', icon: 'gear' },
   { id: 'properties', label: 'Properties', icon: 'home' }, { id: 'progression', label: 'Progression', icon: 'star' }, { id: 'stats', label: 'Statistics', icon: 'chart' },
 ];
 
@@ -121,11 +121,11 @@ function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: {
       <nav className="pr-side" aria-label="Sections">
         <div className="pr-brand"><span className="pr-logo"><Ico name="leaf" size={24} /></span><div><b>VEYL</b><i>PRODUCTION</i></div></div>
         <span className="pr-navlabel">WORKSPACE</span>
-        {NAV.slice(0, 5).filter((n) => s.branches[n.id] === undefined || s.branches[n.id].enabled).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(0, 7).filter((n) => s.branches[n.id] === undefined || s.branches[n.id].enabled).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         <span className="pr-navlabel">ASSETS</span>
-        {NAV.slice(5, 6).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(7, 8).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         <span className="pr-navlabel">YOU</span>
-        {NAV.slice(6).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(8).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         {Object.entries(s.branches).filter(([, b]) => !b.enabled).map(([id, b]) => <span key={id} className="pr-nav soon" title="Not built yet"><Ico name="lock" size={17} />{b.label}</span>)}
         <div className="pr-usercard">
           <Ring value={bot?.progress ?? 0} size={42} stroke={4} color={bot?.color}><b className="sm">{initials}</b></Ring>
@@ -141,7 +141,7 @@ function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: {
         </header>
         <div className="pr-body" key={open.page}>
           {error ? <ErrorBox message={error} onRetry={() => void refresh()} /> : !s ? <Loading /> : open.page === 'dashboard' ? <Dashboard c={ctx} />
-            : open.page === 'botanical' ? <Botanical c={ctx} /> : open.page === 'field' ? <Botanical c={ctx} branch="field" /> : open.page === 'supplier' ? <Supplier c={ctx} /> : open.page === 'production' ? <Production c={ctx} />
+            : open.page === 'botanical' ? <Botanical c={ctx} /> : open.page === 'field' ? <Botanical c={ctx} branch="field" /> : open.page === 'supplier' ? <Supplier c={ctx} /> : open.page === 'street' ? <Street c={ctx} /> : open.page === 'crew' ? <Crew c={ctx} /> : open.page === 'production' ? <Production c={ctx} />
             : open.page === 'properties' ? <Properties c={ctx} /> : open.page === 'progression' ? <Progression c={ctx} /> : <Stats c={ctx} />}
         </div>
       </main>

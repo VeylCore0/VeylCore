@@ -38,9 +38,9 @@ C.AbandonedAfterDays = 0
 
 -- Branch display data for the tablet.
 C.Branches = {
-    botanical = { label = 'Botanical', icon = 'leaf', color = '#7bd88f', enabled = true },
-    field = { label = 'Field Operations', icon = 'compass', color = '#5ab0ff', enabled = true },
-    supplier = { label = 'Supplier Operations', icon = 'truck', color = '#c58bff', enabled = true },
+    botanical = { label = 'Weed', icon = 'leaf', color = '#7bd88f', enabled = true },
+    field = { label = 'Coke & Mushrooms', icon = 'compass', color = '#5ab0ff', enabled = true },
+    supplier = { label = 'Chemistry', icon = 'truck', color = '#c58bff', enabled = true },
 }
 
 -- Logging. Each event type can be switched on or off; set Webhook to a Discord webhook URL to also post them. Secrets

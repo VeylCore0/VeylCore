@@ -159,3 +159,6 @@
 .pr-note.warn { color: #f2b443; }
 .pr-run .pr-card-foot { gap: 8px; margin-top: 8px; }
 .pr-card-foot { gap: 8px; }
+
+.pr-input { width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); color: inherit; font: inherit; }
+.pr-input:focus { outline: none; border-color: var(--pr-acc); }

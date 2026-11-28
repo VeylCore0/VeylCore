@@ -1,6 +1,6 @@
 # Production (`veyl_production`)
 
-The drug system for VeylCore (it replaces `veyl_drugs`): buy supplies, gather, plant and tend, harvest, process on workstations, and run player-owned laboratories. It is game logic with item names, timers and quality, and nothing models a real process. **Botanical** is weed (Violet Haze, Silverleaf, Nightbloom: bud, trimmed bud, bagged weed on a Weed Table). **Field operations** is coca and mushrooms: Red Ridge and Andes Mist coca become coke on a Coke Table, and Forest Cap and Mooncap mushrooms are grown from spores (found in field zones, bought at the outfitter or sifted from wild mushrooms) and dried. **Supplier operations** is the chemical supply runs and the Meth Station with the fumes hazard: crystal (level 1), ecstasy (2), LSD tabs (3) and Veyl-X (5), each behind a skill check. Cannabis uses the custom `veyl_weedprops` models, so start it before `veyl_production`. The ids (`prod_*`) are generic; names, descriptions and images are just labels you can change in `config/`, `shared/items.lua` and `veyl_inventory/data/items.lua`.
+The drug system for VeylCore (it replaced the old `veyl_drugs`, which is removed): buy supplies, gather, plant and tend, harvest, process on workstations, and run player-owned laboratories. It is game logic with item names, timers and quality, and nothing models a real process. **Botanical** is weed (Violet Haze, Silverleaf, Nightbloom: bud, trimmed bud, bagged weed on a Weed Table). **Field operations** is coca and mushrooms: Red Ridge and Andes Mist coca become coke on a Coke Table, and Forest Cap and Mooncap mushrooms are grown from spores (found in field zones, bought at the outfitter or sifted from wild mushrooms) and dried. **Supplier operations** is the chemical supply runs and the Meth Station with the fumes hazard: crystal (level 1), ecstasy (2), LSD tabs (3) and Veyl-X (5), each behind a skill check. Cannabis uses the custom `veyl_weedprops` models, so start it before `veyl_production`. The ids (`prod_*`) are generic; names, descriptions and images are just labels you can change in `config/`, `shared/items.lua` and `veyl_inventory/data/items.lua`.
 
 ## What is built and what is not
 
@@ -13,9 +13,9 @@ The drug system for VeylCore (it replaces `veyl_drugs`): buy supplies, gather, p
 
 The three branches run on the same engines (placement, plants, workstation queues, properties, progression); each only adds its own config (`config/botanical.lua`, `config/field_operations.lua`, `config/supplier_operations.lua`) and its own actions. Switch a branch off with `Branches.<name>.enabled` in `config/main.lua`. Nothing in the UI is a placeholder: every button works.
 
-What is not built: group runs for suppliers (a run is one player), and a stamina penalty for the hazard (it is health damage only).
+Not built: dispute or war mechanics between crews over territory (control is by influence only).
 
-`veyl_drugs` is a separate, older resource and keeps running untouched. The two share nothing (own tables, items and UI), so you can run both, or drop `veyl_drugs` later.
+`veyl_drugs` is gone: its code, UI package and docs were deleted, and its items that nothing else uses were removed from `veyl_inventory`. Its database tables were left alone so you can look at or export the old data first. When you do not need it, drop them: `DROP TABLE IF EXISTS veyl_drug_plants, veyl_drug_logs, veyl_drug_supplier_stock, veyl_drug_equipment, veyl_drug_crafts;`. Players still holding a removed item (for example Cannabis Seed) will see it as an unknown item.
 
 ## Install
 
@@ -94,7 +94,7 @@ Checked against the repository source:
 | Resource | Used | Verified in |
 |---|---|---|
 | `veyl_core` | `Veyl.Startup`, `Veyl.Migrate`, `Veyl.RegisterCallback(name, fn(src, citizenid, ...), { cooldown })`, `Veyl.Callback / CallbackTimeout / Await`, `Veyl.Ok / Err / NewId / Audit / Notify / NotifyResult`, `GetPlayerData / GetPlayerCoords / GetCitizenId / HasPermission`, `GetSourceByCitizenId`, durable `DebitOnce / CreditOnce` | `veyl_core/lib/*.lua`, `server/exports.lua` |
-| `veyl_lib` | `vlib.createScreen` (`open`, `send`, `close`, `isOpen`), `vlib.progress`, `vlib.alertDialog`, `vlib.inputDialog` | existing resources (`veyl_cityhall`, `veyl_drugs`) |
+| `veyl_lib` | `vlib.createScreen` (`open`, `send`, `close`, `isOpen`), `vlib.progress`, `vlib.alertDialog`, `vlib.inputDialog` | existing resources (`veyl_cityhall`) |
 | `veyl_inventory` | durable `GiveItem / TakeItem / CanCarry`, `GetItemCount`, `GetInventoryItems`, `RemoveItem` (stash id as target), `RegisterStash` with `authorize`, `RegisterUseHandler`, `openInventory('stash', id)`, item definitions and metadata schemas in the inventory's own data files | `veyl_inventory/server/exports.lua`, `stashes.lua`, `client/ui.lua` |
 | `veyl_interact` | `AddPed`, `AddZone`, `Remove` | `veyl_interact/client.lua` |
 | `veyl_target` | `addSphereZone`, `removeZone`, `addLocalEntity`, `removeLocalEntity` | `veyl_target/client/main.lua` |
@@ -107,9 +107,19 @@ Natives used: placement ray tests, `CreateObject`, `RequestIpl`, routing buckets
 
 The server logic ran against a real MariaDB with VeylCore stubbed (120 checks): migrations, shop (price, stock, restock, level locks, forged names and quantities, cannot afford), gathering (distance, token, too-early finish, cooldown, one reward), plants (placement rules, caps, care, growth to ready, neglect, harvest quality metadata, failed-grant recovery, no double harvest), benches (placement, queue order, quality-first input use, cancel refunds, claim once, pack-up rules, restart), buyer (price by quality), laboratories (purchase, double-buy, entry, codes with lockout, staff roles and live access removal, upgrades with cost and cap, sell, buyback, transfer), police (disabled by default, raid timing, window, seizure), progression, and restarts. The tablet, shop, buyer and bench pages were clicked through in the preview (24 flows).
 
-Field and supplier branches add checks for: field points (range, per-point and per-player cooldown, token and minimum time), supplier runs (level, fee, hours, daily limit, pickup and drop distance, speed, expiry, one active run, cancel wait, idempotent delivery), skill-check tokens (single use, expiry, score clamp) and the hazard (exposure, protection, decay). The suite is 223 checks in all, including the admin farms and street sales.
+Field and supplier branches add checks for: field points (range, per-point and per-player cooldown, token and minimum time), supplier runs (level, fee, hours, daily limit, pickup and drop distance, speed, expiry, one active run, cancel wait, idempotent delivery), skill-check tokens (single use, expiry, score clamp) and the hazard (exposure, protection, decay). The suite is 266 checks in all, including the admin farms, street sales, market, crews, territories, regulars, group runs and staff tools.
 
 Not tested: in-game spawning, the placement preview, targeting, the interior teleport and IPL, and CEF rendering. Try these on a development server first.
+
+## Market, territories, regulars, crews and staff tools
+
+- **Market** (`server/market.lua`, `config/economy.lua`): every sale, at the buyer or on the street, pushes that item's price down (`Impact` per unit, never below `MinMult`) and the pressure drains over time (`RecoverPerHour`). A small daily swing makes prices differ from day to day. The buyer page and the tablet's **Street** page show the live price and whether demand is high, steady or the market is flooded.
+- **Territories:** areas on the map (`Territories.Areas`) change the price and how willing peds are. Street sales there build **heat** (peds get cagey, police alerts get likelier) which cools by itself, and add **influence** for your crew, or for you without one. Whoever has the most influence (above `MinToControl`) holds the area, and its members get `ControlBonus` on street prices there. Influence decays by a share each hour.
+- **Regulars:** a ped you sold to may want to deal with you again (`ChanceOnSale`). From the **Street** page you call one: the server picks a meeting spot in their area, you get a GPS point, and a private ped waits there (only you see them). They buy more than strangers and pay more as loyalty grows. A meeting works once, and each regular has a call cooldown.
+- **Crews** (**Crew** page): a leader and up to `MaxMembers`. Members can use each other's outdoor plants and benches (the leader can switch this off; labs keep their own access), members' XP pools into a crew level, and each crew level adds `SellBonusPerLevel` to what members get when selling. Create (costs `CreateCost`), invite someone nearby, accept, remove, leave (leadership passes on) and close are all server checked.
+- **Group supplier runs:** the person who starts a run can invite up to `Groups.MaxMembers - 1` people nearby from the Chemistry page. Everyone at the drop (within `Groups.DropRadius`) gets the kits, with `KitBonusPerExtra` more for each extra person. Only the leader loads and unloads the crate.
+- **Fumes:** from `Hazard.StaminaAt` exposure you cannot sprint or jump and tire faster, as well as the health damage.
+- **Staff tools (`/drugadmin`, `production.admin`):** besides farms, the menu has **Players** (who is online: their plants, benches, branch levels and crew; remove a plant, give or take XP, reset their cooldowns, read their log) and **Recent activity**. Every call re-checks the permission on the server and is logged.
 
 ## Admin farms (`/drugadmin`)
 

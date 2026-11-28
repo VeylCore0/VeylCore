@@ -50,7 +50,6 @@
 
 * [Crime](CRIME.md)
 * [Store robbery](ROBBERY.md)
-* [Drugs](DRUGS.md)
 
 ## Plans
 

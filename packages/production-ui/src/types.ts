@@ -22,18 +22,27 @@ export interface Property {
 export interface Properties { properties: Property[]; owned: number; maxOwned: number; upgrades: Record<string, Upgrade> }
 
 export interface Supplier { id: string; label: string; level: number; locked: boolean; fee: number; open: boolean; hours: number[]; runsLeft: number; minutes: number; kits: number[]; x: number; y: number }
-export interface Run { id: number; supplier: string; state: 'active' | 'picked'; kits: number; expiresAt: number; serverTime: number; pickup: { label: string; x: number; y: number; z: number }; drop?: { label: string; x: number; y: number; z: number } }
+export interface Group { leader: string; members: { id: string; name: string }[]; max: number }
+export interface Run { group?: Group; member?: boolean; id: number; supplier: string; state: 'active' | 'picked'; kits: number; expiresAt: number; serverTime: number; pickup: { label: string; x: number; y: number; z: number }; drop?: { label: string; x: number; y: number; z: number } }
 export interface SupplierState { suppliers: Supplier[]; run: Run | null; cancelWait: number }
+export interface MarketRow { item: string; label: string; base: number; price: number; mult: number; trend: 'high' | 'low' | 'steady'; street: boolean }
+export interface Territory { id: string; label: string; x: number; y: number; price: number; accept: number; heat: number; controller?: string | null; controlled: boolean; influence: number; bonus: number }
+export interface Regular { id: number; name: string; territory: string; loyalty: number; sales: number; bonus: number; wait: number }
+export interface StreetState { market: MarketRow[]; territories: Territory[]; regulars: Regular[]; meet?: { x: number; y: number } | null }
+export interface CrewState {
+  enabled: boolean; createCost: number; max: number; invite?: { crew: string; from: string } | null;
+  crew?: { name: string; xp: number; level: number; nextXp?: number; floor: number; share: boolean; leader: boolean; bonus: number; members: { id: string; name: string; leader: boolean; me: boolean }[] } | null;
+}
 export interface Activity { kind: string; text: string; at: number }
 export interface TabletState {
   player: { name: string }; progress: Progress; plants: PlantStatus[]; varieties: Variety[]; workstations: Bench[]; properties: Properties; gathering: Spot[];
-  supplier: SupplierState; shops: { id: string; label: string; branch: string; x: number; y: number }[]; exposure: number;
+  street: StreetState; crew: CrewState; supplier: SupplierState; shops: { id: string; label: string; branch: string; x: number; y: number }[]; exposure: number;
   recent: Activity[]; police: { enabled: boolean; dispatch: boolean; isPolice: boolean };
   branches: Record<string, { label: string; icon: string; color: string; enabled: boolean }>; ui: { Brand: string; Accent: string; Accent2: string; Currency: string };
   tiers: { max: number; label: string; mult: number }[]; levelNames: string[]; itemLabels: Record<string, string>; serverTime: number;
 }
 
 export interface ShopItem { item: string; label: string; price: number; stock: number; max: number; level: number; locked: boolean }
-export interface ShopView { id?: string; label?: string; items: ShopItem[]; sell: { item: string; label: string; base: number }[]; quality: { max: number; label: string; mult: number }[]; restockMinutes: number }
+export interface ShopView { id?: string; label?: string; items: ShopItem[]; sell: { item: string; label: string; base: number; price?: number; trend?: 'high' | 'low' | 'steady' }[]; quality: { max: number; label: string; mult: number }[]; restockMinutes: number }
 
 export type View = { view: 'tablet'; data: { state: TabletState; page?: string } } | { view: 'shop' | 'buyer'; data: ShopView } | { view: 'bench'; data: Bench };

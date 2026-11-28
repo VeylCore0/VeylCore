@@ -55,6 +55,36 @@ function props() {
 }
 
 let supRun: any = null;
+let crewOn = false;
+let crewShare = true;
+function streetState() {
+  return {
+    market: [
+      { item: 'prod_veylx', label: 'Veyl-X', base: 420, price: 463, mult: 1.1, trend: 'high', street: true },
+      { item: 'prod_lsd', label: 'LSD Tabs', base: 210, price: 205, mult: 0.98, trend: 'steady', street: true },
+      { item: 'prod_batch_pack', label: 'Bagged Meth', base: 240, price: 132, mult: 0.55, trend: 'low', street: true },
+      { item: 'prod_pack', label: 'Bagged Weed', base: 180, price: 176, mult: 0.98, trend: 'steady', street: true },
+      { item: 'prod_leaf', label: 'Weed Bud', base: 28, price: 29, mult: 1.03, trend: 'steady', street: false },
+    ],
+    territories: [
+      { id: 'strawberry', label: 'Strawberry', x: 80, y: -1680, price: 1, accept: 1, heat: 12, controller: null, controlled: false, influence: 4, bonus: 10 },
+      { id: 'vinewood', label: 'Vinewood', x: 300, y: 200, price: 1.2, accept: 0.85, heat: 64, controller: 'You', controlled: true, influence: 130, bonus: 10 },
+      { id: 'sandy', label: 'Sandy Shores', x: 1850, y: 3700, price: 0.9, accept: 1.25, heat: 0, controller: 'Night Owls', controlled: false, influence: 0, bonus: 10 },
+    ],
+    regulars: [
+      { id: 1, name: 'Marcus', territory: 'Vinewood', loyalty: 9, sales: 24, bonus: 9, wait: 0 },
+      { id: 2, name: 'Camila', territory: 'Strawberry', loyalty: 3, sales: 6, bonus: 3, wait: 1200 },
+    ],
+    meet: null,
+  };
+}
+function crewState() {
+  return {
+    enabled: true, createCost: 2500, max: 8, invite: null,
+    crew: crewOn ? { name: 'Alpha Crew', xp: 950, level: 3, nextXp: 3000, floor: 1200, share: crewShare, leader: true, bonus: 2,
+      members: [{ id: 'PA', name: 'Alex Morgan', leader: true, me: true }, { id: 'PB', name: 'Jamie Cole', leader: false, me: false }] } : null,
+  };
+}
 function supplierState() {
   return {
     suppliers: [
@@ -70,9 +100,9 @@ export function prodState() {
   const floor = LEVELS[lv - 1], next = LEVELS[lv];
   return {
     player: { name: 'Alex Morgan' },
-    progress: { branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', xp, level: lv, levelName: NAMES[lv - 1], nextXp: next, floor, progress: next ? (xp - floor) / (next - floor) : 1 },
-      field: { label: 'Field Operations', icon: 'compass', color: '#5ab0ff', xp: 220, level: 2, levelName: NAMES[1], nextXp: 360, floor: 120, progress: 0.42 },
-      supplier: { label: 'Supplier Operations', icon: 'truck', color: '#f2b443', xp: 90, level: 1, levelName: NAMES[0], nextXp: 120, floor: 0, progress: 0.75 } },
+    progress: { branches: { botanical: { label: 'Weed', icon: 'leaf', color: '#7bd88f', xp, level: lv, levelName: NAMES[lv - 1], nextXp: next, floor, progress: next ? (xp - floor) / (next - floor) : 1 },
+      field: { label: 'Coke & Mushrooms', icon: 'compass', color: '#5ab0ff', xp: 220, level: 2, levelName: NAMES[1], nextXp: 360, floor: 120, progress: 0.42 },
+      supplier: { label: 'Chemistry', icon: 'truck', color: '#f2b443', xp: 90, level: 1, levelName: NAMES[0], nextXp: 120, floor: 0, progress: 0.75 } },
       stats: { plants_planted: 14, plants_harvested: 9, leaves_harvested: 38, gathered: 21, batches_completed: 7, purchases: 12, sales: 5, money_spent: 3180, money_earned: 4260 },
       reputation: { level: lv, name: NAMES[lv - 1], xp, next, floor } },
     plants,
@@ -90,13 +120,13 @@ export function prodState() {
       { id: 'canyon_floor', label: 'Canyon floor', branch: 'field', points: 5, ready: 5, level: 3, locked: lv < 3, cooldown: 0, x: -1200, y: 4300 },
       { id: 'paleto_a', label: 'Overgrown ditch', branch: 'botanical', points: 1, ready: 1, level: 2, locked: lv < 2, cooldown: 0, x: -216, y: 6330 },
     ],
-    supplier: supplierState(), exposure: 0,
+    supplier: supplierState(), exposure: 0, street: streetState(), crew: crewState(),
     shops: [{ id: 'garden_supplier', label: 'Garden Supplier', branch: 'botanical', x: 0, y: 0 }, { id: 'field_outfitter', label: 'Field Outfitter', branch: 'field', x: 0, y: 0 }, { id: 'supply_dealer', label: 'Supply Dealer', branch: 'supplier', x: 0, y: 0 }],
     recent: [
       { kind: 'harvest', text: 'harvested ember x4 (quality 72)', at: now() - 300 }, { kind: 'craft', text: 'started blend on bench #1', at: now() - 900 }, { kind: 'purchase', text: 'bought 3x prod_seed_ember for $120', at: now() - 3600 },
     ],
     police: { enabled: false, dispatch: false, isPolice: false },
-    branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', enabled: true }, field: { label: 'Field Operations', icon: 'compass', color: '#5ab0ff', enabled: true }, supplier: { label: 'Supplier Operations', icon: 'truck', color: '#f2b443', enabled: true } },
+    branches: { botanical: { label: 'Weed', icon: 'leaf', color: '#7bd88f', enabled: true }, field: { label: 'Coke & Mushrooms', icon: 'compass', color: '#5ab0ff', enabled: true }, supplier: { label: 'Chemistry', icon: 'truck', color: '#f2b443', enabled: true } },
     ui: { Brand: 'VEYL PRODUCTION', Accent: '#8b5fd6', Accent2: '#3f8bff', Currency: '$' },
     tiers: [{ max: 24, label: 'Poor', mult: 0.6 }, { max: 49, label: 'Standard', mult: 1 }, { max: 74, label: 'Good', mult: 1.3 }, { max: 89, label: 'Excellent', mult: 1.6 }, { max: 100, label: 'Flawless', mult: 2 }],
     levelNames: NAMES, itemLabels: L, serverTime: now(),
@@ -112,7 +142,7 @@ export function prodShop() {
       { item: 'prod_seed_violet', label: 'Silverleaf Seeds', price: 110, stock: 20, max: 20, level: 2, locked: lvOf() < 2 }, { item: 'prod_seed_azure', label: 'Nightbloom Seeds', price: 260, stock: 0, max: 10, level: 4, locked: lvOf() < 4 },
       { item: 'prod_workstation', label: 'Weed Table', price: 2500, stock: 4, max: 5, level: 2, locked: lvOf() < 2 },
     ],
-    sell: [{ item: 'prod_pack', label: 'Bagged Weed', base: 180 }, { item: 'prod_blend', label: 'Trimmed Bud', base: 70 }, { item: 'prod_leaf', label: 'Weed Bud', base: 28 }, { item: 'prod_wild_herb', label: 'Wild Herbs', base: 12 }],
+    sell: [{ item: 'prod_pack', label: 'Packed Product', base: 180, price: 176, trend: 'steady' }, { item: 'prod_blend', label: 'Trimmed Bud', base: 70 }, { item: 'prod_leaf', label: 'Weed Bud', base: 28 }, { item: 'prod_wild_herb', label: 'Wild Herbs', base: 12 }],
     quality: [{ max: 24, label: 'Poor', mult: 0.6 }, { max: 49, label: 'Standard', mult: 1 }, { max: 74, label: 'Good', mult: 1.3 }, { max: 89, label: 'Excellent', mult: 1.6 }, { max: 100, label: 'Flawless', mult: 2 }],
     restockMinutes: 30,
   };
@@ -125,6 +155,11 @@ export function prodApi(name: string, a: unknown[]): NuiResponse | undefined {
     case 'shopBuy': { const item = prodShop().items.find((i) => i.item === a[1]); if (!item) return err('INVALID_INPUT', 'Bad request'); const cost = item.price * Number(a[2]); if (cost > cash) return err('INSUFFICIENT_FUNDS', 'You cannot afford that'); cash -= cost; return ok(undefined, `Bought ${a[2]}x ${item.label} for $${cost}`); }
     case 'runStart': supRun = { id: 1, supplier: String(a[0]), state: 'active', kits: 4, expiresAt: now() + 1200, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 } }; return ok({ run: supRun }, 'Run started: head to the Container yard');
     case 'runCancel': supRun = null; return ok(undefined, 'Run dropped');
+    case 'regularCall': return ok({ token: 't', x: 120.7, y: -1775.2, z: 29.5, name: 'Marcus', model: 'a_m_y_skater_01', seconds: 900, radius: 6 }, 'Marcus will meet you in Vinewood');
+    case 'crewCreate': crewOn = true; return ok(crewState(), 'Alpha Crew is yours');
+    case 'crewShare': crewShare = a[0] === true; return ok(crewState(), crewShare ? 'Sharing is on' : 'Sharing is off');
+    case 'crewLeave': case 'crewDisband': crewOn = false; return ok(crewState(), 'You left the crew');
+    case 'crewKick': case 'crewInvite': case 'groupInvite': return ok(undefined, 'Done');
     case 'shopSell': return ok({ total: 360, sold: Number(a[1]) }, `Sold ${a[1]} for $360`);
     case 'wsOpen': return ok(bench());
     case 'wsStart': { if (batches.length >= 3) return err('LIMIT', 'The queue is full'); const r = recipes.find((x) => x.id === a[1]); if (!r || r.locked) return err('LEVEL_REQUIRED', 'Needs a higher level'); const last = batches[batches.length - 1]?.endsAt ?? now(); batches = [...batches, { id: Date.now() % 100000, recipe: r.id, label: r.label, state: 'queued', startsAt: last, endsAt: last + r.seconds, quality: 66, tier: 'Good', output: r.output, stage: null, progress: 0 }]; return ok(bench(), `${r.label} queued`); }
@@ -146,12 +181,13 @@ export function prodApi(name: string, a: unknown[]): NuiResponse | undefined {
 }
 
 export const prodDemo = {
-  reset() { supRun = null; xp = 410; cash = 24000; owned = true; locked = true; ups = { storage: 1 }; members = [{ id: 'PB', role: 'employee', name: 'Jamie Cole' }]; },
+  reset() { crewOn = false; crewShare = true; supRun = null; xp = 410; cash = 24000; owned = true; locked = true; ups = { storage: 1 }; members = [{ id: 'PB', role: 'employee', name: 'Jamie Cole' }]; },
   tablet(page?: string) { devEmit('production:open', { view: 'tablet', data: { state: prodState(), page } }); },
   shop() { devEmit('production:open', { view: 'shop', data: prodShop() }); },
   buyer() { devEmit('production:open', { view: 'buyer', data: prodShop() }); },
   bench() { devEmit('production:open', { view: 'bench', data: bench() }); },
   placement(valid: boolean) { devEmit('production:placement', { visible: true, valid, reason: valid ? undefined : 'Too close to something else', label: 'Violet Haze' }); },
+  crewOn() { crewOn = true; },
   run() { supRun = { id: 1, supplier: 'harbour_contact', state: 'picked', kits: 4, expiresAt: now() + 900, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 }, drop: { label: 'Auto yard', x: 1017, y: -2528, z: 28 } }; },
   hazard(level: number) { devEmit('production:hazard', { level, warn: 40 }); },
   empty() { xp = 0; plants = []; batches = []; owned = false; },

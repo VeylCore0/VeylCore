@@ -1,7 +1,7 @@
 import type { NuiResponse } from '@veyl/ui';
 import type { TabletState } from './types';
 
-export type Page = 'dashboard' | 'botanical' | 'field' | 'supplier' | 'production' | 'properties' | 'progression' | 'stats';
+export type Page = 'dashboard' | 'botanical' | 'field' | 'supplier' | 'street' | 'crew' | 'production' | 'properties' | 'progression' | 'stats';
 
 /** What every page gets: the server's state and the few things it may do. All of them go through the server. */
 export interface Ctx {

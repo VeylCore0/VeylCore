@@ -78,8 +78,8 @@ export function Dashboard({ c }: { c: Ctx }) {
 const STATE_TONE = { ready: 'ok', dead: 'bad', growing: 'accent' } as const;
 
 const BRANCH_COPY: Record<string, { title: string; blurb: string; gather: string; empty: string }> = {
-  botanical: { title: 'Botanical', blurb: 'Grow, gather and prepare. Tend plants by walking up to them.', gather: 'Gathering', empty: 'Buy seeds and a planter at the supplier, then use the seeds from your inventory.' },
-  field: { title: 'Field Operations', blurb: 'Work the wild ground: search the field zones, plant what you find and tend it away from town.', gather: 'Field zones', empty: 'Search a field zone for seeds, or buy them at the outfitter, then use them from your inventory.' },
+  botanical: { title: 'Weed', blurb: 'Grow, gather, trim and bag. Tend plants by walking up to them.', gather: 'Gathering', empty: 'Buy seeds and a planter at the supplier, then use the seeds from your inventory.' },
+  field: { title: 'Coke & Mushrooms', blurb: 'Work the wild ground: search the field zones, grow coca and mushrooms and tend them away from town.', gather: 'Field zones', empty: 'Search a field zone for seeds, or buy them at the outfitter, then use them from your inventory.' },
 };
 
 export function Botanical({ c, branch = 'botanical' }: { c: Ctx; branch?: 'botanical' | 'field' }) {
@@ -193,7 +193,7 @@ export function Progression({ c }: { c: Ctx }) {
 const STATS: [string, string, string, string][] = [
   ['plants_planted', 'Plants planted', 'leaf', '#7bd88f'], ['plants_harvested', 'Plants harvested', 'check', '#5fd68c'], ['leaves_harvested', 'Leaves harvested', 'leaf', '#4aa8ff'],
   ['gathered', 'Times gathered', 'pin', '#f2b443'], ['batches_completed', 'Batches finished', 'gear', '#c58bff'], ['purchases', 'Purchases', 'bag', '#ef7a3a'],
-  ['sales', 'Sales', 'money', '#5fd68c'], ['money_spent', 'Money spent', 'money', '#e0576a'], ['money_earned', 'Money earned', 'money', '#5fd68c'],
+  ['sales', 'Sales', 'money', '#5fd68c'], ['street_sales', 'Street sales', 'bag', '#f2b443'], ['runs_completed', 'Supply runs done', 'bag', '#c58bff'], ['searched', 'Searches', 'pin', '#5ab0ff'], ['money_spent', 'Money spent', 'money', '#e0576a'], ['money_earned', 'Money earned', 'money', '#5fd68c'],
 ];
 export function Stats({ c }: { c: Ctx }) {
   const st = c.s.progress.stats;
@@ -213,12 +213,13 @@ const hourText = (h: number[]) => (h[0] === 0 && h[1] === 24 ? 'any hour' : `${S
 
 export function Supplier({ c }: { c: Ctx }) {
   const { s } = c;
+  const [near, setNear] = useState<{ id: number; name: string }[] | null>(null);
   const sup = s.supplier;
   const run = sup.run;
   const left = Math.max(0, (run?.expiresAt ?? 0) - s.serverTime);
   return (
     <div className="pr-page">
-      <div className="pr-page-head"><div><h2>Supplier Operations</h2><p>Take a run from a contact: collect a crate, deliver it before time runs out and get paid in supply kits.</p></div></div>
+      <div className="pr-page-head"><div><h2>Chemistry</h2><p>Take a run from a contact: collect a crate, deliver it before time runs out and get paid in supply kits.</p></div></div>
       {run && (
         <section className="pr-card pr-run">
           <h4 className="pr-h">CURRENT RUN</h4>
@@ -227,9 +228,19 @@ export function Supplier({ c }: { c: Ctx }) {
             <div className="pr-grow"><strong>{run.state === 'active' ? `Collect the crate: ${run.pickup.label}` : `Deliver it: ${run.drop?.label ?? ''}`}</strong><em>About {Math.ceil(left / 60)} min left · pays up to {run.kits} kits</em></div>
             <Chip tone={run.state === 'active' ? 'accent' : 'ok'}>{run.state === 'active' ? 'Pickup' : 'Carrying'}</Chip>
           </div>
+          {run.group && (
+            <div className="pr-note"><Ico name="users" size={14} />Riding with {run.group.members.length ? run.group.members.map((m) => m.name).join(', ') : 'nobody yet'} (up to {run.group.max} people). Everyone at the drop is paid, with a bonus for each extra person.</div>
+          )}
+          {!run.member && run.group && run.group.members.length + 1 < run.group.max && (
+            <div className="pr-card-foot">
+              {near === null ? <Button kind="ghost" onClick={async () => { const r = await c.run('nearbyPlayers'); setNear(((r as { data?: { id: number; name: string }[] }).data) ?? []); }}><Ico name="users" size={14} />Invite someone nearby</Button>
+                : near.length === 0 ? <span className="pr-sub">Nobody is close enough</span>
+                : near.map((p) => <Button key={p.id} kind="ghost" onClick={() => { void c.run('groupInvite', p.id); setNear(null); }}>{p.name}</Button>)}
+            </div>
+          )}
           <div className="pr-card-foot">
             <Button kind="ghost" onClick={() => { const p = run.state === 'active' ? run.pickup : run.drop; if (p) c.waypoint(p.x, p.y); }}><Ico name="pin" size={14} />Set GPS</Button>
-            <Button kind="ghost" onClick={() => void c.run('runCancel')}><Ico name="x" size={14} />Drop this run</Button>
+            <Button kind="ghost" onClick={() => void c.run('runCancel')}><Ico name="x" size={14} />{run.member ? 'Leave this run' : 'Drop this run'}</Button>
           </div>
         </section>
       )}
@@ -245,6 +256,117 @@ export function Supplier({ c }: { c: Ctx }) {
         ))}
       </ul>
       <p className="pr-note"><Ico name="info" size={14} />Speak to the contact in person to start a run. Kits go into the chemistry recipes at a station.</p>
+    </div>
+  );
+}
+
+const TREND = { high: ['ok', 'Demand is high'], low: ['bad', 'Flooded'], steady: ['mute', 'Steady'] } as const;
+
+export function Street({ c }: { c: Ctx }) {
+  const st = c.s.street;
+  const [tab, setTab] = useState<'market' | 'territories' | 'regulars'>('market');
+  return (
+    <div className="pr-page">
+      <div className="pr-page-head"><div><h2>Street</h2><p>What things are worth, who runs which streets, and the people who deal with you again.</p></div></div>
+      <div className="pr-tabs" role="tablist">
+        {(['market', 'territories', 'regulars'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={cx(tab === t && 'on')} onClick={() => setTab(t)}>{t === 'market' ? 'Market' : t === 'territories' ? 'Territories' : `Regulars (${st.regulars.length})`}</button>)}
+      </div>
+      {tab === 'market' && (
+        <ul className="pr-list">
+          {st.market.map((m) => (
+            <li key={m.item}>
+              <div className="pr-halo sm"><ItemImg item={m.item} size={40} /></div>
+              <span className="pr-list-main"><strong>{m.label}</strong><em>{usd(m.price)} now (base {usd(m.base)}, ×{m.mult.toFixed(2)}){m.street ? ' · sells on the street too' : ''}</em></span>
+              <Chip tone={TREND[m.trend][0]}>{TREND[m.trend][1]}</Chip>
+            </li>
+          ))}
+        </ul>
+      )}
+      {tab === 'territories' && (
+        <>
+          <ul className="pr-list">
+            {st.territories.map((t) => (
+              <li key={t.id}>
+                <Tile icon="pin" color={t.controlled ? '#5fd68c' : '#f2b443'} />
+                <span className="pr-list-main"><strong>{t.label}</strong><em>Prices ×{t.price.toFixed(2)} · peds ×{t.accept.toFixed(2)} willing · heat {t.heat}% · {t.controller ? `held by ${t.controller}` : 'nobody holds it'} · your influence {t.influence}</em>
+                  <Bar value={t.heat / 100} color={t.heat > 60 ? '#e0576a' : t.heat > 30 ? '#f2b443' : '#5fd68c'} label="Heat" /></span>
+                {t.controlled && <Chip tone="ok">+{t.bonus}% prices</Chip>}
+                <Button kind="ghost" onClick={() => c.waypoint(t.x, t.y)}><Ico name="pin" size={14} />GPS</Button>
+              </li>
+            ))}
+          </ul>
+          <p className="pr-note"><Ico name="info" size={14} />Street sales build heat (peds get cagey, police alerts get likelier) and influence. The crew with the most influence holds the area and gets a price bonus there.</p>
+        </>
+      )}
+      {tab === 'regulars' && (st.regulars.length === 0 ? <Empty icon="users" title="No regulars yet" text="Sell on the street. Some peds will want to deal with you again." /> : (
+        <ul className="pr-list">
+          {st.regulars.map((r) => (
+            <li key={r.id}>
+              <Tile icon="users" color="#c58bff" />
+              <span className="pr-list-main"><strong>{r.name}</strong><em>{r.territory} · {r.sales} sold · loyalty {r.loyalty} (+{r.bonus}% price) · buys more than strangers</em></span>
+              {r.wait > 0 ? <Chip tone="mute">Back in {Math.ceil(r.wait / 60)} min</Chip> : <Button kind="primary" onClick={() => void c.run('regularCall', r.id)}>Call</Button>}
+            </li>
+          ))}
+        </ul>
+      ))}
+      {st.meet && <p className="pr-note"><Ico name="pin" size={14} />A meeting is set. GPS points to it.</p>}
+    </div>
+  );
+}
+
+export function Crew({ c }: { c: Ctx }) {
+  const cr = c.s.crew;
+  const [name, setName] = useState('');
+  const [near, setNear] = useState<{ id: number; name: string }[] | null>(null);
+  if (!cr.enabled) return <div className="pr-page"><Empty icon="users" title="Crews are off" text="This server has crews switched off." /></div>;
+  if (!cr.crew) {
+    return (
+      <div className="pr-page">
+        <div className="pr-page-head"><div><h2>Crew</h2><p>Start a crew to share plants and benches, level up together and hold territory.</p></div></div>
+        {cr.invite && (
+          <section className="pr-card"><h4 className="pr-h">INVITE</h4>
+            <p>{cr.invite.from} invited you to <b>{cr.invite.crew}</b>.</p>
+            <div className="pr-card-foot"><Button onClick={() => void c.run('crewAnswer', false)}>Decline</Button><Button kind="primary" onClick={() => void c.run('crewAnswer', true)}>Join</Button></div>
+          </section>
+        )}
+        <section className="pr-card"><h4 className="pr-h">START A CREW</h4>
+          <input className="pr-input" value={name} maxLength={20} placeholder="Crew name (3 to 20 letters and numbers)" onChange={(e) => setName(e.target.value)} />
+          <div className="pr-card-foot"><Button kind="primary" disabled={name.trim().length < 3} onClick={() => void c.run('crewCreate', name)}>Register for {usd(cr.createCost)}</Button></div>
+        </section>
+      </div>
+    );
+  }
+  const k = cr.crew;
+  return (
+    <div className="pr-page">
+      <section className="pr-banner slim">
+        <div className="pr-banner-text"><small>CREW</small><h2>{k.name}</h2><Bar value={k.nextXp ? (k.xp - k.floor) / (k.nextXp - k.floor) : 1} /><em>Level {k.level} · {k.xp.toLocaleString()} XP{k.nextXp ? ` · ${(k.nextXp - k.xp).toLocaleString()} to go` : ''} · +{k.bonus}% on what members sell</em></div>
+        <Ring value={k.nextXp ? (k.xp - k.floor) / (k.nextXp - k.floor) : 1} size={84} stroke={7}><b>{k.level}</b><i>LEVEL</i></Ring>
+      </section>
+      <section className="pr-card"><h4 className="pr-h">MEMBERS ({k.members.length}/{cr.max})</h4>
+        <ul className="pr-list">
+          {k.members.map((m) => (
+            <li key={m.id}><Tile icon="users" color={m.leader ? '#f2b443' : '#4aa8ff'} /><span className="pr-list-main"><strong>{m.name}{m.me ? ' (you)' : ''}</strong><em>{m.leader ? 'Leader' : 'Member'}</em></span>
+              {k.leader && !m.me && <Button kind="ghost" onClick={() => void c.run('crewKick', m.id)}>Remove</Button>}</li>
+          ))}
+        </ul>
+        {k.leader && (
+          <div className="pr-card-foot">
+            {near === null ? <Button kind="ghost" onClick={async () => { const r = await c.run('nearbyPlayers'); setNear(((r as { data?: { id: number; name: string }[] }).data) ?? []); }}><Ico name="plus" size={14} />Invite someone nearby</Button>
+              : near.length === 0 ? <span className="pr-sub">Nobody is close enough</span>
+              : near.map((p) => <Button key={p.id} kind="ghost" onClick={() => { void c.run('crewInvite', p.id); setNear(null); }}>{p.name}</Button>)}
+          </div>
+        )}
+      </section>
+      <section className="pr-card"><h4 className="pr-h">SHARING</h4>
+        <p className="pr-mute">When on, crew mates can water, feed, harvest and use each other's outdoor plants and benches. Laboratories have their own access.</p>
+        {k.leader && <div className="pr-card-foot"><Button onClick={() => void c.run('crewShare', !k.share)}>{k.share ? 'Turn sharing off' : 'Turn sharing on'}</Button></div>}
+        {!k.leader && <Chip tone={k.share ? 'ok' : 'mute'}>{k.share ? 'Sharing is on' : 'Sharing is off'}</Chip>}
+      </section>
+      <div className="pr-card-foot">
+        <Button kind="ghost" onClick={() => void c.run('crewLeave')}>Leave the crew</Button>
+        {k.leader && <Button kind="ghost" onClick={() => { if (window.confirm('Close the crew for everyone?')) void c.run('crewDisband'); }}>Close the crew</Button>}
+      </div>
     </div>
   );
 }
