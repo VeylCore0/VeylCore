@@ -14,6 +14,7 @@ import { App as DrugsApp } from '../../drugs-ui/src/App';
 import { App as ApartmentsApp } from '../../apartments-ui/src/App';
 import { App as DoorsApp } from '../../doorlocks-ui/src/App';
 import { App as PhoneApp } from '../../phone-ui/src/App';
+(window as unknown as { __veylVehicleImages?: string }).__veylVehicleImages = '/vehicles';
 import { App as CityhallApp } from '../../cityhall-ui/src/App';
 import { App as ManagementApp } from '../../management-ui/src/App';
 import { App as EmotesApp } from '../../emotes-ui/src/App';
@@ -81,6 +82,7 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (isApt(screen)) return aptHandler(action, payload, mode);
     if (isMisc(screen)) return miscHandler(screen, action, payload);
     if (screen === 'phone') {
+      if (action === 'valetSpot') return { ok: true, data: { x: 214, y: -806, z: 30, h: 90 } };
       if (action === 'close') { phoneClose(); return { ok: true }; }
       if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };
       if (action === 'location') return { ok: true, data: { label: 'Legion Square, Pillbox Hill' } };

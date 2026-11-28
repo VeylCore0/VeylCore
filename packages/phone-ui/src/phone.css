@@ -1,3 +1,4 @@
+@import './apps.css';
 /* veyl_phone UI. Everything is prefixed ph-. Sizes are in px: the whole device is scaled with --ph-scale. */
 
 .ph-root {

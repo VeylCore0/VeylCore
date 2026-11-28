@@ -1,6 +1,7 @@
 // Preview-only phone backend: an in-memory stand-in for veyl_phone's server (same names, shapes and pushes as docs/PHONE.md),
 // so every screen of the phone UI can be used in the browser. Never shipped to FiveM.
 import { devEmit, type NuiResponse } from '@veyl/ui';
+import { appsApi, appsReset } from './appsMock';
 import type { App, Call, Contact, Conversation, Hello, MailFull, MailItem, Message, Notification, Recent, Settings } from '../../phone-ui/src/types';
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -20,6 +21,20 @@ const APPS: Omit<App, 'installed'>[] = [
   { id: 'mail', label: 'Mail', core: true, dock: false }, { id: 'store', label: 'App Store', core: true, dock: false },
   { id: 'calculator', label: 'Calculator', core: false, dock: false, description: 'A simple calculator.' },
   { id: 'clock', label: 'Clock', core: false, dock: false, description: 'Time, stopwatch and timer.' },
+  { id: 'bank', label: 'Bank', core: false, dock: false, description: 'Your balance and activity, and send money to a phone number or account.' },
+  { id: 'garage', label: 'Garage', core: false, dock: false, description: 'Every vehicle you own, where it is, and a waypoint to it.' },
+  { id: 'maps', label: 'Maps', core: false, dock: false, description: 'Places, businesses and services, GPS, and sharing your live location.' },
+  { id: 'services', label: 'Services', core: false, dock: false, description: 'Call police, EMS, mechanics and taxis.' },
+  { id: 'camera', label: 'Camera', core: false, dock: false, description: 'Take photos and keep them in your gallery.' },
+  { id: 'jobs', label: 'Jobs', core: false, dock: false, description: 'Your jobs, clock in and out, the city job board.' },
+  { id: 'bills', label: 'Bills', core: false, dock: false, description: 'Pay invoices and citations, standing orders, your credit score.' },
+  { id: 'voicemail', label: 'Voicemail', core: false, dock: false, description: 'Messages people left when you could not answer.' },
+  { id: 'news', label: 'News', core: false, dock: false, description: 'Weazel News stories and breaking alerts.' },
+  { id: 'flock', label: 'Flock', core: false, dock: false, description: 'Short posts from around the city.' },
+  { id: 'market', label: 'Marketplace', core: false, dock: false, description: 'Buy and sell with other residents.' },
+  { id: 'notes', label: 'Notes', core: false, dock: false, description: 'Private notes saved to your phone.' },
+  { id: 'music', label: 'Music', core: false, dock: false, description: 'Radio stations in your ears, or out loud for everyone nearby.' },
+  { id: 'racing', label: 'Racing', core: false, dock: false, description: 'Record tracks, host and join races, and the leaderboards.' },
 ];
 const EXTERNAL = [
   { id: 'apartments', label: 'Apartments', icon: 'home', color: '#8b63d6' }, { id: 'invoices', label: 'Invoices', icon: 'receipt', color: '#d08b4f' },
@@ -56,7 +71,8 @@ const msg = (conversationId: number, sender: string, body: string, ago: number, 
 function reset(empty: boolean) {
   seq = 100; blocked = []; call = null; callTimers.forEach(clearTimeout); callTimers = [];
   sec = freshSec();
-  settings = { wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black', volume: 70, brightness: 100, size: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: ['calculator', 'clock'], home: [] };
+  appsReset(empty);
+  settings = { wallpaper: 'default', accent: '#8b63d6', ringtone: 'default', notifySound: 'default', theme: 'dark', case: 'black', volume: 70, brightness: 100, size: 100, dnd: false, airplane: false, silent: false, streamer: false, installed: ['calculator', 'clock', 'bank', 'garage', 'maps', 'services', 'camera', 'jobs', 'bills', 'voicemail', 'news', 'flock'], home: [] };
   Object.keys(badges).forEach((k) => delete badges[k]);
   if (empty) { contacts = []; convs = []; mail = []; notifs = []; recents = []; return; }
   contacts = [
@@ -397,7 +413,7 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
     }
     case 'mailRead': { const m = mail.find((x) => x.id === a[0]); if (!m) return err('NOT_FOUND', 'Mail not found'); m.read = true; return ok({ ...m, unread: mailUnread() }); }
     case 'mailDelete': mail = mail.filter((m) => m.id !== a[0]); return ok({ unread: mailUnread() }, 'Deleted');
-    default: return err('NOT_IMPLEMENTED', `No demo handler for ${name}`);
+    default: return appsApi(name, a) ?? err('NOT_IMPLEMENTED', `No demo handler for ${name}`);
   }
 }
 

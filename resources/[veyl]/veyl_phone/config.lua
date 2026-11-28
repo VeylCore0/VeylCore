@@ -22,6 +22,20 @@ PhoneConfig = {
         { id = 'store', label = 'App Store', core = true },
         { id = 'calculator', label = 'Calculator', preinstalled = true, description = 'A simple calculator.' },
         { id = 'clock', label = 'Clock', preinstalled = true, description = 'Time, stopwatch and timer.' },
+        { id = 'bank', label = 'Bank', preinstalled = true, description = 'Your balance and activity, and send money to a phone number or account.' },
+        { id = 'garage', label = 'Garage', preinstalled = true, description = 'Every vehicle you own, where it is, and a waypoint to it. Valet brings it to you.' },
+        { id = 'maps', label = 'Maps', preinstalled = true, description = 'Places, businesses and services, GPS, and sharing your live location.' },
+        { id = 'services', label = 'Services', preinstalled = true, description = 'Call police, EMS, mechanics and taxis. On duty? See the queue.' },
+        { id = 'camera', label = 'Camera', preinstalled = true, description = 'Take photos (needs screenshot-basic) and keep them in your gallery.' },
+        { id = 'jobs', label = 'Jobs', preinstalled = true, description = 'Your jobs, clock in and out, the city job board and applications.' },
+        { id = 'bills', label = 'Bills', preinstalled = true, description = 'Pay invoices and citations, standing orders, your credit score.' },
+        { id = 'voicemail', label = 'Voicemail', preinstalled = true, description = 'Messages people left when you could not answer.' },
+        { id = 'news', label = 'News', preinstalled = true, description = 'Weazel News stories and breaking alerts.' },
+        { id = 'flock', label = 'Flock', preinstalled = true, description = 'Short posts from around the city. Follow people, reply, like and mention with @handle.' },
+        { id = 'market', label = 'Marketplace', description = 'Buy and sell with other residents. Post a listing and get messages or calls.' },
+        { id = 'notes', label = 'Notes', description = 'Private notes saved to your phone.' },
+        { id = 'music', label = 'Music', description = 'Radio stations in your ears, or out loud for everyone nearby.' },
+        { id = 'racing', label = 'Racing', description = 'Record tracks, host and join races, and the leaderboards.' },
     },
 
     -- Settings the UI may save (anything else is dropped by the server). First value = default for a new phone.
@@ -50,6 +64,60 @@ PhoneConfig = {
         RingSeconds = 30,
         ChannelBase = 5000,           -- pma-voice call channel = ChannelBase + call id
     },
+    -- ---- App settings ----
+    Flock = { PostLength = 280, PageSize = 20, PostCooldownMs = 5000, MaxMentions = 5 },
+    Bank = { MaxTransfer = 250000 },
+    Market = {
+        TitleLength = 48, BodyLength = 300, MaxPrice = 10000000, ListingDays = 7, MaxActive = 5, PageSize = 25,
+        Categories = { 'vehicles', 'items', 'services', 'property', 'other' },
+    },
+    Notes = { Max = 100, TitleLength = 48, BodyLength = 2000 },
+
+    -- Services app. dispatch = goes to veyl_dispatch as a call; otherwise on-duty members of the jobs get the request.
+    Services = {
+        { id = 'police', label = 'Police', jobs = { 'police' }, dispatch = 'police', icon = 'shield' },
+        { id = 'ems', label = 'EMS', jobs = { 'ambulance' }, dispatch = 'ems', icon = 'heart' },
+        { id = 'mechanic', label = 'Mechanic', jobs = { 'mechanic' }, icon = 'wrench' },
+        { id = 'taxi', label = 'Taxi', jobs = { 'taxi' }, icon = 'car' },
+        { id = 'beanmachine', label = 'Bean Machine', jobs = { 'beanmachine' }, icon = 'burger' },
+        { id = 'burgershot', label = 'Burger Shot', jobs = { 'burgershot' }, icon = 'burger' },
+    },
+    ServiceCooldownSeconds = 60,
+
+    -- Maps app: places everyone sees (label, category, coords). Saved places are per character.
+    MapPlaces = {
+        { label = 'City Hall', category = 'City', x = -265.0, y = -963.6 },
+        { label = 'Pillbox Hill Medical Center', category = 'Services', x = 308.2, y = -595.4 },
+        { label = 'Mission Row Police', category = 'Services', x = 441.8, y = -982.0 },
+        { label = 'LS Customs', category = 'Services', x = -347.3, y = -133.3 },
+        { label = 'Impound Lot', category = 'Services', x = 400.5, y = -1630.9 },
+        { label = 'Bean Machine', category = 'Food', x = -631.2, y = 233.5 },
+        { label = 'Burger Shot', category = 'Food', x = -1194.9, y = -893.9 },
+        { label = 'Premium Deluxe Motorsport', category = 'Vehicles', x = -56.5, y = -1096.6 },
+        { label = 'Starlite Motel', category = 'Housing', x = 319.0, y = -195.0 },
+        { label = 'Fish market', category = 'Jobs', x = -1612.5, y = -1028.8 },
+    },
+    ShareMinutes = { 15, 30, 60 },
+
+    Voicemail = { Max = 50, Length = 500 },
+
+    -- Phase 2 apps
+    Camera = { Max = 60, Quality = 0.55 },          -- photos per player; JPEG quality (lower = smaller rows)
+    Valet = { Fee = 250 },                           -- bank charge to have a garaged vehicle brought to you
+    Standing = { Max = 5, MaxAmount = 50000 },       -- standing orders per player and per payment
+    Music = {
+        SpeakerRange = 30.0,                         -- metres other players hear a phone playing out loud
+        -- Built-in stations are generated in the phone (no stream needed). Add internet radio with
+        -- { id = 'myradio', label = 'My Radio', url = 'https://...' } (the URL must allow cross-origin audio).
+        Stations = {
+            { id = 'veyl', label = 'Veyl Radio', style = 'synth' },
+            { id = 'lofi', label = 'Lo-Fi Beach', style = 'lofi' },
+            { id = 'night', label = 'Night Drive', style = 'night' },
+        },
+    },
+    News = { Jobs = { 'weazel' } },                  -- jobs allowed to publish (on duty)
+    Racing = { JoinRadius = 60.0 },                  -- metres from the start line to join a race
+
     -- Account (email + password, like an Apple ID) and PIN lock.
     Account = { Domain = 'veylid.com', UsernameMin = 3, UsernameMax = 24, PasswordMin = 6 },
     Lock = { GraceSeconds = 10, MaxAttempts = 5, LockoutSeconds = 300 },   -- reopen within the grace period without the PIN; 5 wrong tries lock it for 5 minutes

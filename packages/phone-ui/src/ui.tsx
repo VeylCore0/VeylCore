@@ -17,6 +17,20 @@ export const APP_LOOK: Record<string, { icon: string; color: string }> = {
   store: { icon: 'bag', color: '#3a7bf0' },
   calculator: { icon: 'calc', color: '#f08a2a' },
   clock: { icon: 'clock', color: '#2a2c36' },
+  bank: { icon: 'bank', color: '#1f9d6b' },
+  garage: { icon: 'car', color: '#3a7bf0' },
+  maps: { icon: 'map', color: '#34a853' },
+  services: { icon: 'shield', color: '#e0576a' },
+  camera: { icon: 'camera', color: '#5b5f6e' },
+  jobs: { icon: 'briefcase', color: '#b8782f' },
+  bills: { icon: 'receipt', color: '#2b9ee8' },
+  voicemail: { icon: 'mic', color: '#6a6cf0' },
+  news: { icon: 'note', color: '#d03a4a' },
+  flock: { icon: 'bird', color: '#2f8cf0' },
+  market: { icon: 'bag', color: '#ef7a3a' },
+  notes: { icon: 'note', color: '#e8b53b' },
+  music: { icon: 'music', color: '#ef3f6b' },
+  racing: { icon: 'flag', color: '#e8503a' },
 };
 
 export function AppIcon({ icon, color, size = 58, badge }: { icon: string; color: string; size?: number; badge?: number }) {

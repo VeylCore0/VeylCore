@@ -149,6 +149,131 @@ local MIGRATIONS = {
                 ADD UNIQUE KEY uq_email (email)]],
         },
     },
+    {
+        -- The apps from the previous phone (Flock, Notes, Marketplace, Maps, Services, Voicemail, Camera, Jobs, Bills, News,
+        -- Racing). The tables keep their old names and are only created when missing, so existing data carries over.
+        id = 'v2_004_apps',
+        sql = {
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_profiles (
+                    citizenid VARCHAR(16) NOT NULL,
+                    handle VARCHAR(16) NOT NULL,
+                    display_name VARCHAR(32) NOT NULL,
+                    bio VARCHAR(120) NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (citizenid),
+                    UNIQUE KEY uq_handle (handle)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_posts (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    body VARCHAR(280) NOT NULL,
+                    reply_to BIGINT UNSIGNED NULL,
+                    likes INT UNSIGNED NOT NULL DEFAULT 0,
+                    replies INT UNSIGNED NOT NULL DEFAULT 0,
+                    client_op VARCHAR(64) NULL,
+                    deleted TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_op (citizenid, client_op),
+                    KEY idx_feed (reply_to, deleted, id),
+                    KEY idx_author (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_likes (
+                    post_id BIGINT UNSIGNED NOT NULL,
+                    citizenid VARCHAR(16) NOT NULL,
+                    PRIMARY KEY (post_id, citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_follows (
+                    follower VARCHAR(16) NOT NULL,
+                    followee VARCHAR(16) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (follower, followee),
+                    KEY idx_followee (followee)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_notes (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    title VARCHAR(48) NOT NULL,
+                    body TEXT NOT NULL,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_owner (citizenid, updated_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_market (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    number VARCHAR(10) NOT NULL,
+                    title VARCHAR(48) NOT NULL,
+                    body VARCHAR(300) NOT NULL,
+                    price INT UNSIGNED NOT NULL,
+                    category VARCHAR(16) NOT NULL,
+                    client_op VARCHAR(64) NULL,
+                    deleted TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME NOT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uq_op (citizenid, client_op),
+                    KEY idx_active (deleted, expires_at, id),
+                    KEY idx_owner (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_places (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, label VARCHAR(40) NOT NULL,
+                    x FLOAT NOT NULL, y FLOAT NOT NULL, z FLOAT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_shared_locations (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, from_cid VARCHAR(16) NOT NULL, from_name VARCHAR(64) NOT NULL,
+                    to_cid VARCHAR(16) NOT NULL, x FLOAT NOT NULL, y FLOAT NOT NULL, live TINYINT(1) NOT NULL DEFAULT 0,
+                    expires_at DATETIME NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_to (to_cid, expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_service_requests (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, service VARCHAR(32) NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    caller_name VARCHAR(64) NOT NULL, caller_number VARCHAR(16) NULL, message VARCHAR(240) NOT NULL,
+                    x FLOAT NOT NULL, y FLOAT NOT NULL, status ENUM('open','taken','closed') NOT NULL DEFAULT 'open',
+                    taken_by VARCHAR(64) NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_service (service, status), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_voicemail (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, from_number VARCHAR(16) NOT NULL,
+                    from_name VARCHAR(64) NULL, body VARCHAR(500) NOT NULL, is_read TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_cid (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_photos (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, image LONGTEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), KEY idx_cid (citizenid, id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_job_apps (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, job VARCHAR(32) NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    name VARCHAR(64) NOT NULL, number VARCHAR(16) NULL, message VARCHAR(500) NOT NULL,
+                    status ENUM('sent','seen','closed') NOT NULL DEFAULT 'sent', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_job (job, status), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_standing (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, to_cid VARCHAR(16) NOT NULL,
+                    to_label VARCHAR(64) NOT NULL, amount INT UNSIGNED NOT NULL, every_days TINYINT UNSIGNED NOT NULL,
+                    note VARCHAR(80) NULL, next_at DATETIME NOT NULL, failures TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                    active TINYINT(1) NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_due (active, next_at), KEY idx_cid (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_news (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, author_cid VARCHAR(16) NOT NULL, author VARCHAR(64) NOT NULL,
+                    title VARCHAR(120) NOT NULL, body TEXT NOT NULL, breaking TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_race_tracks (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, name VARCHAR(40) NOT NULL, creator_cid VARCHAR(16) NOT NULL,
+                    creator VARCHAR(64) NOT NULL, checkpoints LONGTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_race_results (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT, track_id INT UNSIGNED NOT NULL, citizenid VARCHAR(16) NOT NULL,
+                    name VARCHAR(64) NOT NULL, ms INT UNSIGNED NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id), KEY idx_track (track_id, ms)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        },
+    },
 }
 
 local function tableExists(name)
