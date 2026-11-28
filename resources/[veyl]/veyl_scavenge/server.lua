@@ -120,9 +120,56 @@ Veyl.RegisterCallback('searchFinish', function(src, cid, token)
     return Veyl.Ok({ found = lines }, 'You find ' .. table.concat(lines, ', '))
 end, { cooldown = 500 })
 
+-- Hiding. The server knows who is in which dumpster so only one person fits, the time limit holds and other scripts can ask
+-- (Player(src).state['veyl:hidden'] or exports.veyl_scavenge:IsHidden(src)). Only the models in Hide.Models are accepted.
+local H = C.Hide or {}
+local hiding = {}   -- [src] = { key, since }
+local occupied = {} -- [key] = src
+
+local function release(src)
+    local h = hiding[src]
+    if not h then return end
+    hiding[src] = nil
+    if occupied[h.key] == src then occupied[h.key] = nil end
+    local p = Player(src)
+    if p then p.state:set('veyl:hidden', false, true) end
+end
+
+Veyl.RegisterCallback('hideEnter', function(src, cid, x, y, z)
+    if not H.Enabled then return Veyl.Err('INVALID_STATE', 'You cannot hide here') end
+    x, y, z = num(x), num(y), num(z)
+    if not x or not y or not z then Veyl.Audit(src, 'scavenge_bad_request', { kind = 'hide' }) return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    local pc = Veyl.GetPlayerCoords(src)
+    if not pc or #(pc - vector3(x, y, z)) > (H.Distance or 2.2) + 2.0 then return Veyl.Err('TOO_FAR', 'Get closer') end
+    if GetVehiclePedIsIn(GetPlayerPed(src), false) ~= 0 then return Veyl.Err('INVALID_STATE', 'Get out of the vehicle') end
+    if hiding[src] then return Veyl.Err('INVALID_STATE', 'You are already hiding') end
+    local key = propKey('hide', x, y, z)
+    local other = occupied[key]
+    if other and other ~= src and hiding[other] then return Veyl.Err('OCCUPIED', 'Someone is already in there') end
+    hiding[src] = { key = key, since = os.time() }
+    occupied[key] = src
+    Player(src).state:set('veyl:hidden', true, true)
+    local mine = hiding[src]
+    SetTimeout(((H.MaxSeconds or 300) + 8) * 1000, function() if hiding[src] == mine then release(src) TriggerClientEvent('veyl_scavenge:forceOut', src) end end)
+    return Veyl.Ok({ maxSeconds = H.MaxSeconds or 300 })
+end, { cooldown = 1500 })
+
+Veyl.RegisterCallback('hideExit', function(src)
+    release(src)
+    return Veyl.Ok()
+end, { cooldown = 300 })
+
+exports('IsHidden', function(src) return hiding[src] ~= nil end)
+
+AddEventHandler('onResourceStop', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    for src in pairs(hiding) do release(src) end
+end)
+
 AddEventHandler('playerDropped', function()
     local src = source
     jobs[src] = nil
+    release(src)
 end)
 
 -- Old cooldown entries are dropped now and then so the tables stay small.

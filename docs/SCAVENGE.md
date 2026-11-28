@@ -21,6 +21,14 @@ The client only says which kind of prop it is searching and where. The server ch
 
 Limit: the server does not know where props are, only where the player is, so a modified client could "search" thin air next to itself. The cooldowns and the hourly cap keep that from being worth much; there is no way around it without the server knowing every prop.
 
+## Hiding in a dumpster
+
+The big blue lidded "HOBO" dumpster (`prop_dumpster_01a`) also has **Hide inside**. You climb in (short progress), turn invisible and are ignored by pedestrians and police until you press `E` or Backspace, take damage, die, or `Hide.MaxSeconds` runs out. Only models listed in `Hide.Models` can be hidden in; add a model name there to allow another dumpster, or set `Hide.Enabled = false`.
+
+The server tracks who is hiding: one person per dumpster, you must be next to it, and the time limit is enforced there too. Other scripts can read `Player(src).state['veyl:hidden']` or `exports.veyl_scavenge:IsHidden(src)`, for example to let a search of the dumpster find the person inside.
+
+Not tested in-game: the invisibility, camera and exit position. The camera stays where the dumpster is; nobody else can see you, but other players' scripts that ignore the state bag will not know you are there.
+
 ## Install
 
 ```cfg

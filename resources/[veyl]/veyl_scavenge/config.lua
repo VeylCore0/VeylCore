@@ -78,4 +78,17 @@ ScavengeConfig = {
         },
     },
 
+    -- Hiding: climb into the big blue dumpster and wait. Only the models listed here can be hidden in (the lidded blue "HOBO" dumpster).
+    -- Add another dumpster model name to `Models` to allow it. Set Enabled = false to turn the feature off.
+    Hide = {
+        Enabled = true,
+        Models = { 'prop_dumpster_01a' },
+        Label = 'Hide inside', Icon = 'mask',
+        Distance = 2.2,
+        EnterMs = 1800,                 -- how long climbing in takes
+        MaxSeconds = 300,               -- you are pushed out after this long
+        NpcsIgnoreYou = true,           -- pedestrians and police do not notice you while hidden
+        ExitKey = 38,                   -- E (control id). Backspace also works.
+        HealthLossExits = true,         -- taking damage throws you out
+    },
 }
