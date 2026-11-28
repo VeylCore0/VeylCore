@@ -18,6 +18,31 @@ Veyl.Startup({ 'veyl_core' }, function()
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
             },
         },
+        {
+            id = '002_menu',
+            sql = {
+                [[CREATE TABLE IF NOT EXISTS veyl_admin_bans (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    license VARCHAR(80) NOT NULL,
+                    name VARCHAR(64) NOT NULL,
+                    reason VARCHAR(200) NOT NULL,
+                    banned_by VARCHAR(64) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NULL DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    KEY idx_license (license)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+                [[CREATE TABLE IF NOT EXISTS veyl_admin_warnings (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    citizenid VARCHAR(16) NOT NULL,
+                    reason VARCHAR(200) NOT NULL,
+                    issued_by VARCHAR(64) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_citizen (citizenid)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            },
+        },
     })
 end)
 
