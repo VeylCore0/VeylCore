@@ -26,10 +26,10 @@ local function validate()
         def.Active = clean
     end
 end
-CreateThread(function()
-    while GetResourceState('veyl_inventory') ~= 'started' do Wait(500) end
-    Wait(2000)
+-- Veyl.RegisterCallback refuses requests until the resource has reported ready, so this has to go through Startup.
+Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
     validate()
+    return true
 end)
 AddEventHandler('onResourceStart', function(res) if res == 'veyl_inventory' then SetTimeout(3000, validate) end end)
 
