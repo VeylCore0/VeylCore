@@ -5,7 +5,8 @@ const def = (name: string, label: string, weight: number, usable = false, descri
   ({ name, label, weight, usable, stack: true, maxStack: 10, image: name === 'jacket' ? `${name}.svg` : `${name}.png`, description });
 
 export const itemDefs: Record<string, ItemDef> = Object.fromEntries([
-  def('phone', 'Phone', 200, false, 'Stay connected.'),
+  { ...def('phone', 'Phone', 200, false, 'Stay connected.'), actions: [{ id: 'sim', label: 'SIM card', icon: 'use', tray: true }] },
+  def('sim_card', 'SIM Card', 5, false, 'Right-click your phone and open the SIM card tray to insert it.'),
   def('radio', 'Radio', 400, false, 'Short-range radio.'),
   def('water_bottle', 'Water Bottle', 500, true, 'Restores thirst'),
   def('sandwich', 'Sandwich', 300, true, 'Restores hunger'),
@@ -25,7 +26,7 @@ export const itemDefs: Record<string, ItemDef> = Object.fromEntries([
 export function inventoryOpen(empty: boolean): InventoryOpen {
   const personal = empty ? [] : [
     ['phone', 1], ['radio', 1], ['water_bottle', 3], ['sandwich', 2], ['bandage', 5],
-    ['identity_card', 1], ['flashlight', 1], ['repair_kit', 1], ['keys', 1], ['lockpick', 2],
+    ['identity_card', 1], ['sim_card', 1], ['flashlight', 1], ['repair_kit', 1], ['keys', 1], ['lockpick', 2],
   ].map(([name, count], i) => ({ slot: i + 1, name: name as string, count: count as number }));
   const trunk = empty ? [] : [['first_aid_kit', 1], ['duct_tape', 2], ['wrench_kit', 1], ['jacket', 1], ['missing_art', 1]]
     .map(([name, count], i) => ({ slot: i + 1, name: name as string, count: count as number }));

@@ -198,23 +198,48 @@ vlib.callback.register('veyl_inventory:useStart', function(src, slot)
     return Use.Start(src, p.citizenid, p.generation, inv, slot)
 end, { cooldownMs = 500 })
 
-vlib.callback.register('veyl_inventory:itemAction', function(src, slot, actionId)
+--- Finds the clicked item for an item action / tray and checks the action is listed on its definition.
+local function actionTarget(src, slot, actionId)
     local p = actor(src)
-    if not p then return err('NO_CHARACTER', 'No character loaded') end
-    if not vlib.validate.str(actionId, 1, 40) then return err('INVALID_INPUT', 'Bad action') end
+    if not p then return nil, err('NO_CHARACTER', 'No character loaded') end
+    if not vlib.validate.str(actionId, 1, 40) then return nil, err('INVALID_INPUT', 'Bad action') end
     local inv = Store.Get(p.invId)
     local it = inv and vlib.validate.int(slot, 1, inv.slots) and inv.items[slot]
-    if not it then return err('NOT_FOUND', 'Nothing in that slot') end
+    if not it then return nil, err('NOT_FOUND', 'Nothing in that slot') end
     local d = ItemDefs[it.name]
-    local listed = false
-    for _, a in ipairs(d and d.actions or {}) do if a.id == actionId then listed = true end end
-    local entry = listed and ItemActions[it.name] and ItemActions[it.name][actionId]
+    for _, a in ipairs(d and d.actions or {}) do
+        if a.id == actionId then return { p = p, it = it, def = a } end
+    end
+    return nil, err('INVALID_STATE', 'You cannot do that')
+end
+
+vlib.callback.register('veyl_inventory:itemAction', function(src, slot, actionId, arg)
+    local t, e = actionTarget(src, slot, actionId)
+    if not t then return e end
+    local entry = ItemActions[t.it.name] and ItemActions[t.it.name][actionId]
     if not entry then return err('INVALID_STATE', 'You cannot do that') end
-    local okC, ok, msg = pcall(entry.fn, { source = src, citizenid = p.citizenid, item = it.name, slot = slot, metadata = it.metadata })
-    if not okC then print(('^1[veyl_inventory] item action %s.%s failed: %s^7'):format(it.name, actionId, tostring(ok))) return err('SERVER_ERROR', 'Something went wrong') end
+    -- Only a small, flat argument is passed on (for example { op = 'insert', slot = 7 }).
+    local clean
+    if type(arg) == 'table' then
+        clean = {}
+        if type(arg.op) == 'string' and #arg.op <= 24 then clean.op = arg.op end
+        if vlib.validate.int(arg.slot, 1, 500) then clean.slot = arg.slot end
+    end
+    local okC, ok, msg = pcall(entry.fn, { source = src, citizenid = t.p.citizenid, item = t.it.name, slot = slot, metadata = t.it.metadata, arg = clean })
+    if not okC then print(('^1[veyl_inventory] item action %s.%s failed: %s^7'):format(t.it.name, actionId, tostring(ok))) return err('SERVER_ERROR', 'Something went wrong') end
     if ok then return Ops.ok(nil, msg) end
     return err('REJECTED', msg or 'You cannot do that')
-end, { cooldownMs = 500 })
+end, { cooldownMs = 400 })
+
+vlib.callback.register('veyl_inventory:itemTray', function(src, slot, actionId)
+    local t, e = actionTarget(src, slot, actionId)
+    if not t then return e end
+    local entry = t.def.tray and ItemTrays[t.it.name] and ItemTrays[t.it.name][actionId]
+    if not entry then return err('INVALID_STATE', 'Nothing to open') end
+    local okC, state = pcall(entry.fn, { source = src, citizenid = t.p.citizenid, item = t.it.name, slot = slot, metadata = t.it.metadata })
+    if not okC or type(state) ~= 'table' then return err('SERVER_ERROR', 'Something went wrong') end
+    return Ops.ok(state)
+end, { cooldownMs = 200 })
 
 vlib.callback.register('veyl_inventory:useComplete', function(src, useId)
     local p = actor(src)

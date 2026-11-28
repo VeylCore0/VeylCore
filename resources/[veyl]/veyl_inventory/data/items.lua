@@ -45,8 +45,8 @@ return {
     radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.png', weight = 400, stack = false },
     repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.png', weight = 2500, stack = true, maxStack = 5 },
     phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false,
-        actions = { { id = 'insert_sim', label = 'Insert SIM card', icon = 'use' } } },
-    sim_card = { label = 'SIM Card', description = 'Insert it into your phone (right-click the phone) to get service.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10 },
+        actions = { { id = 'sim', label = 'SIM card', icon = 'use', tray = true } } },
+    sim_card = { label = 'SIM Card', description = 'Right-click your phone and open the SIM card tray to insert it. A SIM keeps its number and contacts when you give it away.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10, metadataSchema = 'sim_card' },
     tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, description = 'MDT, dispatch and property management on a bigger screen.',
         use = { handler = 'phone_tablet', durationMs = 0, consumeCount = 0 } },
     identity_card = {

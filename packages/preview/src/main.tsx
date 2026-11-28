@@ -76,6 +76,11 @@ const MODES: Mode[] = ['normal', 'loading', 'empty', 'error', 'restricted', 'pen
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+let simIn: string | null = null;
+const simTray = () => ({ title: 'SIM card', accepts: 'sim_card', emptyLabel: 'No SIM card inserted', insertLabel: 'Insert', removeLabel: 'Take out',
+  current: simIn ? { label: 'SIM card', detail: `${simIn.slice(0, 3)}-${simIn.slice(3)}`, image: 'sim_card.png' } : null,
+  hint: simIn ? 'Taking the SIM out takes the number and contacts with it. Whoever inserts it gets them.' : 'A new card keeps your number. A used one brings its own number and contacts.' });
+
 /** Mock backend: behaviour depends on the selected mode so every UI state can be reviewed. */
 function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
@@ -130,6 +135,28 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         return { ok: true };
       }
       case 'inventory:use': return { ok: true };
+      case 'inventory:itemTray': return { ok: true, data: simTray() };
+      case 'inventory:itemAction': {
+        const p = payload as { arg?: { op: string; slot?: number } };
+        const o = inv.current; const items = o.primary!.items;
+        if (p.arg?.op === 'insert') {
+          const it = items.find((i) => i.slot === p.arg!.slot);
+          if (!it || it.name !== 'sim_card') return { ok: false, message: 'That is not a SIM card.' };
+          if (simIn) return { ok: false, message: 'There is already a SIM card in this phone. Take it out first.' };
+          simIn = typeof it.metadata?.number === 'string' ? String(it.metadata.number) : '5550142';
+          inv.current = { ...o, primary: { ...o.primary!, items: items.filter((i) => i.slot !== it.slot), revision: o.primary!.revision + 1 } };
+          devEmit('inventory:snapshot', inv.current.primary);
+          return { ok: true, message: 'SIM card inserted. Your phone has service.' };
+        }
+        if (p.arg?.op === 'remove') {
+          if (!simIn) return { ok: false, message: 'There is no SIM card in this phone.' };
+          const used = new Set(items.map((i) => i.slot)); let slot = 1; while (used.has(slot)) slot++;
+          inv.current = { ...o, primary: { ...o.primary!, items: [...items, { slot, name: 'sim_card', count: 1, metadata: { sim: 'a1b2c3d4e5f6', number: simIn } }], revision: o.primary!.revision + 1 } };
+          simIn = null; devEmit('inventory:snapshot', inv.current.primary);
+          return { ok: true, message: 'SIM card removed. Your number and contacts went with it.' };
+        }
+        return { ok: false, message: 'Pick insert or remove.' };
+      }
       case 'inventory:drop': {
         // Demo: the right-hand box becomes the ground and receives the item.
         const p = payload as { slot: number; count: number };

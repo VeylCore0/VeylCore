@@ -204,9 +204,19 @@ exports('RegisterItemAction', function(item, actionId, fn)
     return true
 end)
 
+--- RegisterItemTray(item, actionId, fn): provides the state of the box that a `tray = true` action opens in the inventory.
+--- fn({ source, citizenid, item, slot, metadata }) returns { title, hint?, accepts = itemName, current? = { label, detail?, image? }, insertLabel?, removeLabel? }.
+exports('RegisterItemTray', function(item, actionId, fn)
+    if type(item) ~= 'string' or type(actionId) ~= 'string' or not fn then return false end
+    ItemTrays[item] = ItemTrays[item] or {}
+    ItemTrays[item][actionId] = { fn = fn, owner = GetInvokingResource() }
+    return true
+end)
+
 exports('GetUsableItem', function(item) return Use.IsUsable(item) end)
 
 AddEventHandler('onResourceStop', function(res)
+    for _, acts in pairs(ItemTrays) do for id, a in pairs(acts) do if a.owner == res then acts[id] = nil end end end
     for _, acts in pairs(ItemActions) do for id, a in pairs(acts) do if a.owner == res then acts[id] = nil end end end
     for name, h in pairs(Use.handlers) do if h.owner == res then Use.handlers[name] = nil end end
     for name, h in pairs(Use.legacy) do if h.owner == res then Use.legacy[name] = nil end end

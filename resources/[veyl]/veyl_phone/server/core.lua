@@ -170,6 +170,22 @@ local MIGRATIONS = {
         },
     },
     {
+        -- SIM cards carry the number and the contacts. A SIM row exists once a card has been used; the account points at the one
+        -- that is inserted. contacts holds a copy while the card is out of a phone.
+        id = 'v2_006_sims',
+        sql = {
+            [[CREATE TABLE IF NOT EXISTS veyl_ph_sims (
+                id VARCHAR(16) NOT NULL,
+                number VARCHAR(7) NOT NULL,
+                contacts LONGTEXT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_sim_number (number)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+            [[ALTER TABLE veyl_ph_accounts ADD COLUMN sim_id VARCHAR(16) NULL]],
+        },
+    },
+    {
         -- The apps from the previous phone (Flock, Notes, Marketplace, Maps, Services, Voicemail, Camera, Jobs, Bills, News,
         -- Racing). The tables keep their old names and are only created when missing, so existing data carries over.
         id = 'v2_004_apps',
@@ -399,10 +415,13 @@ local function newNumber()
     for _ = 1, 50 do
         local prefix = PhoneConfig.NumberPrefixes[math.random(#PhoneConfig.NumberPrefixes)]
         local n = ('%s%04d'):format(prefix, math.random(0, 9999))
-        if not MySQL.scalar.await('SELECT 1 FROM veyl_ph_accounts WHERE number = ?', { n }) then return n end
+        if not MySQL.scalar.await('SELECT 1 FROM veyl_ph_accounts WHERE number = ?', { n })
+            and not MySQL.scalar.await('SELECT 1 FROM veyl_ph_sims WHERE number = ?', { n }) then return n end
     end
     return nil
 end
+
+Phone.NewNumber = newNumber
 
 --- The character's account, created on first use (a number is picked once and kept forever).
 function Phone.Account(citizenid, displayName)
@@ -507,8 +526,9 @@ end
 function Phone.HelloData(s, acc)
     local L = PhoneConfig.Limits
     local locked = s.locked == true
+    local noSim = PhoneConfig.Sim and PhoneConfig.Sim.Required and s.sim ~= true
     local data = {
-        number = locked and '' or acc.number, display = locked and '' or PhoneUtil.Format(acc.number), name = locked and '' or acc.display_name,
+        number = (locked or noSim) and '' or acc.number, display = (locked or noSim) and '' or PhoneUtil.Format(acc.number), name = locked and '' or acc.display_name,
         settings = s.settings, voice = Calls.Availability(), call = Calls.StateFor(s.src), locked = locked,
         security = { email = (not locked) and s.email or nil, hasPin = s.hasPin, setupDone = s.setupDone, grace = PhoneConfig.Lock.GraceSeconds,
             domain = PhoneConfig.Account.Domain, passwordMin = PhoneConfig.Account.PasswordMin },

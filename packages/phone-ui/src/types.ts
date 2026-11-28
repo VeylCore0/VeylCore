@@ -54,7 +54,7 @@ export type MailFull = { id: number; from: string; subject: string; body: string
 export type PushEvent =
   | { event: 'notification'; data: { notification: Notification; unread: number; silent: boolean } }
   | { event: 'badge'; data: { app: string; count: number } }
-  | { event: 'sim'; data: { sim: boolean } }
+  | { event: 'sim'; data: { sim: boolean; hello?: Hello } }
   | { event: 'message'; data: { conversation: Conversation; message: Message; silent: boolean } }
   | { event: 'read'; data: { conversationId: number; number: string; lastReadId: number } }
   | { event: 'conversation'; data: { conversation?: Conversation; removed?: number } }

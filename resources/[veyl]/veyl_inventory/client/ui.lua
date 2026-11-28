@@ -77,17 +77,20 @@ RegisterNUICallback('use', function(data, cb)
 end)
 
 RegisterNUICallback('itemAction', function(data, cb)
-    cb({ ok = true })
     local slot, id = tonumber(data and data.slot), data and data.id
-    if not slot or type(id) ~= 'string' then return end
-    screen:close('action')
-    CreateThread(function()
-        local res = vlib.callback.await('veyl_inventory:itemAction', { timeoutMs = 8000 }, slot, id)
-        if type(res) == 'table' then
-            local msg = res.message
-            if msg then vlib.notify({ message = msg, type = res.ok and 'success' or 'error' }) end
-        end
-    end)
+    if not screen:isOpen() or not slot or type(id) ~= 'string' then return cb({ ok = false, code = 'INVALID_INPUT' }) end
+    local arg = type(data.arg) == 'table' and { op = tostring(data.arg.op or ''), slot = tonumber(data.arg.slot) } or nil
+    local res = vlib.callback.await('veyl_inventory:itemAction', { timeoutMs = 8000 }, slot, id, arg)
+    if type(res) ~= 'table' then res = { ok = false, code = 'TIMEOUT', message = 'No response from server' } end
+    cb({ ok = res.ok, code = res.code, message = res.message, data = res.data })
+end)
+
+RegisterNUICallback('itemTray', function(data, cb)
+    local slot, id = tonumber(data and data.slot), data and data.id
+    if not screen:isOpen() or not slot or type(id) ~= 'string' then return cb({ ok = false, code = 'INVALID_INPUT' }) end
+    local res = vlib.callback.await('veyl_inventory:itemTray', { timeoutMs = 8000 }, slot, id)
+    if type(res) ~= 'table' then res = { ok = false, code = 'TIMEOUT', message = 'No response from server' } end
+    cb({ ok = res.ok, code = res.code, message = res.message, data = res.data })
 end)
 
 RegisterNUICallback('drop', function(data, cb)

@@ -7,6 +7,7 @@ import { InventoryPanel } from './InventoryPanel';
 import { ItemMenu, type ItemMenuState } from './ItemMenu';
 import { QuantityDialog, type QuantityDialogState } from './QuantityDialog';
 import { GiveDialog } from './GiveDialog';
+import { TrayDialog, type TrayState } from './TrayDialog';
 
 export type Ref = 'primary' | 'secondary';
 export interface SlotAddress { ref: Ref; slot: number }
@@ -26,6 +27,7 @@ export function App() {
   const [hotbar, setHotbar] = useState(5);
   const [selected, setSelected] = useState<SlotAddress | null>(null);
   const [quantity, setQuantity] = useState(0); // 0 = the whole stack
+  const [tray, setTray] = useState<{ at: SlotAddress; action: string; state: TrayState | null; error?: string; busy: boolean } | null>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [drag, setDrag] = useState<{ from: SlotAddress; x: number; y: number; moved: boolean } | null>(null);
@@ -57,7 +59,7 @@ export function App() {
     setMenu(null); setQty(null); setGive(null);
     setOpen(true);
   });
-  useNuiMessage('inventory:close', () => { setOpen(false); setDrag(null); setMenu(null); setQty(null); setGive(null); });
+  useNuiMessage('inventory:close', () => { setOpen(false); setDrag(null); setMenu(null); setQty(null); setGive(null); setTray(null); });
   useNuiMessage<InventoryDelta>('inventory:delta', (d) => setViews((v) => (v[d.ref] ? { ...v, [d.ref]: applyDelta(v[d.ref]!, d) } : v)));
   useNuiMessage<InventoryView>('inventory:snapshot', (view) => setViews((v) => ({ ...v, [view.ref]: view })));
 
@@ -108,6 +110,23 @@ export function App() {
     if (!defs[item.name]?.usable) return say('error', t('inv.notUsable'));
     void nui('use', { slot: a.slot });
   }, [itemAt, defs, say]);
+
+  /** Opens an item's tray (for example the phone's SIM card slot) and loads what is in it. */
+  const openTray = useCallback(async (a: SlotAddress, action: string) => {
+    setTray({ at: a, action, state: null, busy: false });
+    const res = await nui<TrayState>('itemTray', { slot: a.slot, id: action });
+    setTray((t) => (t ? (res.ok && res.data ? { ...t, state: res.data } : { ...t, error: res.message ?? 'Could not open it' }) : t));
+  }, []);
+
+  const trayAct = useCallback(async (op: 'insert' | 'remove', slot?: number) => {
+    const cur = tray;
+    if (!cur) return;
+    setTray({ ...cur, busy: true, error: undefined });
+    const res = await nui('itemAction', { slot: cur.at.slot, id: cur.action, arg: { op, slot } });
+    if (res.ok) say('success', res.message ?? 'Done'); else say('error', res.message ?? 'That did not work');
+    const next = await nui<TrayState>('itemTray', { slot: cur.at.slot, id: cur.action });
+    setTray((t) => (t ? { ...t, busy: false, state: next.ok && next.data ? next.data : t.state, error: res.ok ? undefined : res.message } : t));
+  }, [tray, say]);
 
   const startGive = useCallback(async (a: SlotAddress | null) => {
     const item = itemAt(a);
@@ -259,7 +278,7 @@ export function App() {
           state={menu} item={itemAt(menu.at)} def={itemAt(menu.at) ? defs[itemAt(menu.at)!.name] : undefined} hasSecondary={!!views.secondary}
           onClose={() => setMenu(null)}
           onUse={() => { use(menu.at); setMenu(null); }}
-          onAction={(id) => { const a = menu.at; setMenu(null); if (a.ref === 'primary') void nui('itemAction', { slot: a.slot, id }); }}
+          onAction={(id, isTray) => { const a = menu.at; setMenu(null); if (a.ref !== 'primary') return; if (isTray) void openTray(a, id); else void nui('itemAction', { slot: a.slot, id }); }}
           onGive={() => { const a = menu.at; setMenu(null); void startGive(a); }}
           onTransfer={() => { const a = menu.at; const it = itemAt(a); setMenu(null); if (it) quickTransfer(a, amountFor(it)); }}
           onSplit={() => {
@@ -272,6 +291,11 @@ export function App() {
         />
       )}
       {qty && <QuantityDialog state={qty} onCancel={() => setQty(null)} onConfirm={(n) => { const s = qty; setQty(null); void move(s.from, s.to, n); }} />}
+      {tray && (
+        <TrayDialog state={tray.state} error={tray.error} busy={tray.busy} defs={defs} imagePath={imagePath}
+          candidates={tray.state ? (views.primary?.items ?? []).filter((i) => i.name === tray.state!.accepts) : []}
+          onClose={() => setTray(null)} onInsert={(slot) => void trayAct('insert', slot)} onRemove={() => void trayAct('remove')} />
+      )}
       {give && <GiveDialog players={give.players} error={give.error} onCancel={() => setGive(null)} onPick={(id) => void confirmGive(id)} />}
     </div>
   );

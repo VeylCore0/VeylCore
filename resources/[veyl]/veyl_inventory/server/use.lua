@@ -5,6 +5,7 @@
 Use = { handlers = {}, legacy = {}, active = {} } -- active[src] = reservation
 
 ItemActions = {} -- ItemActions[item][actionId] = { fn, owner }
+ItemTrays = {}   -- ItemTrays[item][actionId] = { fn, owner }: describes the box a `tray` action opens
 
 local seq = 0
 

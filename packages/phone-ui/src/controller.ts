@@ -122,8 +122,10 @@ export function onPushEvent(e: PushEvent) {
       break;
     case 'call': applyCall(e.data, true); break;
     case 'sim':
-      setState((st) => (st.hello ? { hello: { ...st.hello, sim: e.data.sim !== false } } : {}));
-      if (e.data.sim !== false) banner({ app: 'settings', title: 'SIM card inserted', body: 'Your phone has service.', kind: 'notification' });
+      // The number and contacts follow the SIM: take the fresh hello and drop what was cached for the old line.
+      if (e.data.hello) mergeHello(e.data.hello); else setState((st) => (st.hello ? { hello: { ...st.hello, sim: e.data.sim !== false } } : {}));
+      setState({ conversations: null, notifications: null });
+      banner({ app: 'settings', title: e.data.sim !== false ? 'SIM card inserted' : 'SIM card removed', body: e.data.sim !== false ? 'Your phone has service.' : 'No service until you insert one.', kind: 'notification' });
       break;
     case 'share': {
       const r = e.data;
