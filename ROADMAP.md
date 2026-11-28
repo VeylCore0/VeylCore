@@ -56,7 +56,8 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **Heists:** six Fleeca banks, the Paleto bank and Vangelico, with thermite, hacking, drills and marked bills.
 - **Drug dealing:** corner selling, buyers who call the police, and turf your gang controls for better prices.
 - **Labs:** meth, ecstasy, LSD and Veyl-X with quality and your own brand.
-- **Boosting** contracts with trackers and reputation, and a **black market** in a dark web phone app with dead drops.
+- ✅ **Boosting 2.0:** a boosting tablet with contracts by rank, vehicle recovery with an access puzzle, handoff delivery, crews and group contracts, heat with optional police alerts, reputation ranks, daily and weekly challenges, and restart-safe payouts.
+- **Boosting** trackers on high-risk vehicles, and a **black market** in a dark web phone app with dead drops.
 - **Gangs:** turf, tags, gang stashes, a fence and money laundering.
 - **Weapons:** registered serial numbers, attachments and unregistered guns on the black market.
 

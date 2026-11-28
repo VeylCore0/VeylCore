@@ -17,6 +17,8 @@ import { App as DoorsApp } from '../../doorlocks-ui/src/App';
 import { App as PhoneApp } from '../../phone-ui/src/App';
 (window as unknown as { __veylVehicleImages?: string }).__veylVehicleImages = '/vehicles';
 import { App as CityhallApp } from '../../cityhall-ui/src/App';
+import { App as BoostingApp } from '../../boosting-ui/src/App';
+import { boostApi, boostDemo } from './boostMock';
 import { App as ManagementApp } from '../../management-ui/src/App';
 import { App as EmotesApp } from '../../emotes-ui/src/App';
 import { App as MedicalApp } from '../../medical-ui/src/App';
@@ -39,6 +41,7 @@ import '../../apartments-ui/src/apartments.css';
 import '../../doorlocks-ui/src/doorlocks.css';
 import '../../phone-ui/src/phone.css';
 import '../../cityhall-ui/src/cityhall.css';
+import '../../boosting-ui/src/boosting.css';
 import '../../management-ui/src/management.css';
 import '../../emotes-ui/src/emotes.css';
 import '../../medical-ui/src/medical.css';
@@ -48,13 +51,14 @@ import './preview.css';
 import * as F from './fixtures';
 
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | 'boosting' | 'boostgame' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer' || s === 'journal' || s === 'grow' || s === 'table';
+const isBoost = (s: Screen) => s === 'boosting' || s === 'boostgame';
 const isApt = (s: Screen) => s.startsWith('apt');
 const isDoor = (s: Screen) => s.startsWith('door');
-const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
+const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isBoost(s) || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
@@ -65,6 +69,7 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
   { id: 'journal', label: 'Journal', app: DrugsApp }, { id: 'table', label: 'Table', app: DrugsApp }, { id: 'grow', label: 'Grow HUD', app: DrugsApp },
   { id: 'phone', label: 'Phone', app: PhoneApp },
+  { id: 'boosting', label: 'Boosting', app: BoostingApp }, { id: 'boostgame', label: 'Boost puzzle', app: BoostingApp },
   { id: 'cityhall', label: 'City Hall', app: CityhallApp }, { id: 'management', label: 'Management', app: ManagementApp }, { id: 'emotes', label: 'Emotes', app: EmotesApp },
   { id: 'medical', label: 'Death screen', app: MedicalApp }, { id: 'dispatch', label: 'Dispatch', app: DispatchApp }, { id: 'mdt', label: 'MDT', app: MdtApp },
   { id: 'aptLease', label: 'Leasing', app: ApartmentsApp }, { id: 'aptHome', label: 'Home', app: ApartmentsApp },
@@ -87,6 +92,12 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (action === 'ui:ready') return { ok: true };
     if (isApt(screen)) return aptHandler(action, payload, mode);
     if (isMisc(screen)) return miscHandler(screen, action, payload);
+    if (isBoost(screen)) {
+      if (action === 'close') { devEmit('boosting:close'); return { ok: true }; }
+      if (action === 'minigameDone') { setTimeout(() => devEmit('boosting:close'), 50); return { ok: true }; }
+      if (action === 'waypoint') return { ok: true };
+      if (action === 'api') { const p = payload as { name: string; args: unknown[] }; return boostApi(p.name, p.args ?? []) ?? { ok: false, code: 'NOT_IMPLEMENTED', message: `No demo handler for ${p.name}` }; }
+    }
     if (screen === 'phone') {
       if (action === 'cameraShot') return { ok: true, data: { image: previewShot() } };
       if (action === 'musicStations') return { ok: true, data: [{ id: 'veyl', label: 'Veyl Radio', style: 'synth' }, { id: 'lofi', label: 'Lo-Fi Beach', style: 'lofi' }, { id: 'night', label: 'Night Drive', style: 'night' }] };
@@ -258,6 +269,8 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'aptWardrobe': devEmit('apt:open', { view: 'wardrobe', data: { outfits: [{ id: 1, name: 'Work clothes' }, { id: 2, name: 'Night out' }], max: 10 } }); break;
     case 'aptBell': devEmit('apt:open', { view: 'doorbell', data: { id: 7, name: 'Alex Carter', expires: 60 } }); break;
     case 'cityhall': case 'management': case 'emotes': case 'medical': case 'dispatch': case 'mdt': miscOpen(screen, empty); break;
+    case 'boosting': boostDemo.reset(); if (empty) boostDemo.emptyState(); if (mode === 'restricted') boostDemo.hot(); boostDemo.open(); break;
+    case 'boostgame': boostDemo.openGame(); break;
     case 'phone':
       phoneReset(empty);
       phoneVoice(mode !== 'restricted');

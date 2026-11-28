@@ -38,7 +38,7 @@ Four labs: meth (Sandy Shores), ecstasy pill press (Vespucci), LSD blotter lab (
 
 ## Boosting (`veyl_boosting`)
 
-`/boosting` or the **Boosting** phone app: take a contract (class D–S by your rep, police minimums for higher classes). Find the car in the marked area. Outside it, target the car → **Lockpick door** (lockpick mini game; a failed game may snap the pick), then sit in the driver seat and press **H** to **Hotwire** it (15 s) and get the key. Class B and up have a **tracker** that pings the police every 20 s until you **Disable tracker** (hacking device). Deliver at the drop-off (park, get out, *Deliver*): cash by class (less if damaged) and rep. 30 min limit; one contract every 15 min.
+Contracts, ranks, crews, heat and a tablet UI: see [BOOSTING.md](BOOSTING.md). Open it with the contact NPC, `/boosting`, the tablet item or the **Boosting** phone app.
 
 ## Weapons
 

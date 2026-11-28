@@ -1,189 +1,202 @@
--- veyl_boosting server: one contract at a time per character. The car is spawned locked; hotwiring gives the key;
--- tracked classes ping the police until the tracker is disabled; delivering it at the drop-off pays and adds rep.
+-- veyl_boosting server entry: start-up, the tablet's state, the callbacks the page and client may call, admin commands.
+-- Callbacks only ever ask; the engine in contracts.lua decides.
 
+Boost = Boost or {}
 local C = BoostingConfig
-local contracts = {}   -- [citizenid] = { class, model, spawn, drop, vehicleId, netId, expires, tracked, hotwired, token }
-local lastContract = {}
-local acting = {}      -- [src] = { kind, token, at, seconds }
+local Contracts = Boost.Contracts
+local Prog, Heat, Crew, Sec = Boost.Prog, Boost.Heat, Boost.Crew, Boost.Sec
 
-local function core(name, ...) return Veyl.Await('veyl_core', name, 15000, ...) end
-local function count(src, item) return exports.veyl_inventory:GetItemCount(src, item) or 0 end
+Boost.ready = false
 
 Veyl.Startup({ 'veyl_core', 'veyl_vehicles', 'veyl_inventory' }, function()
-    return Veyl.Migrate({ { id = '001_rep', sql = {
-        [[CREATE TABLE IF NOT EXISTS veyl_boosting_rep (citizenid VARCHAR(16) NOT NULL, rep INT UNSIGNED NOT NULL DEFAULT 0,
-            completed INT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY (citizenid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
-    } } })
+    local ok = Boost.DB.Migrate()
+    if ok == false then return false end
+    Contracts.reconcile()
+    Boost.ready = true
+    return true
 end)
 
-local function repOf(cid) return MySQL.scalar.await('SELECT rep FROM veyl_boosting_rep WHERE citizenid = ?', { cid }) or 0 end
-local function police()
-    local n = 0
-    for _, s in ipairs(GetPlayers()) do
-        local pd = Veyl.GetPlayerData(tonumber(s))
-        if pd and pd.job.onduty and pd.job.name == 'police' then n = n + 1 end
-    end
-    return n
-end
-
-local function entityOf(c) return c.netId and NetworkGetEntityFromNetworkId(c.netId) or 0 end
-
-local function finish(cid)
-    local c = contracts[cid]
-    contracts[cid] = nil
-    if c and c.vehicleId then exports.veyl_vehicles:DeleteVehicle(c.vehicleId) end
-end
-
-Veyl.RegisterCallback('status', function(_, citizenid)
-    local rep = repOf(citizenid)
-    local class
-    for _, cl in ipairs(C.Classes) do if rep >= cl.rep then class = cl end end
-    local c = contracts[citizenid]
-    return Veyl.Ok({ rep = rep, class = class.id, active = c and { class = c.class, model = c.model, area = { x = c.spawn.x, y = c.spawn.y }, hotwired = c.hotwired,
-        tracked = c.tracked, drop = c.hotwired and { x = c.drop.x, y = c.drop.y } or nil, minutesLeft = math.max(0, math.ceil((c.expires - os.time()) / 60)) } or nil })
-end, { cooldown = 800 })
-
-Veyl.RegisterCallback('take', function(src, citizenid)
-    if contracts[citizenid] then return Veyl.Err('INVALID_STATE', 'Finish your current contract first') end
-    local wait = (lastContract[citizenid] or 0) + C.ContractCooldownMinutes * 60 - os.time()
-    if wait > 0 then return Veyl.Err('RATE_LIMITED', ('No contracts for you for %d min'):format(math.ceil(wait / 60))) end
-    local rep = repOf(citizenid)
-    local cl
-    for _, x in ipairs(C.Classes) do if rep >= x.rep and police() >= (C.MinPolice[x.id] or 0) then cl = x end end
-    if not cl then return Veyl.Err('UNAVAILABLE', 'No contracts right now') end
-    local spawn = C.Spawns[math.random(#C.Spawns)]
-    local model = cl.models[math.random(#cl.models)]
-    local res = Veyl.Await('veyl_vehicles', 'SpawnAuthorizedVehicle', 15000, { model = model, coords = spawn, temporary = true, platePrefix = 'BST' })
-    if not res.ok then return Veyl.Err('INTERNAL', 'The contract fell through. Try again.') end
-    local ent = NetworkGetEntityFromNetworkId(res.data.netId)
-    if ent ~= 0 then SetVehicleDoorsLocked(ent, 2) end
-    lastContract[citizenid] = os.time()
-    contracts[citizenid] = { class = cl.id, cfg = cl, model = model, spawn = spawn, drop = C.Dropoffs[math.random(#C.Dropoffs)],
-        vehicleId = res.data.vehicleId, netId = res.data.netId, expires = os.time() + C.TimeLimitMinutes * 60, tracked = cl.tracker, hotwired = false, src = src }
-    Veyl.Audit(src, 'boost_contract', { class = cl.id, model = model })
-    return Veyl.Ok({ x = spawn.x, y = spawn.y, class = cl.id, model = model }, ('Class %s contract: a %s. Find it in the marked area.'):format(cl.id, model))
-end, { cooldown = 2000 })
-
-local function contractVehicle(src, cid, netId)
-    local c = contracts[cid]
-    if not c or tonumber(netId) ~= c.netId then return nil end
-    local ent = entityOf(c)
-    if ent == 0 then return nil end
-    local pc = Veyl.GetPlayerCoords(src)
-    if not pc or #(pc - GetEntityCoords(ent)) > 6.0 then return nil end
-    return c, ent
-end
-
-Veyl.RegisterCallback('actStart', function(src, citizenid, kind, netId)
-    local c = contractVehicle(src, citizenid, netId)
-    if not c then return Veyl.Err('NOT_FOUND', 'That is not your contract car') end
-    if kind == 'lockpick' then
-        if c.unlocked or c.hotwired then return Veyl.Err('INVALID_STATE', 'The door is already open') end
-        if GetVehiclePedIsIn(GetPlayerPed(src), false) ~= 0 then return Veyl.Err('INVALID_STATE', 'Get out to pick the door') end
-        if count(src, C.HotwireItem) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
-    elseif kind == 'hotwire' then
-        if c.hotwired then return Veyl.Err('INVALID_STATE', 'Already done') end
-        if not c.unlocked then return Veyl.Err('INVALID_STATE', 'Pick the door lock first') end
-        local _, ent = contractVehicle(src, citizenid, netId)
-        if not ent or GetPedInVehicleSeat(ent, -1) ~= GetPlayerPed(src) then return Veyl.Err('INVALID_STATE', 'Sit in the driver seat to hotwire it') end
-        if count(src, C.HotwireItem) < 1 then return Veyl.Err('NO_ITEM', 'You need a lockpick') end
-    elseif kind == 'tracker' then
-        if not c.tracked then return Veyl.Err('INVALID_STATE', 'No tracker on this one') end
-        if count(src, C.TrackerItem) < 1 then return Veyl.Err('NO_ITEM', 'You need a hacking device') end
-    else
-        return Veyl.Err('INVALID_INPUT', 'Unknown action')
-    end
-    local token = Veyl.NewId()
-    acting[src] = { kind = kind, token = token, at = GetGameTimer(), netId = netId,
-        seconds = kind == 'hotwire' and C.HotwireSeconds or kind == 'lockpick' and (C.LockpickSeconds or 4) or C.TrackerSeconds }
-    return Veyl.Ok({ token = token, seconds = acting[src].seconds })
-end, { cooldown = 1000 })
-
---- The lockpick mini game failed at the contract car's door: the pick may snap.
-Veyl.RegisterCallback('pickFailed', function(src, citizenid, netId)
-    local c = contractVehicle(src, citizenid, netId)
-    if not c then return Veyl.Ok() end
-    if math.random() < (C.LockpickBreakChance or 0.35) and exports.veyl_inventory:RemoveItem(src, C.HotwireItem, 1) then
-        return Veyl.Ok({ broke = true }, 'Your lockpick snapped')
-    end
-    return Veyl.Ok({ broke = false }, 'You slipped. Try again.')
-end, { cooldown = 1500 })
-
-Veyl.RegisterCallback('actFinish', function(src, citizenid, token)
-    local a = acting[src]
-    acting[src] = nil
-    if not a or a.token ~= token then return Veyl.Err('INVALID_STATE', 'Start again') end
-    local c, ent = contractVehicle(src, citizenid, a.netId)
-    if not c then return Veyl.Err('NOT_FOUND', 'You moved away') end
-    if GetGameTimer() - a.at < a.seconds * 1000 - 600 then return Veyl.Err('TOO_FAST', 'You stopped too early') end
-    if a.kind == 'lockpick' then
-        c.unlocked = true
-        SetVehicleDoorsLocked(ent, 1)
-        return Veyl.Ok({ unlocked = true }, 'Unlocked. Get in and hotwire it (H).')
-    end
-    if a.kind == 'hotwire' then
-        c.hotwired = true
-        SetVehicleDoorsLocked(ent, 1)
-        if GetResourceState('veyl_vehiclekeys') == 'started' then exports.veyl_vehiclekeys:GiveKey(c.vehicleId, citizenid) end
-        return Veyl.Ok({ drop = { x = c.drop.x, y = c.drop.y }, tracked = c.tracked },
-            c.tracked and 'Hotwired. It has a tracker: disable it or the police will follow you.' or 'Hotwired. Get it to the drop-off.')
-    end
-    if math.random() < 0.5 then exports.veyl_inventory:RemoveItem(src, C.TrackerItem, 1) end
-    c.tracked = false
-    return Veyl.Ok(nil, 'Tracker disabled')
-end, { cooldown = 500 })
-
-Veyl.RegisterCallback('deliver', function(src, citizenid)
-    local c = contracts[citizenid]
-    if not c or not c.hotwired then return Veyl.Err('NOT_FOUND', 'No car to deliver') end
-    if c.delivering then return Veyl.Err('BUSY', 'Already being delivered') end
-    local ent = entityOf(c)
-    if ent == 0 or #(GetEntityCoords(ent) - c.drop) > C.DropRadius then return Veyl.Err('TOO_FAR', 'Park it at the drop-off') end
-    local ped = GetPlayerPed(src)
-    if GetVehiclePedIsIn(ped, false) == ent then return Veyl.Err('INVALID_STATE', 'Get out and walk away') end
-    local cl = c.cfg
-    local pay = math.random(cl.pay[1], cl.pay[2])
-    -- 0 exactly means the server has no synced value yet (not a wreck): pay in full rather than guess.
-    local health = GetVehicleBodyHealth(ent)
-    if health > 0 and health < 700 then pay = math.floor(pay * math.max(0.3, health / 1000)) end
-    c.delivering = true
-    -- One payment per contract vehicle, whatever happens with repeated requests.
-    core('CreditOnce', citizenid, 'cash', pay, ('Boosting: %s'):format(c.model), ('boost:%s:%s'):format(citizenid, c.vehicleId))
-    MySQL.query.await('INSERT INTO veyl_boosting_rep (citizenid, rep, completed) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE rep = rep + VALUES(rep), completed = completed + 1',
-        { citizenid, cl.gain })
-    finish(citizenid)
-    Veyl.Audit(src, 'boost_delivered', { class = cl.id, pay = pay })
-    return Veyl.Ok(nil, ('Delivered. $%d cash and +%d rep.%s'):format(pay, cl.gain, health < 700 and ' (it was damaged)' or ''))
-end, { cooldown = 2000 })
-
-Veyl.RegisterCallback('cancelContract', function(_, citizenid)
-    if not contracts[citizenid] then return Veyl.Err('NOT_FOUND', 'No contract') end
-    finish(citizenid)
-    return Veyl.Ok(nil, 'Contract dropped')
-end, { cooldown = 2000 })
-
--- Trackers and time limits.
 CreateThread(function()
-    local lastPing = 0
     while true do
-        Wait(5000)
-        local ping = os.time() - lastPing >= C.TrackerPingSeconds
-        if ping then lastPing = os.time() end
-        for cid, c in pairs(contracts) do
-            local ent = entityOf(c)
-            if os.time() > c.expires or ent == 0 then
-                local s = exports.veyl_core:GetSourceByCitizenId(cid)
-                if s then Veyl.Notify(s, 'Your boosting contract ran out.', 'error') end
-                finish(cid)
-            elseif ping and c.hotwired and c.tracked and GetResourceState('veyl_dispatch') == 'started' then
-                pcall(function()
-                    exports.veyl_dispatch:Alert({ services = { 'police' }, code = '10-16', title = 'Stolen vehicle tracker', priority = 2,
-                        coords = GetEntityCoords(ent), message = ('Tracker ping: %s (%s)'):format(c.model, GetVehicleNumberPlateText(ent)),
-                        blip = { sprite = 225, colour = 1 } })
-                end)
-            end
+        Wait(C.Cleanup.TickMs)
+        if Boost.ready then
+            local ok, err = pcall(Contracts.tick)
+            if not ok then print(('^1[veyl_boosting] supervisor error: %s^7'):format(tostring(err))) end
         end
     end
 end)
 
-AddEventHandler('playerDropped', function() acting[source] = nil end)
+---------------------------------------------------------------------------
+-- What the tablet shows
+---------------------------------------------------------------------------
+local function catalogue(rep)
+    local list = {}
+    for _, v in ipairs(C.Vehicles) do
+        list[#list + 1] = { model = v.model, label = v.label, tier = v.tier, difficulty = v.difficulty, baseReward = v.baseReward, minRep = v.minRep,
+            unlocked = rep >= v.minRep, solo = v.solo, group = v.group }
+    end
+    return list
+end
+
+local function ranks(rep)
+    local idx = BoostingUtil.rankFor(rep)
+    local out = {}
+    for i, r in ipairs(C.Ranks) do out[i] = { id = r.id, label = r.label, rep = r.rep, perk = C.RankPerks[r.id], current = i == idx, reached = i <= idx } end
+    return out
+end
+
+local function tabletState(src, cid)
+    local p = Prog.get(cid)
+    local idx, rank, nextRank, progress = BoostingUtil.rankFor(p.rep)
+    local heat = Heat.value(cid)
+    local lvl = BoostingUtil.heatLevel(heat)
+    local offers, offersAt = Contracts.offersFor(cid, false)
+    local total = p.completed + p.failed
+    return {
+        player = { name = Crew.nameOf(src), rank = rank.label, rankIndex = idx, rep = p.rep, nextRank = nextRank and nextRank.label, nextRep = nextRank and nextRank.rep, rankFloor = rank.rep, progress = progress },
+        heat = { value = math.floor(heat), max = C.Heat.Max, level = lvl.id, label = lvl.label, color = lvl.color, rewardMult = lvl.rewardMult,
+            levels = C.Heat.Levels, decay = C.Heat.DecayPerMinute, police = Boost.Dispatch.available() },
+        active = Contracts.view(Contracts.byCid[cid], cid),
+        offers = offers, offersAt = offersAt, offersTTL = C.Offers.TTLMinutes * 60,
+        catalogue = catalogue(p.rep), ranks = ranks(p.rep), tiers = C.Tiers,
+        stats = { completed = p.completed, failed = p.failed, rate = total > 0 and p.completed / total or 0, earnings = p.earnings, best = p.best, rep = p.rep },
+        challenges = Prog.challenges(cid), recent = Prog.recent(cid, 6),
+        crew = Crew.view(cid), invite = Crew.pending(cid),
+        event = Contracts.event, ui = C.UI, crewMax = C.Crews.MaxSize, serverTime = os.time(),
+        dropRadius = C.Delivery.Radius, blips = C.Blips,
+    }
+end
+
+local function hasTablet(src) return (exports.veyl_inventory:GetItemCount(src, C.Tablet.Item) or 0) > 0 end
+
+---------------------------------------------------------------------------
+-- Callbacks (the whitelist on the client is the second gate; every one is validated here)
+---------------------------------------------------------------------------
+local function register(name, fn, cooldown)
+    Veyl.RegisterCallback(name, function(src, cid, ...)
+        if not Boost.ready then return Veyl.Err('NOT_READY', 'Boosting is starting up') end
+        return fn(src, cid, ...)
+    end, { cooldown = cooldown or 400 })
+end
+
+register('state', function(src, cid, via)
+    if via == 'command' and C.Tablet.RequireItem and not hasTablet(src) then return Veyl.Err('NO_ITEM', 'You need a boosting tablet') end
+    return Veyl.Ok(tabletState(src, cid))
+end, 300)
+
+register('sync', function(src, cid)
+    Contracts.onBack(cid, src)
+    return Veyl.Ok(Contracts.view(Contracts.byCid[cid], cid))
+end, 1000)
+
+register('refreshOffers', function(src, cid)
+    local _, at = Contracts.offersFor(cid, true)
+    return Veyl.Ok(tabletState(src, cid), os.time() - at < 2 and 'Contracts refreshed' or 'Please wait before refreshing again')
+end, 1500)
+
+register('accept', function(src, cid, offerId)
+    offerId = Sec.str(offerId, 64)
+    if not offerId then Sec.invalid(src, cid, 'accept_bad_id') return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Contracts.accept(src, cid, offerId)
+end, 1200)
+
+register('startContract', function(src, cid) return Contracts.start(src, cid) end, 1500)
+register('cancelContract', function(src, cid) return Contracts.cancel(src, cid) end, 1500)
+register('deliver', function(src, cid) return Contracts.deliver(src, cid) end, 1200)
+
+register('accessBegin', function(src, cid, netId)
+    netId = Sec.int(netId, 65535)
+    if not netId then Sec.invalid(src, cid, 'access_bad_netid') return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Contracts.accessBegin(src, cid, netId)
+end, 800)
+
+register('accessSubmit', function(src, cid, token, answer)
+    token = Sec.str(token, 64)
+    if not token or type(answer) ~= 'table' or #answer > 16 then Sec.invalid(src, cid, 'access_bad_submit') return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Contracts.accessSubmit(src, cid, token, answer)
+end, 120)
+
+register('accessAbort', function(src, cid) Contracts.accessAbort(cid) return Veyl.Ok() end, 300)
+
+register('trackerStart', function(src, cid, netId)
+    netId = Sec.int(netId, 65535)
+    if not netId then Sec.invalid(src, cid, 'tracker_bad_netid') return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Contracts.trackerStart(src, cid, netId)
+end, 1000)
+
+register('trackerFinish', function(src, cid, token)
+    token = Sec.str(token, 64)
+    if not token then return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Contracts.trackerFinish(src, cid, token)
+end, 500)
+
+register('crewNearby', function(src, cid) return Veyl.Ok(Crew.nearby(src, cid)) end, 800)
+register('crewInvite', function(src, cid, target)
+    target = Sec.int(target, 65535)
+    if not target then return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Crew.invite(src, cid, target)
+end, 1000)
+register('crewAnswer', function(src, cid, accept) return Crew.answer(src, cid, accept == true) end, 500)
+register('crewLeave', function(src, cid) return Crew.leave(src, cid) end, 800)
+register('crewKick', function(src, cid, target)
+    target = Sec.str(target, 16)
+    if not target then return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Crew.kick(src, cid, target)
+end, 800)
+register('crewLead', function(src, cid, target)
+    target = Sec.str(target, 16)
+    if not target then return Veyl.Err('INVALID_INPUT', 'Bad request') end
+    return Crew.lead(src, cid, target)
+end, 800)
+
+---------------------------------------------------------------------------
+-- Players, items, resource lifecycle
+---------------------------------------------------------------------------
+AddEventHandler('playerDropped', function()
+    local cid = Veyl.GetCitizenId(source)
+    if not cid then return end
+    Contracts.onDrop(cid)
+    Prog.forget(cid)
+end)
+
+CreateThread(function()
+    while GetResourceState('veyl_inventory') ~= 'started' do Wait(1000) end
+    Wait(1000)
+    exports.veyl_inventory:RegisterUseHandler('boosting_tablet', function(ctx) TriggerClientEvent('veyl_boosting:open', ctx.source) end)
+end)
+
+AddEventHandler('onResourceStop', function(res)
+    if res == GetCurrentResourceName() then Contracts.shutdown() end
+end)
+
+---------------------------------------------------------------------------
+-- Admin: /boostadmin <event on|off | rep <id> <n> | heat <id> <n> | cancel <id> | status>
+---------------------------------------------------------------------------
+RegisterCommand('boostadmin', function(src, args)
+    if src ~= 0 and not Veyl.HasPermission(src, C.Admin.Permission) then return end
+    local function say(text) if src == 0 then print('[veyl_boosting] ' .. text) else Veyl.Notify(src, text, 'info') end end
+    local sub = args[1]
+    if sub == 'event' then
+        Contracts.event = args[2] == 'on'
+        say(('Event contracts are now %s'):format(Contracts.event and 'ON' or 'OFF'))
+        Boost.Log.audit('system', 'admin_event', { on = Contracts.event, by = src })
+    elseif sub == 'rep' or sub == 'heat' or sub == 'cancel' then
+        local target = tonumber(args[2])
+        local cid = target and Veyl.GetCitizenId(target)
+        if not cid then return say('Usage: boostadmin ' .. sub .. ' <server id>' .. (sub ~= 'cancel' and ' <amount>' or '')) end
+        local n = tonumber(args[3]) or 0
+        if sub == 'rep' then say(('Reputation is now %d'):format(Prog.addRep(cid, n, 'admin')))
+        elseif sub == 'heat' then Heat.add(cid, n, 'admin') say(('Heat is now %d'):format(math.floor(Heat.value(cid))))
+        else
+            local c = Contracts.byCid[cid]
+            if not c then return say('No contract') end
+            Contracts.finish(c, 'cancelled', 'admin')
+            say('Contract cancelled')
+        end
+        Boost.Log.audit(cid, 'admin_' .. sub, { amount = n, by = src })
+    else
+        local live = 0
+        for _ in pairs(Contracts.byId) do live = live + 1 end
+        say(('Live contracts: %d | event: %s | dispatch adapter: %s | police on duty: %d'):format(live, Contracts.event and 'on' or 'off', Boost.Dispatch.available() and 'on' or 'off', Boost.Dispatch.policeOnline()))
+    end
+end, false)

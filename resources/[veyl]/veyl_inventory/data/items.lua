@@ -47,6 +47,8 @@ return {
     phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false,
         actions = { { id = 'sim', label = 'SIM card', icon = 'use', tray = true } } },
     sim_card = { label = 'SIM Card', description = 'Right-click your phone and open the SIM card tray to insert it. A SIM keeps its number and contacts when you give it away.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10, metadataSchema = 'sim_card' },
+    boosting_tablet = { label = 'Boosting Tablet', description = 'An encrypted tablet for contracts, crews and reputation.', image = 'boosting_tablet.png', weight = 600, stack = false,
+        use = { handler = 'boosting_tablet', durationMs = 0, consumeCount = 0 } },
     tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, description = 'MDT, dispatch and property management on a bigger screen.',
         use = { handler = 'phone_tablet', durationMs = 0, consumeCount = 0 } },
     identity_card = {
