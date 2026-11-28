@@ -8,12 +8,12 @@ ProductionConfig.Field = {
     -- Field plant varieties (separate from the botanical ones: own seeds, own harvest item, own levels). See config/botanical.lua for the fields.
     Varieties = {
         dawn = {
-            label = 'Dawnroot', branch = 'field', seed = 'prod_fseed_dawn', harvestItem = 'prod_field_bloom', level = 1, rarity = 'Common', growMinutes = 55,
+            label = 'Red Ridge', branch = 'field', seed = 'prod_fseed_dawn', harvestItem = 'prod_field_bloom', level = 1, rarity = 'Common', growMinutes = 55,
             yield = { 2, 4 }, seedReturn = 0.3, baseQuality = 38, waterDecay = 0.9, nutrientDecay = 0.6,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02a', 'prop_plant_int_03a', 'prop_plant_int_05a' },
         },
         dusk = {
-            label = 'Duskvine', branch = 'field', seed = 'prod_fseed_dusk', harvestItem = 'prod_field_bloom', level = 3, rarity = 'Rare', growMinutes = 90,
+            label = 'Andes Mist', branch = 'field', seed = 'prod_fseed_dusk', harvestItem = 'prod_field_bloom', level = 3, rarity = 'Rare', growMinutes = 90,
             yield = { 3, 6 }, seedReturn = 0.18, baseQuality = 58, waterDecay = 1.3, nutrientDecay = 1.0,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02b', 'prop_plant_int_03b', 'prop_plant_int_06a' },
         },

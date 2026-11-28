@@ -5,26 +5,26 @@ import { devEmit, type NuiResponse } from '@veyl/ui';
 const now = () => Math.floor(Date.now() / 1000);
 const ok = <T,>(data?: T, message?: string): NuiResponse<T> => ({ ok: true, data, message });
 const err = (code: string, message: string): NuiResponse<never> => ({ ok: false, code, message });
-const L: Record<string, string> = { prod_seed_ember: 'Emberleaf Seeds', prod_seed_violet: 'Violetbloom Seeds', prod_seed_azure: 'Azurefern Seeds', prod_planter: 'Planter', prod_water: 'Clean Water', prod_nutrient: 'Growth Tonic', prod_leaf: 'Fresh Leaves', prod_blend: 'Leaf Blend', prod_pack: 'Packed Product', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Prep Table', prod_fseed_dawn: 'Dawnroot Seeds', prod_fseed_dusk: 'Duskbloom Seeds', prod_supply_kit: 'Supply Kit' };
+const L: Record<string, string> = { prod_seed_ember: 'Violet Haze Seeds', prod_seed_violet: 'Silverleaf Seeds', prod_seed_azure: 'Nightbloom Seeds', prod_planter: 'Planter', prod_water: 'Clean Water', prod_nutrient: 'Growth Tonic', prod_leaf: 'Weed Bud', prod_blend: 'Trimmed Bud', prod_pack: 'Bagged Weed', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Weed Table', prod_fseed_dawn: 'Red Ridge Seeds', prod_fseed_dusk: 'Andes Mist Seeds', prod_supply_kit: 'Chemical Supplies' };
 
 let xp = 410, cash = 24000;
 let plants = [
-  { id: 1, variety: 'ember', label: 'Emberleaf', state: 'growing', x: 2024, y: 4880, property: null, growth: 0.62, water: 58, nutrient: 44, health: 100, stage: 3, minutesLeft: 17, careRatio: 0.9 },
-  { id: 2, variety: 'violet', label: 'Violetbloom', state: 'ready', x: 2030, y: 4882, property: null, growth: 1, water: 31, nutrient: 22, health: 92, stage: 4, minutesLeft: 0, careRatio: 0.8 },
-  { id: 3, variety: 'ember', label: 'Emberleaf', state: 'growing', x: 1, y: 1, property: 'puerta_lab', growth: 0.2, water: 80, nutrient: 76, health: 100, stage: 1, minutesLeft: 36, careRatio: 1 },
+  { id: 1, variety: 'ember', label: 'Violet Haze', state: 'growing', x: 2024, y: 4880, property: null, growth: 0.62, water: 58, nutrient: 44, health: 100, stage: 3, minutesLeft: 17, careRatio: 0.9 },
+  { id: 2, variety: 'violet', label: 'Silverleaf', state: 'ready', x: 2030, y: 4882, property: null, growth: 1, water: 31, nutrient: 22, health: 92, stage: 4, minutesLeft: 0, careRatio: 0.8 },
+  { id: 3, variety: 'ember', label: 'Violet Haze', state: 'growing', x: 1, y: 1, property: 'puerta_lab', growth: 0.2, water: 80, nutrient: 76, health: 100, stage: 1, minutesLeft: 36, careRatio: 1 },
 ];
 const base = now();
 let batches = [
-  { id: 1, recipe: 'blend', label: 'Blend Leaves', state: 'running', startsAt: base - 20, endsAt: base + 30, quality: 71, tier: 'Good', output: { item: 'prod_blend', count: 2 }, stage: 'Blending', progress: 0.4 },
-  { id: 2, recipe: 'blend', label: 'Blend Leaves', state: 'queued', startsAt: base + 30, endsAt: base + 80, quality: 64, tier: 'Good', output: { item: 'prod_blend', count: 2 }, stage: null, progress: 0 },
+  { id: 1, recipe: 'blend', label: 'Trim Bud', state: 'running', startsAt: base - 20, endsAt: base + 30, quality: 71, tier: 'Good', output: { item: 'prod_blend', count: 2 }, stage: 'Blending', progress: 0.4 },
+  { id: 2, recipe: 'blend', label: 'Trim Bud', state: 'queued', startsAt: base + 30, endsAt: base + 80, quality: 64, tier: 'Good', output: { item: 'prod_blend', count: 2 }, stage: null, progress: 0 },
 ];
 const recipes = [
-  { id: 'blend', label: 'Blend Leaves', level: 1, locked: false, inputs: [{ item: 'prod_leaf', count: 4 }], output: { item: 'prod_blend', count: 2 }, seconds: 50, stages: [{ label: 'Sorting', seconds: 20 }, { label: 'Blending', seconds: 30 }] },
-  { id: 'pack', label: 'Pack Product', level: 4, locked: true, inputs: [{ item: 'prod_blend', count: 2 }], output: { item: 'prod_pack', count: 3 }, seconds: 35, stages: [{ label: 'Weighing', seconds: 15 }, { label: 'Sealing', seconds: 20 }] },
-  { id: 'synthesize', label: 'Synthesise Compound', level: 2, branch: 'supplier', skill: 3, hazard: true, locked: false, inputs: [{ item: 'prod_supply_kit', count: 2 }], output: { item: 'prod_blend', count: 2 }, seconds: 90, stages: [{ label: 'Mixing', seconds: 90 }] },
+  { id: 'blend', label: 'Trim Bud', level: 1, locked: false, inputs: [{ item: 'prod_leaf', count: 4 }], output: { item: 'prod_blend', count: 2 }, seconds: 50, stages: [{ label: 'Sorting', seconds: 20 }, { label: 'Blending', seconds: 30 }] },
+  { id: 'pack', label: 'Bag Weed', level: 4, locked: true, inputs: [{ item: 'prod_blend', count: 2 }], output: { item: 'prod_pack', count: 3 }, seconds: 35, stages: [{ label: 'Weighing', seconds: 15 }, { label: 'Sealing', seconds: 20 }] },
+  { id: 'synthesize', label: 'Cook Crystal', level: 2, branch: 'supplier', skill: 3, hazard: true, locked: false, inputs: [{ item: 'prod_supply_kit', count: 2 }], output: { item: 'prod_blend', count: 2 }, seconds: 90, stages: [{ label: 'Mixing', seconds: 90 }] },
   { id: 'tonic', label: 'Mix Growth Tonic', level: 1, locked: false, inputs: [{ item: 'prod_wild_herb', count: 3 }], output: { item: 'prod_nutrient', count: 2 }, seconds: 25, stages: [{ label: 'Steeping', seconds: 25 }] },
 ];
-const bench = () => ({ id: 1, type: 'prep_table', label: 'Portable Prep Table', property: null, mine: true, x: 2030, y: 4890, slots: 3, batches, recipes, serverTime: now() });
+const bench = () => ({ id: 1, type: 'prep_table', label: 'Portable Weed Table', property: null, mine: true, x: 2030, y: 4890, slots: 3, batches, recipes, serverTime: now() });
 let owned = true;
 let locked = true;
 const upgrades = {
@@ -77,11 +77,11 @@ export function prodState() {
       reputation: { level: lv, name: NAMES[lv - 1], xp, next, floor } },
     plants,
     varieties: [
-      { key: 'ember', label: 'Emberleaf', branch: 'botanical', rarity: 'Common', level: 1, locked: false, growMinutes: 45, yield: [3, 5], seed: 'prod_seed_ember' },
-      { key: 'violet', label: 'Violetbloom', branch: 'botanical', rarity: 'Uncommon', level: 2, locked: lv < 2, growMinutes: 70, yield: [3, 6], seed: 'prod_seed_violet' },
-      { key: 'dawn', label: 'Dawnroot', branch: 'field', rarity: 'Common', level: 1, locked: false, growMinutes: 40, yield: [2, 4], seed: 'prod_fseed_dawn' },
-      { key: 'dusk', label: 'Duskbloom', branch: 'field', rarity: 'Uncommon', level: 3, locked: lv < 3, growMinutes: 80, yield: [3, 6], seed: 'prod_fseed_dusk' },
-      { key: 'azure', label: 'Azurefern', branch: 'botanical', rarity: 'Rare', level: 4, locked: lv < 4, growMinutes: 100, yield: [4, 7], seed: 'prod_seed_azure' },
+      { key: 'ember', label: 'Violet Haze', branch: 'botanical', rarity: 'Common', level: 1, locked: false, growMinutes: 45, yield: [3, 5], seed: 'prod_seed_ember' },
+      { key: 'violet', label: 'Silverleaf', branch: 'botanical', rarity: 'Uncommon', level: 2, locked: lv < 2, growMinutes: 70, yield: [3, 6], seed: 'prod_seed_violet' },
+      { key: 'dawn', label: 'Red Ridge', branch: 'field', rarity: 'Common', level: 1, locked: false, growMinutes: 40, yield: [2, 4], seed: 'prod_fseed_dawn' },
+      { key: 'dusk', label: 'Andes Mist', branch: 'field', rarity: 'Uncommon', level: 3, locked: lv < 3, growMinutes: 80, yield: [3, 6], seed: 'prod_fseed_dusk' },
+      { key: 'azure', label: 'Nightbloom', branch: 'botanical', rarity: 'Rare', level: 4, locked: lv < 4, growMinutes: 100, yield: [4, 7], seed: 'prod_seed_azure' },
     ],
     workstations: [bench()], properties: props(),
     gathering: [
@@ -108,11 +108,11 @@ export function prodShop() {
     id: 'garden_supplier', label: 'Garden Supplier',
     items: [
       { item: 'prod_planter', label: 'Planter', price: 60, stock: 26, max: 30, level: 1, locked: false }, { item: 'prod_water', label: 'Clean Water', price: 12, stock: 54, max: 60, level: 1, locked: false },
-      { item: 'prod_nutrient', label: 'Growth Tonic', price: 25, stock: 6, max: 40, level: 1, locked: false }, { item: 'prod_seed_ember', label: 'Emberleaf Seeds', price: 40, stock: 33, max: 40, level: 1, locked: false },
-      { item: 'prod_seed_violet', label: 'Violetbloom Seeds', price: 110, stock: 20, max: 20, level: 2, locked: lvOf() < 2 }, { item: 'prod_seed_azure', label: 'Azurefern Seeds', price: 260, stock: 0, max: 10, level: 4, locked: lvOf() < 4 },
-      { item: 'prod_workstation', label: 'Prep Table', price: 2500, stock: 4, max: 5, level: 2, locked: lvOf() < 2 },
+      { item: 'prod_nutrient', label: 'Growth Tonic', price: 25, stock: 6, max: 40, level: 1, locked: false }, { item: 'prod_seed_ember', label: 'Violet Haze Seeds', price: 40, stock: 33, max: 40, level: 1, locked: false },
+      { item: 'prod_seed_violet', label: 'Silverleaf Seeds', price: 110, stock: 20, max: 20, level: 2, locked: lvOf() < 2 }, { item: 'prod_seed_azure', label: 'Nightbloom Seeds', price: 260, stock: 0, max: 10, level: 4, locked: lvOf() < 4 },
+      { item: 'prod_workstation', label: 'Weed Table', price: 2500, stock: 4, max: 5, level: 2, locked: lvOf() < 2 },
     ],
-    sell: [{ item: 'prod_pack', label: 'Packed Product', base: 180 }, { item: 'prod_blend', label: 'Leaf Blend', base: 70 }, { item: 'prod_leaf', label: 'Fresh Leaves', base: 28 }, { item: 'prod_wild_herb', label: 'Wild Herbs', base: 12 }],
+    sell: [{ item: 'prod_pack', label: 'Bagged Weed', base: 180 }, { item: 'prod_blend', label: 'Trimmed Bud', base: 70 }, { item: 'prod_leaf', label: 'Weed Bud', base: 28 }, { item: 'prod_wild_herb', label: 'Wild Herbs', base: 12 }],
     quality: [{ max: 24, label: 'Poor', mult: 0.6 }, { max: 49, label: 'Standard', mult: 1 }, { max: 74, label: 'Good', mult: 1.3 }, { max: 89, label: 'Excellent', mult: 1.6 }, { max: 100, label: 'Flawless', mult: 2 }],
     restockMinutes: 30,
   };
@@ -151,7 +151,7 @@ export const prodDemo = {
   shop() { devEmit('production:open', { view: 'shop', data: prodShop() }); },
   buyer() { devEmit('production:open', { view: 'buyer', data: prodShop() }); },
   bench() { devEmit('production:open', { view: 'bench', data: bench() }); },
-  placement(valid: boolean) { devEmit('production:placement', { visible: true, valid, reason: valid ? undefined : 'Too close to something else', label: 'Emberleaf' }); },
+  placement(valid: boolean) { devEmit('production:placement', { visible: true, valid, reason: valid ? undefined : 'Too close to something else', label: 'Violet Haze' }); },
   run() { supRun = { id: 1, supplier: 'harbour_contact', state: 'picked', kits: 4, expiresAt: now() + 900, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 }, drop: { label: 'Auto yard', x: 1017, y: -2528, z: 28 } }; },
   hazard(level: number) { devEmit('production:hazard', { level, warn: 40 }); },
   empty() { xp = 0; plants = []; batches = []; owned = false; },

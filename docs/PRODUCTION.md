@@ -1,6 +1,6 @@
 # Production (`veyl_production`)
 
-A fictional production game for VeylCore: buy supplies, gather, plant and tend, harvest, process on workstations, and run player-owned laboratories. Everything is invented game logic with abstract items and timers. Nothing models a real process.
+The drug system for VeylCore (it replaces `veyl_drugs`): buy supplies, gather, plant and tend, harvest, process on workstations, and run player-owned laboratories. It is game logic with item names, timers and quality, and nothing models a real process. **Botanical** is weed (Violet Haze, Silverleaf, Nightbloom: bud, trimmed bud, bagged weed on a Weed Table). **Field operations** is coca and wild mushrooms (Red Ridge and Andes Mist, coke on a Coke Table, mushrooms found in field zones). **Supplier operations** is the chemical supply runs and the crystal (meth) station with the fumes hazard. The ids (`prod_*`) are generic; names, descriptions and images are just labels you can change in `config/`, `shared/items.lua` and `veyl_inventory/data/items.lua`.
 
 ## What is built and what is not
 

@@ -118,8 +118,8 @@ export function ago(at: number, now = Math.floor(Date.now() / 1000)) {
 
 /** Item names for places that have no server state to read them from (the bench page). The tablet gets the same list from the server. */
 export const ITEM_LABELS: Record<string, string> = {
-  prod_seed_ember: 'Emberleaf Seeds', prod_seed_violet: 'Violetbloom Seeds', prod_seed_azure: 'Azurefern Seeds', prod_planter: 'Planter', prod_water: 'Clean Water',
-  prod_nutrient: 'Growth Tonic', prod_leaf: 'Fresh Leaves', prod_blend: 'Leaf Blend', prod_pack: 'Packed Product', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Prep Table', prod_access_card: 'Lab Access Card',
+  prod_seed_ember: 'Violet Haze Seeds', prod_seed_violet: 'Silverleaf Seeds', prod_seed_azure: 'Nightbloom Seeds', prod_planter: 'Planter', prod_water: 'Clean Water',
+  prod_nutrient: 'Growth Tonic', prod_leaf: 'Weed Bud', prod_blend: 'Trimmed Bud', prod_pack: 'Bagged Weed', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Weed Table', prod_access_card: 'Lab Access Card',
 };
 
 /** A circular progress ring with room for content in the middle. */

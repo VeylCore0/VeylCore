@@ -14,13 +14,13 @@ ProdItems = {
 }
 
 ProdItemLabels = {
-    prod_seed_ember = 'Emberleaf Seeds', prod_seed_violet = 'Violetbloom Seeds', prod_seed_azure = 'Azurefern Seeds',
+    prod_seed_ember = 'Violet Haze Seeds', prod_seed_violet = 'Silverleaf Seeds', prod_seed_azure = 'Nightbloom Seeds',
     prod_planter = 'Planter', prod_water = 'Clean Water', prod_nutrient = 'Growth Tonic',
-    prod_leaf = 'Fresh Leaves', prod_blend = 'Leaf Blend', prod_pack = 'Packed Product', prod_wild_herb = 'Wild Herbs',
-    prod_workstation = 'Prep Table', prod_access_card = 'Lab Access Card',
-    prod_fseed_dawn = 'Dawnroot Seeds', prod_fseed_dusk = 'Duskvine Seeds', prod_field_find = 'Field Specimens', prod_field_bloom = 'Field Blooms',
-    prod_field_extract = 'Field Extract', prod_field_pack = 'Field Goods', prod_field_station = 'Field Station',
-    prod_supply_kit = 'Supply Kit', prod_respirator = 'Respirator', prod_supplier_station = 'Supplier Station', prod_compound = 'Compound', prod_batch_pack = 'Packed Batch',
+    prod_leaf = 'Weed Bud', prod_blend = 'Trimmed Bud', prod_pack = 'Bagged Weed', prod_wild_herb = 'Wild Herbs',
+    prod_workstation = 'Weed Table', prod_access_card = 'Lab Access Card',
+    prod_fseed_dawn = 'Red Ridge Seeds', prod_fseed_dusk = 'Andes Mist Seeds', prod_field_find = 'Wild Mushrooms', prod_field_bloom = 'Coca Leaf',
+    prod_field_extract = 'Coke', prod_field_pack = 'Bagged Coke', prod_field_station = 'Coke Table',
+    prod_supply_kit = 'Chemical Supplies', prod_respirator = 'Respirator', prod_supplier_station = 'Meth Station', prod_compound = 'Crystal', prod_batch_pack = 'Bagged Meth',
 }
 
 -- Items whose metadata carries the product quality (see MetadataSchemas.prod_product in veyl_inventory).

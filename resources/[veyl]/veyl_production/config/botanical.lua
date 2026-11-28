@@ -9,17 +9,17 @@ ProductionConfig.Botanical = {
     FallbackProp = 'prop_plant_int_04a',
     Varieties = {
         ember = {
-            label = 'Emberleaf', seed = 'prod_seed_ember', level = 1, rarity = 'Common', growMinutes = 45,
+            label = 'Violet Haze', seed = 'prod_seed_ember', level = 1, rarity = 'Common', growMinutes = 45,
             yield = { 3, 5 }, seedReturn = 0.25, baseQuality = 40, waterDecay = 1.1, nutrientDecay = 0.7,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02a', 'prop_plant_int_03a', 'prop_plant_int_05a' },
         },
         violet = {
-            label = 'Violetbloom', seed = 'prod_seed_violet', level = 2, rarity = 'Uncommon', growMinutes = 70,
+            label = 'Silverleaf', seed = 'prod_seed_violet', level = 2, rarity = 'Uncommon', growMinutes = 70,
             yield = { 3, 6 }, seedReturn = 0.2, baseQuality = 50, waterDecay = 1.3, nutrientDecay = 0.9,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02b', 'prop_plant_int_03b', 'prop_plant_int_05b' },
         },
         azure = {
-            label = 'Azurefern', seed = 'prod_seed_azure', level = 4, rarity = 'Rare', growMinutes = 100,
+            label = 'Nightbloom', seed = 'prod_seed_azure', level = 4, rarity = 'Rare', growMinutes = 100,
             yield = { 4, 7 }, seedReturn = 0.15, baseQuality = 60, waterDecay = 1.5, nutrientDecay = 1.1,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02a', 'prop_plant_int_03c', 'prop_plant_int_06a' },
         },
