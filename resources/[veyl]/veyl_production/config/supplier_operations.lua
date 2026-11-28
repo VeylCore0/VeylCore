@@ -64,5 +64,5 @@ ProductionConfig.Supplier = {
     },
 
     -- What the buyer pays for supplier goods.
-    Buyer = { prod_batch_pack = 240, prod_compound = 95 },
+    Buyer = { prod_veylx = 420, prod_lsd = 210, prod_ecstasy = 160, prod_batch_pack = 240, prod_compound = 95 },
 }

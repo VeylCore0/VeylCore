@@ -66,7 +66,13 @@ ProductionConfig.Workstations = {
             label = 'Clean Mushrooms', branch = 'field', level = 2, xp = 8, types = { 'field_station', 'field_lab_bench' },
             inputs = { { item = 'prod_field_find', count = 4 } },
             stages = { { label = 'Sifting', seconds = 25 } },
-            output = { item = 'prod_fseed_dawn', count = 1 }, noQuality = true,
+            output = { item = 'prod_spores_forest', count = 1 }, noQuality = true,
+        },
+        dry_mushrooms = {
+            label = 'Dry Mushrooms', branch = 'field', level = 2, xp = 14, types = { 'field_station', 'field_lab_bench' },
+            inputs = { { item = 'prod_mushroom_cap', count = 4 } },
+            stages = { { label = 'Laying out', seconds = 15 }, { label = 'Drying', seconds = 35 } },
+            output = { item = 'prod_mushroom_dry', count = 3 },
         },
         synthesize = {
             label = 'Cook Crystal', branch = 'supplier', level = 1, xp = 22, types = { 'supplier_station', 'supplier_lab_bench' }, hazard = true,
@@ -74,6 +80,27 @@ ProductionConfig.Workstations = {
             inputs = { { item = 'prod_supply_kit', count = 2 } },
             stages = { { label = 'Calibrating', seconds = 25 }, { label = 'Reacting', seconds = 40 }, { label = 'Settling', seconds = 20 } },
             output = { item = 'prod_compound', count = 2 },
+        },
+        press_ecstasy = {
+            label = 'Press Ecstasy', branch = 'supplier', level = 2, xp = 26, types = { 'supplier_station', 'supplier_lab_bench' }, hazard = true,
+            skill = { rounds = 3 },
+            inputs = { { item = 'prod_supply_kit', count = 2 } },
+            stages = { { label = 'Mixing', seconds = 25 }, { label = 'Pressing', seconds = 35 } },
+            output = { item = 'prod_ecstasy', count = 4 },
+        },
+        make_lsd = {
+            label = 'Make LSD Tabs', branch = 'supplier', level = 3, xp = 30, types = { 'supplier_station', 'supplier_lab_bench' }, hazard = true,
+            skill = { rounds = 4 },
+            inputs = { { item = 'prod_supply_kit', count = 3 } },
+            stages = { { label = 'Calibrating', seconds = 30 }, { label = 'Soaking', seconds = 40 }, { label = 'Drying', seconds = 25 } },
+            output = { item = 'prod_lsd', count = 4 },
+        },
+        make_veylx = {
+            label = 'Make Veyl-X', branch = 'supplier', level = 5, xp = 45, types = { 'supplier_station', 'supplier_lab_bench' }, hazard = true,
+            skill = { rounds = 5 },
+            inputs = { { item = 'prod_supply_kit', count = 3 }, { item = 'prod_compound', count = 1 } },
+            stages = { { label = 'Calibrating', seconds = 35 }, { label = 'Reacting', seconds = 55 }, { label = 'Filtering', seconds = 35 }, { label = 'Settling', seconds = 30 } },
+            output = { item = 'prod_veylx', count = 2 },
         },
         finish = {
             label = 'Bag Meth', branch = 'supplier', level = 2, xp = 22, types = { 'supplier_station', 'supplier_lab_bench' },

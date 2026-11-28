@@ -17,6 +17,16 @@ ProductionConfig.Field = {
             yield = { 3, 6 }, seedReturn = 0.18, baseQuality = 58, waterDecay = 1.3, nutrientDecay = 1.0,
             stages = { 'prop_plant_int_04a', 'prop_plant_int_02b', 'prop_plant_int_03b', 'prop_plant_int_06a' },
         },
+        forest = {
+            label = 'Forest Cap', branch = 'field', seed = 'prod_spores_forest', harvestItem = 'prod_mushroom_cap', level = 2, rarity = 'Common', growMinutes = 50,
+            yield = { 4, 6 }, seedReturn = 0.3, baseQuality = 42, waterDecay = 0.8, nutrientDecay = 0.5,
+            stages = { 'prop_weed_tub_01', 'prop_weed_tub_01b', 'prop_veg_crop_03_cab', 'prop_veg_crop_03_cab' },
+        },
+        mooncap = {
+            label = 'Mooncap', branch = 'field', seed = 'prod_spores_moon', harvestItem = 'prod_mushroom_cap', level = 4, rarity = 'Rare', growMinutes = 85,
+            yield = { 3, 4 }, seedReturn = 0.15, baseQuality = 62, waterDecay = 1.5, nutrientDecay = 0.8,
+            stages = { 'prop_weed_tub_01', 'prop_weed_tub_01b', 'prop_veg_crop_03_cab', 'prop_veg_crop_03_cab' },
+        },
     },
 
     -- The field outfitter: field seeds and the portable field station.
@@ -27,6 +37,8 @@ ProductionConfig.Field = {
         Items = {
             { item = 'prod_fseed_dawn',    price = 55,   stock = 30, restock = 5, level = 1 },
             { item = 'prod_fseed_dusk',    price = 150,  stock = 10, restock = 2, level = 3 },
+            { item = 'prod_spores_forest', price = 70,   stock = 24, restock = 4, level = 2 },
+            { item = 'prod_spores_moon',   price = 190,  stock = 8,  restock = 2, level = 4 },
             { item = 'prod_planter',       price = 60,   stock = 20, restock = 4, level = 1 },
             { item = 'prod_water',         price = 12,   stock = 40, restock = 8, level = 1 },
             { item = 'prod_nutrient',      price = 25,   stock = 30, restock = 6, level = 1 },
@@ -53,9 +65,10 @@ ProductionConfig.Field = {
         { item = 'prod_water',       chance = 0.2,  min = 1, max = 1 },
         { item = 'prod_fseed_dawn',  chance = 0.08, min = 1, max = 1 },       -- rare seed
         { item = 'prod_fseed_dusk',  chance = 0.02, min = 1, max = 1, level = 3 },
+        { item = 'prod_spores_forest', chance = 0.05, min = 1, max = 1, level = 2 },
     },
     Blip = { sprite = 469, colour = 3, show = false },
 
     -- What the buyer pays for field goods (base; quality multiplies it).
-    Buyer = { prod_field_pack = 200, prod_field_extract = 80, prod_field_bloom = 32, prod_field_find = 14 },
+    Buyer = { prod_mushroom_dry = 150, prod_mushroom_cap = 40, prod_field_pack = 200, prod_field_extract = 80, prod_field_bloom = 32, prod_field_find = 14 },
 }

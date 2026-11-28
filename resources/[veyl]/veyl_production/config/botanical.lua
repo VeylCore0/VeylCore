@@ -3,6 +3,12 @@
 
 ProductionConfig = ProductionConfig or {}
 
+-- veyl_weedprops (custom stream resource, must start before this one): an_weed_<colour>_<size>. Missing models fall back to FallbackProp.
+local function weedStages(colour)
+    local p = 'an_weed_' .. colour
+    return { p .. '_01_small_01a', p .. '_01_small_01c', p .. '_med_01b', p .. '_lrg_01b' }
+end
+
 ProductionConfig.Botanical = {
     -- Plant varieties. Times are minutes of growth (care allowing). Decay is per minute. `stages` are the props shown as the plant grows
     -- (stage 1 = sprout ... last = ready); any valid model works, unknown models fall back to FallbackProp.
@@ -11,17 +17,17 @@ ProductionConfig.Botanical = {
         ember = {
             label = 'Violet Haze', seed = 'prod_seed_ember', level = 1, rarity = 'Common', growMinutes = 45,
             yield = { 3, 5 }, seedReturn = 0.25, baseQuality = 40, waterDecay = 1.1, nutrientDecay = 0.7,
-            stages = { 'prop_plant_int_04a', 'prop_plant_int_02a', 'prop_plant_int_03a', 'prop_plant_int_05a' },
+            stages = weedStages('purple'),
         },
         violet = {
             label = 'Silverleaf', seed = 'prod_seed_violet', level = 2, rarity = 'Uncommon', growMinutes = 70,
             yield = { 3, 6 }, seedReturn = 0.2, baseQuality = 50, waterDecay = 1.3, nutrientDecay = 0.9,
-            stages = { 'prop_plant_int_04a', 'prop_plant_int_02b', 'prop_plant_int_03b', 'prop_plant_int_05b' },
+            stages = weedStages('white'),
         },
         azure = {
             label = 'Nightbloom', seed = 'prod_seed_azure', level = 4, rarity = 'Rare', growMinutes = 100,
             yield = { 4, 7 }, seedReturn = 0.15, baseQuality = 60, waterDecay = 1.5, nutrientDecay = 1.1,
-            stages = { 'prop_plant_int_04a', 'prop_plant_int_02a', 'prop_plant_int_03c', 'prop_plant_int_06a' },
+            stages = weedStages('blue'),
         },
     },
 
