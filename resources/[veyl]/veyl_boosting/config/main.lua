@@ -7,11 +7,11 @@ local C = BoostingConfig
 C.Debug = false                       -- verbose server console output
 C.LogAuditToDatabase = true           -- write contract and security events to veyl_boost_audit
 
--- The tablet. Contacts and the tablet item both open it; RequireItem only affects the /boosting command.
+-- The tablet is an inventory item and the only way in: use it from your pockets or backpack. There is no command and no phone app, and
+-- every request is refused without the item. The underground contact sells it.
 C.Tablet = {
     Item = 'boosting_tablet',         -- registered in veyl_inventory/data/items.lua
-    RequireItem = false,              -- true: the /boosting command needs the item (the contact NPC always works)
-    Command = 'boosting',             -- false to remove the command
+    Price = 2500,                     -- what the contact charges for a tablet (cash); one tablet per person
 }
 
 -- Contracts shown to a player are generated on the server and kept for a while.

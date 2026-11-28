@@ -16,7 +16,7 @@ BoostClient.screen = screen
 
 local function reply(cb, res) cb({ ok = res.ok, code = res.code, message = res.message, data = res.data }) end
 
---- Opens the tablet. `via` is 'contact' | 'command' | 'item' (the server only enforces the item for 'command').
+--- Opens the tablet (only from the inventory item; the server refuses every request without it).
 function BoostClient.open(via)
     if screen:isOpen() or not Veyl.IsLoaded() then return end
     local res = Veyl.CallbackTimeout('veyl_boosting', 'state', 10000, via)
@@ -25,7 +25,6 @@ function BoostClient.open(via)
     if not ok then Veyl.Notify(reason == 'busy' and 'Close the open menu first.' or 'The tablet is unavailable.', 'warning') end
 end
 
-AddEventHandler('veyl_boosting:openLocal', function(via) CreateThread(function() BoostClient.open(via) end) end)
 RegisterNetEvent('veyl_boosting:open', function() CreateThread(function() BoostClient.open('item') end) end)
 
 -- Something changed on the server (crew, contract): the page asks for fresh data.

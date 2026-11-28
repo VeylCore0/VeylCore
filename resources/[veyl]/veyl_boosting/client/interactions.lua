@@ -1,4 +1,4 @@
--- The underground contact(s) and the /boosting command. Peds and zones are registered through veyl_interact and removed on stop.
+-- The underground contact(s): they sell the tablet. The tablet itself is an inventory item (use it to open it). Peds and zones are registered through veyl_interact and removed on stop.
 
 local C = BoostingConfig
 local registered = {}
@@ -8,7 +8,9 @@ local function register()
         local id = 'veyl_boosting_contact_' .. c.id
         exports.veyl_interact:AddPed({
             id = id, model = c.model, coords = c.coords, scenario = c.scenario, radius = c.radius or 2.2, title = c.label,
-            options = { { label = 'Open the boosting tablet', icon = 'car', onSelect = function() TriggerEvent('veyl_boosting:openLocal', 'contact') end } },
+            options = { { label = ('Buy a tablet ($%d)'):format(C.Tablet.Price), icon = 'car', onSelect = function()
+                CreateThread(function() Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_boosting', 'buyTablet', 15000)) end)
+            end } },
         })
         registered[#registered + 1] = id
     end
@@ -31,13 +33,3 @@ AddEventHandler('onResourceStop', function(res)
     for _, id in ipairs(registered) do pcall(function() exports.veyl_interact:Remove(id) end) end
 end)
 
-if C.Tablet.Command then
-    RegisterCommand(C.Tablet.Command, function() TriggerEvent('veyl_boosting:openLocal', 'command') end, false)
-end
-
--- The phone's Boosting app (optional): opens the tablet.
-AddEventHandler('veyl_boosting:menu', function() TriggerEvent('veyl_boosting:openLocal', 'phone') end)
-CreateThread(function()
-    while GetResourceState('veyl_phone') ~= 'started' do Wait(1000) end
-    pcall(function() exports.veyl_phone:RegisterApp({ id = 'boosting', label = 'Boosting', icon = 'car', color = '#3b1f4f', event = 'veyl_boosting:menu' }) end)
-end)

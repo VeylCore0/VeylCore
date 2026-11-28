@@ -21,13 +21,13 @@ ensure veyl_boosting
 ```
 
 2. **Database.** Nothing to run by hand: the resource creates and migrates its tables at start (`server/database.lua`, tracked so each migration runs once). `sql/install.sql` has the same schema if you want to review or install it yourself. It needs `oxmysql` (the database connector VeylCore already uses).
-3. **Item.** The `boosting_tablet` item is defined in `veyl_inventory/data/items.lua` (using it opens the tablet). Put it in a shop or give it with your admin tools. Opening the tablet through the contact NPC or the phone app never needs the item; `Tablet.RequireItem = true` makes the `/boosting` command need it.
-4. **Optional:** `screenshot-basic` is not needed. `veyl_dispatch` (or another dispatch resource through the adapter) enables police alerts. `veyl_phone` adds a Boosting app. `veyl_vehiclekeys` gives the crew keys when a vehicle is accessed.
+3. **Item.** The `boosting_tablet` item is defined in `veyl_inventory/data/items.lua`. **It is the only way in:** use it from your pockets or backpack. There is no command and no phone app, and the server refuses every request without the item. Ghost, the underground contact, sells it (`Tablet.Price` in `config/main.lua`, cash, one per person); you can also put it in a shop or give it with your admin tools.
+4. **Optional:** `screenshot-basic` is not needed. `veyl_dispatch` (or another dispatch resource through the adapter) enables police alerts. `veyl_vehiclekeys` gives the crew keys when a vehicle is accessed.
 5. Restart and watch the console. The first start migrates; players who had reputation in the first version of boosting keep it (multiplied by `LegacyRepMultiplier`, 5 by default, to land in the new ranks).
 
 ## For players
 
-- Find **Ghost**, the underground contact (marked in `config/locations.lua`), use `/boosting`, the **Boosting** phone app or the tablet item.
+- Find **Ghost**, the underground contact (marked in `config/locations.lua`), buy the tablet from them, then use the tablet item from your inventory.
 - **Contracts** shows one card per contract type. Locked ones say what they need (rank, reputation, a cooldown, a prerequisite). Press **View**, then **Accept**.
 - **Solo** contracts start immediately. **Crew** contracts wait in *reserved* until the leader presses **Start**, so members can still join.
 - A circle on the map shows where the vehicle is. Walk up to it and use **Access the vehicle**. Watch the symbols, repeat them. Three wrong answers fail the attempt and you wait before trying again. Failing adds heat.
@@ -104,7 +104,7 @@ Not tested here: in-game behaviour (spawning, targeting, blips, vehicle damage),
 ## Admin test guide
 
 1. `/boostadmin` → shows live contracts and whether dispatch is on.
-2. As a player: `/boosting` (or the contact) → take **Vehicle Recovery**. A circle appears. Find the vehicle, **Access** it, solve the puzzle, drive to the handoff, step out, hand it over. Check the cash, reputation and the Activity list.
+2. As a player: buy a tablet from the contact and use it → take **Vehicle Recovery**. A circle appears. Find the vehicle, **Access** it, solve the puzzle, drive to the handoff, step out, hand it over. Check the cash, reputation and the Activity list.
 3. `/boostadmin rep <id> 400` and `/boostadmin event on` to see higher contracts. `/boostadmin heat <id> 80` to see easy contracts hide and pay rise.
 4. Crew: stand next to a second player, Crew → Invite, accept, take **Premium Recovery** (reserved), press Start. Disconnect one player and reconnect: they get the contract back.
 5. Restart the resource mid-contract: the contract ends as `expired` (`server_restart`) with no penalty and the vehicles are gone.

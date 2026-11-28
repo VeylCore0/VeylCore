@@ -38,7 +38,7 @@ Four labs: meth (Sandy Shores), ecstasy pill press (Vespucci), LSD blotter lab (
 
 ## Boosting (`veyl_boosting`)
 
-Contracts, ranks, crews, heat and a tablet UI: see [BOOSTING.md](BOOSTING.md). Open it with the contact NPC, `/boosting`, the tablet item or the **Boosting** phone app.
+Contracts, ranks, crews, heat and a tablet UI: see [BOOSTING.md](BOOSTING.md). Open it with the tablet item (the contact NPC sells it).
 
 ## Weapons
 

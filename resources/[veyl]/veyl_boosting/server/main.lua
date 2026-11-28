@@ -75,14 +75,35 @@ local function hasTablet(src) return (exports.veyl_inventory:GetItemCount(src, C
 local function register(name, fn, cooldown)
     Veyl.RegisterCallback(name, function(src, cid, ...)
         if not Boost.ready then return Veyl.Err('NOT_READY', 'Boosting is starting up') end
+        -- Everything the tablet does needs the tablet item (only buying one does not).
+        if name ~= 'buyTablet' and not hasTablet(src) then return Veyl.Err('NO_ITEM', 'You need a boosting tablet') end
         return fn(src, cid, ...)
     end, { cooldown = cooldown or 400 })
 end
 
-register('state', function(src, cid, via)
-    if via == 'command' and C.Tablet.RequireItem and not hasTablet(src) then return Veyl.Err('NO_ITEM', 'You need a boosting tablet') end
-    return Veyl.Ok(tabletState(src, cid))
-end, 300)
+register('state', function(src, cid) return Veyl.Ok(tabletState(src, cid)) end, 300)
+
+--- The underground contact sells the tablet: near the contact, one per person, one debit and one grant (the grant is undone with a refund if it fails).
+register('buyTablet', function(src, cid)
+    local pc = Veyl.GetPlayerCoords(src)
+    local near = false
+    for _, c in ipairs(C.Contacts) do
+        if pc and #(pc - vector3(c.coords.x, c.coords.y, c.coords.z)) <= (c.radius or 2.2) + 3.0 then near = true break end
+    end
+    if not near then return Veyl.Err('TOO_FAR', 'Go to the contact') end
+    if hasTablet(src) then return Veyl.Err('INVALID_STATE', 'You already have a tablet') end
+    local tag = ('boosttablet:%s:%s'):format(cid, Veyl.NewId())
+    local can = Veyl.Await('veyl_inventory', 'CanCarry', 10000, cid, C.Tablet.Item, 1, nil)
+    if not (can and can.ok) then return Veyl.Err('INVENTORY_FULL', 'You cannot carry it') end
+    local pay = Veyl.Await('veyl_core', 'DebitOnce', 15000, cid, 'cash', C.Tablet.Price, 'Boosting tablet', tag)
+    if not (pay and pay.ok) then return Veyl.Err(pay and pay.code or 'INSUFFICIENT_FUNDS', ('It costs $%d in cash'):format(C.Tablet.Price)) end
+    local give = Veyl.Await('veyl_inventory', 'GiveItem', 15000, cid, C.Tablet.Item, 1, nil, tag)
+    if not (give and give.ok) then
+        Veyl.Await('veyl_core', 'CreditOnce', 15000, cid, 'cash', C.Tablet.Price, 'Boosting tablet refund', tag .. ':refund')
+        return Veyl.Err('FAILED', 'Could not hand it over. You were refunded.')
+    end
+    return Veyl.Ok(nil, 'Here. Do not lose it.')
+end, 1500)
 
 register('sync', function(src, cid)
     Contracts.onBack(cid, src)
