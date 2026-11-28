@@ -75,3 +75,6 @@ RegisterCommand('prodadmin', function(src, args)
         say('Usage: prodadmin diag | prodadmin fix')
     end
 end, false)
+
+-- Street reputation level, for other resources (the black market gates its goods with it).
+exports('GetReputation', function(cid) local lv = Prod.Prog.reputation(cid) return lv end)

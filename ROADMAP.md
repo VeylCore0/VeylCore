@@ -71,6 +71,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - ✅ **Botanical production (veyl_production):** a supply shop and buyer, gathering spots, planting with a placement preview, care and quality, portable workstations with timed queues, six progression levels, and player-owned laboratories you can buy, upgrade, share, lock with a code and sell. Optional police raids.
 - ✅ **Field and supplier operations (veyl_production):** field zones with several search points, field plants and a field laboratory; supplier contacts with timed pickup-and-deliver runs, supply-kit recipes with a skill check, a fictional fumes hazard, and a supplier laboratory. All on the same engines as the botanical branch.
 - ✅ **Street economy (veyl_production):** a market that reacts to what is sold, territories with heat and influence, regulars who meet you, crews that share plants and benches, group supplier runs, selling to pedestrians, a staff menu (`/drugadmin`) with farms and player tools, and fumes that sap your stamina. veyl_drugs is retired and removed.
+- ✅ **Black market (veyl_blackmarket):** dealer peds selling every illegal item (guns, ammo and mods, drugs, lab supplies, break-in and hacking gear) through a custom menu, with server-held prices, stock that restocks, street-reputation gates and refunds on failed deals.
 
 ## 🛠️ Now building: the new phone
 The phone is being rebuilt from the ground up on a new base.

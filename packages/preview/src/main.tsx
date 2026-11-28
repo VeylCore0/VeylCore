@@ -19,6 +19,8 @@ import { App as PhoneApp } from '../../phone-ui/src/App';
 import { App as CityhallApp } from '../../cityhall-ui/src/App';
 import { App as BoostingApp } from '../../boosting-ui/src/App';
 import { boostApi, boostDemo } from './boostMock';
+import { App as BlackmarketApp } from '../../blackmarket-ui/src/App';
+import { bmApi, bmDemo } from './bmMock';
 import { App as ProductionApp } from '../../production-ui/src/App';
 import { prodApi, prodDemo } from './prodMock';
 import { App as ManagementApp } from '../../management-ui/src/App';
@@ -43,6 +45,7 @@ import '../../doorlocks-ui/src/doorlocks.css';
 import '../../phone-ui/src/phone.css';
 import '../../cityhall-ui/src/cityhall.css';
 import '../../boosting-ui/src/boosting.css';
+import '../../blackmarket-ui/src/blackmarket.css';
 import '../../production-ui/src/production.css';
 import '../../management-ui/src/management.css';
 import '../../emotes-ui/src/emotes.css';
@@ -53,15 +56,16 @@ import './preview.css';
 import * as F from './fixtures';
 
 
-type Screen = 'inventory' | 'invshop' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'invshop' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'phone' | 'boosting' | 'boostgame' | 'blackmarket' | 'production' | 'prodshop' | 'prodbuyer' | 'prodbench' | 'prodplace' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer';
+const isBm = (s: Screen) => s === 'blackmarket';
 const isBoost = (s: Screen) => s === 'boosting' || s === 'boostgame';
 const isProd = (s: Screen) => s.startsWith('prod') && s !== 'production' || s === 'production';
 const isApt = (s: Screen) => s.startsWith('apt');
 const isDoor = (s: Screen) => s.startsWith('door');
-const backdropOf = (s: Screen) => (s === 'invshop' ? 'inventory' : isAppearance(s) || isVehicle(s) || s === 'phone' || isBoost(s) || isProd(s) || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
+const backdropOf = (s: Screen) => (s === 'invshop' ? 'inventory' : isAppearance(s) || isVehicle(s) || s === 'phone' || isBoost(s) || isBm(s) || isProd(s) || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 const shopBal = { cash: 420, bank: 12840 };
@@ -75,7 +79,7 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'phone', label: 'Phone', app: PhoneApp },
   { id: 'production', label: 'Production', app: ProductionApp }, { id: 'prodshop', label: 'Prod shop', app: ProductionApp }, { id: 'prodbuyer', label: 'Prod buyer', app: ProductionApp },
   { id: 'prodbench', label: 'Prod bench', app: ProductionApp }, { id: 'prodplace', label: 'Prod placing', app: ProductionApp },
-  { id: 'boosting', label: 'Boosting', app: BoostingApp }, { id: 'boostgame', label: 'Boost puzzle', app: BoostingApp },
+  { id: 'boosting', label: 'Boosting', app: BoostingApp }, { id: 'boostgame', label: 'Boost puzzle', app: BoostingApp }, { id: 'blackmarket', label: 'Black market', app: BlackmarketApp },
   { id: 'cityhall', label: 'City Hall', app: CityhallApp }, { id: 'management', label: 'Management', app: ManagementApp }, { id: 'emotes', label: 'Emotes', app: EmotesApp },
   { id: 'medical', label: 'Death screen', app: MedicalApp }, { id: 'dispatch', label: 'Dispatch', app: DispatchApp }, { id: 'mdt', label: 'MDT', app: MdtApp },
   { id: 'aptLease', label: 'Leasing', app: ApartmentsApp }, { id: 'aptHome', label: 'Home', app: ApartmentsApp },
@@ -102,6 +106,10 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
       if (action === 'close') { devEmit('production:close'); return { ok: true }; }
       if (action === 'waypoint') return { ok: true };
       if (action === 'api') { const p = payload as { name: string; args: unknown[] }; return prodApi(p.name, p.args ?? []) ?? { ok: false, code: 'NOT_IMPLEMENTED', message: `No demo handler for ${p.name}` }; }
+    }
+    if (isBm(screen)) {
+      if (action === 'close') { devEmit('blackmarket:close'); return { ok: true }; }
+      if (action === 'api') { const p = payload as { name: string; args: unknown[] }; return bmApi(p.name, p.args ?? []) ?? { ok: false, code: 'NOT_IMPLEMENTED', message: `No demo handler for ${p.name}` }; }
     }
     if (isBoost(screen)) {
       if (action === 'close') { devEmit('boosting:close'); return { ok: true }; }
@@ -301,6 +309,7 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'prodbench': prodDemo.bench(); break;
     case 'prodplace': prodDemo.placement(mode !== 'error'); break;
     case 'boosting': boostDemo.reset(); if (empty) boostDemo.emptyState(); if (mode === 'restricted') boostDemo.hot(); boostDemo.open(); break;
+    case 'blackmarket': bmDemo.open(empty ? 500 : 60000); break;
     case 'boostgame': boostDemo.openGame(); break;
     case 'phone':
       phoneReset(empty);

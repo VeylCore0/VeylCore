@@ -113,6 +113,7 @@ tasks:
       ensure veyl_production
       ensure veyl_scavenge
       ensure veyl_cartheft
+      ensure veyl_blackmarket
       ensure veyl_phone
       ensure veyl_loadscreen
       ensure zydrec-starlitemotel
