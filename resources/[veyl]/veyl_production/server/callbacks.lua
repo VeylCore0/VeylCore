@@ -142,7 +142,7 @@ register('streetSell', function(src, cid, token, item, count) return Prod.Street
 -- Supplier runs
 register('supplierView', function(src, cid) return Veyl.Ok(Prod.Supplier.view(cid)) end, 500)
 register('runStart', function(src, cid, id) return Prod.Supplier.start(src, cid, id) end, 1000)
-register('runPickup', function(src, cid) return Prod.Supplier.pickup(src, cid) end, 800)
+register('runPickup', function(src, cid, vehNet, crateNet) return Prod.Supplier.pickup(src, cid, vehNet, crateNet) end, 800)
 register('runDeliver', function(src, cid) return Prod.Supplier.deliver(src, cid) end, 800)
 register('runCancel', function(src, cid) return Prod.Supplier.cancel(src, cid) end, 800)
 register('runCurrent', function(src, cid) return Veyl.Ok(Prod.Supplier.current(cid)) end, 1500)

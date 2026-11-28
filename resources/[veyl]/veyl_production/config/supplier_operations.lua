@@ -41,8 +41,20 @@ ProductionConfig.Supplier = {
         { label = 'Auto yard', coords = vector3(1017.8, -2528.4, 28.3) }, { label = 'Car park', coords = vector3(-1072.3, -1659.4, 4.39) },
         { label = 'Side street', coords = vector3(212.4, -808.8, 30.73) }, { label = 'Hill track', coords = vector3(1147.6, -470.3, 66.37) },
     },
+    -- The crate goes on the bed of a pickup truck instead of in your arms. Back a truck up to the crate, load it, drive to the drop and unload.
+    -- The server checks the truck's model, that it is next to the crate when you load and at the drop when you unload.
+    --   Required = false  brings back carrying the crate on foot.
+    --   Models: open-bed vehicles only. The crate sits at the back of the bed; BedY/BedZ fine-tune it per model (offsets from the vehicle centre).
+    Truck = {
+        Required = true,
+        LoadRadius = 12.0, DropVehicleRadius = 10.0,
+        Models = { 'bison', 'bison2', 'bison3', 'bobcatxl', 'sadler', 'sadler2', 'sandking', 'sandking2', 'rebel', 'rebel2', 'guardian', 'yosemite', 'contender', 'dloader', 'bodhi2', 'flatbed' },
+        BedFromRear = 1.2,     -- metres in from the tail of the vehicle (default for any model)
+        BedHeight = 0.5,       -- fraction of the vehicle's height where the bed floor is (default)
+        Offsets = {},          -- per model, e.g. bison = vector3(0.0, -1.6, 0.35) (x, y, z from the vehicle's centre) when the default sits wrong
+    },
     CrateModel = 'prop_box_wood02a',
-    PickupRadius = 4.0, DropRadius = 4.5,
+    PickupRadius = 6.0, DropRadius = 6.0,
     FastBonus = { within = 0.55, mult = 1.25 },     -- finish within this share of the time limit for extra kits
     MaxSpeed = 70.0,                                 -- metres per second: a delivery faster than this over the distance is refused
     Cooldown = { Cancel = 120 },                     -- seconds before you can start again after cancelling a run
