@@ -60,9 +60,15 @@ local function lock(veh)
     if haveKey(veh) or mine[veh] then return end
     local driver = GetPedInVehicleSeat(veh, -1)
     if driver ~= 0 and not IsPedAPlayer(driver) and not IsPedDeadOrDying(driver, true) then
-        -- A pedestrian is driving: only keep players out. A real lock status makes AI drivers panic, climb out and run, so leave it alone.
-        SetVehicleDoorsLockedForAllPlayers(veh, true)
+        -- A pedestrian is driving: leave the car completely alone. Any door lock on a car with an AI driver can make the driver stop, get out
+        -- and walk off. The only thing done is that the driver cannot be dragged out without a gun (that is a flag on the ped, not the car).
+        SetPedCanBeDraggedOut(driver, false)
         return
+    end
+    -- Somebody (a passenger, a ped about to get in) is in an otherwise empty-looking car: do not lock it either.
+    for seat = 0, GetVehicleMaxNumberOfPassengers(veh) - 1 do
+        local who = GetPedInVehicleSeat(veh, seat)
+        if who ~= 0 and not IsPedAPlayer(who) then return end
     end
     SetVehicleDoorsLocked(veh, 2)
     SetVehicleDoorsLockedForAllPlayers(veh, true)
