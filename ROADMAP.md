@@ -67,6 +67,10 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - ✅ **Crafting:** a foundry, a public workshop, a parts bench and a hidden backroom bench, with crafting levels.
 - ✅ **More businesses:** a car wash, a nightclub, a pawn shop and a tuner shop.
 
+## 🌿 Production
+- ✅ **Botanical production (veyl_production):** a supply shop and buyer, gathering spots, planting with a placement preview, care and quality, portable workstations with timed queues, six progression levels, and player-owned laboratories you can buy, upgrade, share, lock with a code and sell. Optional police raids.
+- **Coming:** the field-operations and supplier-run branches on the same engines.
+
 ## 🛠️ Now building: the new phone
 The phone is being rebuilt from the ground up on a new base.
 - ✅ **New phone base:** keeps your number and contacts, with messages and read receipts, group chats, calls, blocked numbers, notifications, mail, app badges and phone settings.

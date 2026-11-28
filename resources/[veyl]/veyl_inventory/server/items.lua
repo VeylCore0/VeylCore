@@ -81,6 +81,8 @@ MetadataSchemas = {
     drug_batch = { product = 'string', variety = 'string', varietyLabel = 'string', grade = 'string', quality = 'number', batch = 'string' },
     -- veyl_phone: a SIM card that has been used (carries its number and contacts); a new one has no metadata
     sim_card = { sim = 'string', number = 'string' },
+    -- veyl_production: quality-graded products
+    prod_product = { variety = 'string', varietyLabel = 'string', quality = 'number', batch = 'string', branch = 'string', created = 'number' },
     -- veyl_doorlocks: a physical key for one registered door
     door_key = { door = 'number', label = 'string', rev = 'number' },
 }

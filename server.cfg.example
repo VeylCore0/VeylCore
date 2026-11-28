@@ -45,6 +45,7 @@ ensure veyl_mechanic
 ensure veyl_customs
 ensure veyl_weedprops       # custom weed models (must start before veyl_drugs)
 ensure veyl_drugs
+ensure veyl_production
 ensure sd-phone              # optional: in-hand phone prop models (sd_phone_black); falls back to the GTA phone without it
 ensure screenshot-basic      # optional: phone Camera app photos (citizenfx/screenshot-basic, prebuilt; see docs/PHONE.md)
 ensure veyl_phone
