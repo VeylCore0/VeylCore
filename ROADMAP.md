@@ -23,6 +23,7 @@ VeylCore is a custom FiveM roleplay framework built from the ground up. This roa
 - **LS Customs mechanics:** repairs that use parts, and invoices.
 
 ## ✅ Shipped: life in the city
+- **New look across every menu:** frosted glass panels with a violet glow, rounder cards, pill filters, gradient buttons, glowing selections and keycap hints, in the inventory, shops, banking, garages, dealership, apartments, door locks, clothing, growing, City Hall, management, emotes, dispatch and the MDT.
 - **Starlite Motel apartments:** 30 rooms you walk into with your key, roommates, guest passes, a doorbell, storage, a wardrobe, furniture, parcels and a noticeboard.
 - **Door locks:** set up in game, access by job, gang, key or item, business hours, lockpicking and police rams.
 - **Growing:** weed, coca and mushrooms, with quality grades, a Grow Journal, supplier stores and processing tables.

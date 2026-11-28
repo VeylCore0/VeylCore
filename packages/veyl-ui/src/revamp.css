@@ -1,0 +1,84 @@
+/* Veyl Glass, component layer. Gives every UI the same cards, tiles, selected states, bars and backdrops without
+   touching each stylesheet. Selectors are prefixed with :root so they win over a UI's own CSS regardless of load order. */
+
+/* ---------- backdrops: a soft vignette with violet corners (you can still see the game behind) ---------- */
+:root :is(.inv-root, .shop-root, .bank-root, .vh-root, .apt-root, .dl-root, .ch-root, .mg-root, .mdt-root) {
+  background:
+    radial-gradient(60% 50% at 0% 0%, rgba(110, 70, 200, 0.18), transparent 70%),
+    radial-gradient(55% 45% at 100% 100%, rgba(80, 60, 190, 0.14), transparent 70%),
+    radial-gradient(120% 95% at 50% 45%, rgba(8, 7, 16, 0.22), rgba(3, 3, 9, 0.66));
+}
+
+/* ---------- cards: soft gradient fill, hairline border, big corners ---------- */
+:root :is(.shop-card, .vh-row, .vh-card, .inv-strip, .apt-card, .apt-type, .apt-terms, .apt-item, .dl-row, .dr-stat, .dr-gauge, .ch-fact, .ch-row, .mg-row, .em-row,
+  .dp-call, .dp-unit, .mdt-officer, .ap-outfit, .dr-row, .dr-recipe, .dr-batch, .basket-thumb, .bank-row-icon, .apt-banner) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.025));
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  transition: transform 0.18s var(--ease), border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+:root :is(.shop-card, .vh-card, .apt-type, .apt-unit, .slot.filled):hover:not(:disabled) { transform: translateY(-2px); }
+:root :is(.shop-card, .vh-row, .vh-card, .apt-card, .apt-type, .dl-row, .mg-row, .em-row, .dp-call, .dp-unit, .ap-outfit, .dr-row, .dr-recipe, .dr-batch, .slot.filled):hover {
+  border-color: rgba(184, 146, 244, 0.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(184, 146, 244, 0.16), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+:root .shop-card.out { opacity: 0.5; }
+:root .shop-card.out:hover { transform: none; box-shadow: none; border-color: rgba(255, 255, 255, 0.085); }
+
+/* inventory slots */
+:root .slot { border-radius: 13px; background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.07); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); }
+:root .slot.filled { background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.035)); border-color: rgba(255, 255, 255, 0.12); }
+:root .slot.filled img { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45)); transition: transform 0.2s var(--ease); }
+:root .slot.filled:hover img { transform: scale(1.08); }
+
+/* ---------- selected / active: deep gradient with a glow ---------- */
+:root :is(.slot.sel, .vh-card.on, .apt-unit.on, .dr-row.on, .dr-recipe.on, .dr-batch.on, .ap-cat.active, .ap-eye.on, .em-tab.active, .bank-nav-item.active, .dr-rail-btn.on, .apt-chip.on) {
+  background: linear-gradient(135deg, rgba(118, 73, 208, 0.42), rgba(164, 123, 233, 0.2));
+  border-color: rgba(184, 146, 244, 0.75);
+  box-shadow: 0 0 24px rgba(139, 95, 214, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+:root .vh-card.on { box-shadow: 0 0 24px rgba(139, 95, 214, 0.38), inset 3px 0 0 var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+:root .bank-nav-item { border-radius: 12px; transition: background 0.18s, color 0.18s; }
+:root .bank-nav-item:hover:not(.active) { background: rgba(255, 255, 255, 0.06); }
+
+/* ---------- pills and chips ---------- */
+:root :is(.apt-chip, .apt-pill, .dl-chip, .ch-pill, .mg-pill, .em-tag, .mdt-chip, .strip-grade) { border-radius: 99px; }
+
+/* ---------- bars and meters: gradient with a soft glow ---------- */
+:root .weight-fill, :root .vh-bar .track span, :root .apt-meter i, :root .dr-cond .track span, :root .dr-timebar span {
+  background: linear-gradient(90deg, #7649d0, #b892f4); box-shadow: 0 0 10px rgba(139, 95, 214, 0.6); border-radius: 99px;
+}
+:root .weight-fill.high, :root .vh-bar.warn .track span { background: linear-gradient(90deg, #d99a2b, #f5cd7a); box-shadow: 0 0 10px rgba(240, 199, 119, 0.5); }
+:root .vh-bar.danger .track span { background: linear-gradient(90deg, #d0424f, #f58a94); box-shadow: 0 0 10px rgba(240, 130, 141, 0.5); }
+:root :is(.weight-bar, .vh-bar .track) { background: rgba(255, 255, 255, 0.08); border-radius: 99px; }
+
+/* ---------- headings and numbers ---------- */
+:root .bank-balance, :root .shop-title, :root .vh-title { letter-spacing: -0.01em; }
+:root .bank-balance { background: linear-gradient(180deg, #ffffff 20%, #cdb6f8 120%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; }
+:root .panel-title { letter-spacing: 0.06em; }
+:root :is(.bank-top, .shop-filters, .vh-filters, .basket-sum, .vh-total, .bank-cash, .vh-pay) { border-color: rgba(255, 255, 255, 0.08); }
+:root :is(.bank-nav, .bank-top) { border-color: rgba(255, 255, 255, 0.08); }
+
+/* ---------- context menu, dialogs, player rows ---------- */
+:root .ctx-row { border-radius: 10px; }
+:root .ctx-row:hover:not(:disabled) { background: rgba(139, 95, 214, 0.28); border-color: rgba(184, 146, 244, 0.5); }
+:root .player-row { border-radius: 12px; border-color: rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); transition: background 0.16s, border-color 0.16s; }
+:root .split-range, :root input[type='range'] { accent-color: var(--accent-strong); }
+
+/* ---------- keycaps inside UI-specific hint rows ---------- */
+:root :is(.apt-keys kbd, .dl-keys kbd) {
+  border-radius: 7px; color: #fff; background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.2); border-bottom-width: 2px; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- product and vehicle images get a soft spotlight ---------- */
+:root :is(.shop-card-img, .vh-card-icon) { position: relative; }
+:root :is(.shop-card-img, .vh-card-icon)::before {
+  content: ''; position: absolute; inset: 10% 16%; border-radius: 50%; pointer-events: none; z-index: 0;
+  background: radial-gradient(closest-side, rgba(139, 95, 214, 0.32), transparent); filter: blur(6px);
+}
+:root :is(.shop-card-img, .vh-card-icon) > * { position: relative; z-index: 1; }
+:root .shop-add { background: rgba(139, 95, 214, 0.16); border-color: rgba(184, 146, 244, 0.32); color: #eadcff; }
+:root .shop-add:hover:not(:disabled) { background: var(--accent-grad); color: #fff; border-color: rgba(255, 255, 255, 0.35); }

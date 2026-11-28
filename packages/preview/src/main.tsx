@@ -14,6 +14,13 @@ import { App as DrugsApp } from '../../drugs-ui/src/App';
 import { App as ApartmentsApp } from '../../apartments-ui/src/App';
 import { App as DoorsApp } from '../../doorlocks-ui/src/App';
 import { App as PhoneApp } from '../../phone-ui/src/App';
+import { App as CityhallApp } from '../../cityhall-ui/src/App';
+import { App as ManagementApp } from '../../management-ui/src/App';
+import { App as EmotesApp } from '../../emotes-ui/src/App';
+import { App as MedicalApp } from '../../medical-ui/src/App';
+import { App as DispatchApp } from '../../dispatch-ui/src/App';
+import { App as MdtApp } from '../../mdt-ui/src/App';
+import { isMisc, miscDemo, miscHandler, miscOpen, type MiscScreen } from './miscMock';
 import { phoneApi, phoneClose, phoneDemo, phoneReset, phoneSession, phoneVoice } from './phoneMock';
 import { doorEditor, doorHandler, doorManage } from './doorMock';
 import { aptCatalog, aptDashboard, aptFurniture, aptHandler } from './aptMock';
@@ -29,17 +36,23 @@ import '../../drugs-ui/src/drugs.css';
 import '../../apartments-ui/src/apartments.css';
 import '../../doorlocks-ui/src/doorlocks.css';
 import '../../phone-ui/src/phone.css';
+import '../../cityhall-ui/src/cityhall.css';
+import '../../management-ui/src/management.css';
+import '../../emotes-ui/src/emotes.css';
+import '../../medical-ui/src/medical.css';
+import '../../dispatch-ui/src/dispatch.css';
+import '../../mdt-ui/src/mdt.css';
 import './preview.css';
 import * as F from './fixtures';
 
 
-type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
+type Screen = 'inventory' | 'shop' | 'bank' | 'hud' | 'target' | 'creator' | 'clothing' | 'barber' | 'garage' | 'impound' | 'dealer' | 'journal' | 'grow' | 'table' | 'phone' | MiscScreen | 'aptLease' | 'aptHome' | 'aptFurn' | 'aptDesk' | 'aptWardrobe' | 'aptBell' | 'doorEdit' | 'doorManage' | 'doorHint';
 const AP_MODE = { creator: 'create', clothing: 'clothing', barber: 'barber' } as const;
 const isAppearance = (s: Screen): s is keyof typeof AP_MODE => s in AP_MODE;
 const isVehicle = (s: Screen) => s === 'garage' || s === 'impound' || s === 'dealer' || s === 'journal' || s === 'grow' || s === 'table';
 const isApt = (s: Screen) => s.startsWith('apt');
 const isDoor = (s: Screen) => s.startsWith('door');
-const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isApt(s) || isDoor(s) ? 'hud' : s);
+const backdropOf = (s: Screen) => (isAppearance(s) || isVehicle(s) || s === 'phone' || isMisc(s) || isApt(s) || isDoor(s) ? 'hud' : s);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
@@ -50,6 +63,8 @@ const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'garage', label: 'Garage', app: VehicleApp }, { id: 'impound', label: 'Impound', app: VehicleApp }, { id: 'dealer', label: 'Dealer', app: VehicleApp },
   { id: 'journal', label: 'Journal', app: DrugsApp }, { id: 'table', label: 'Table', app: DrugsApp }, { id: 'grow', label: 'Grow HUD', app: DrugsApp },
   { id: 'phone', label: 'Phone', app: PhoneApp },
+  { id: 'cityhall', label: 'City Hall', app: CityhallApp }, { id: 'management', label: 'Management', app: ManagementApp }, { id: 'emotes', label: 'Emotes', app: EmotesApp },
+  { id: 'medical', label: 'Death screen', app: MedicalApp }, { id: 'dispatch', label: 'Dispatch', app: DispatchApp }, { id: 'mdt', label: 'MDT', app: MdtApp },
   { id: 'aptLease', label: 'Leasing', app: ApartmentsApp }, { id: 'aptHome', label: 'Home', app: ApartmentsApp },
   { id: 'aptFurn', label: 'Furniture', app: ApartmentsApp }, { id: 'aptDesk', label: 'Desk', app: ApartmentsApp },
   { id: 'aptWardrobe', label: 'Wardrobe', app: ApartmentsApp }, { id: 'aptBell', label: 'Doorbell', app: ApartmentsApp },
@@ -64,6 +79,7 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
   setDevNuiHandler(async (action, payload): Promise<NuiResponse> => {
     if (action === 'ui:ready') return { ok: true };
     if (isApt(screen)) return aptHandler(action, payload, mode);
+    if (isMisc(screen)) return miscHandler(screen, action, payload);
     if (screen === 'phone') {
       if (action === 'close') { phoneClose(); return { ok: true }; }
       if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };
@@ -208,6 +224,7 @@ function open(screen: Screen, mode: Mode, inv: { current: InventoryOpen }) {
     case 'aptDesk': devEmit('apt:open', { view: 'desk', data: { building: 'starlite', label: 'Starlite Motel front desk', tab: 'directory', directory: true } }); break;
     case 'aptWardrobe': devEmit('apt:open', { view: 'wardrobe', data: { outfits: [{ id: 1, name: 'Work clothes' }, { id: 2, name: 'Night out' }], max: 10 } }); break;
     case 'aptBell': devEmit('apt:open', { view: 'doorbell', data: { id: 7, name: 'Alex Carter', expires: 60 } }); break;
+    case 'cityhall': case 'management': case 'emotes': case 'medical': case 'dispatch': case 'mdt': miscOpen(screen, empty); break;
     case 'phone':
       phoneReset(empty);
       phoneVoice(mode !== 'restricted');
@@ -261,6 +278,8 @@ function Preview() {
         <label><input type="checkbox" checked={backdrop} onChange={(e) => setBackdrop(e.target.checked)} /> concept backdrop</label>
         <label>compare <input type="range" min={0} max={80} value={overlay} onChange={(e) => setOverlay(Number(e.target.value))} /></label>
         <button onClick={() => setNonce((n) => n + 1)}>reopen</button>
+        {isMisc(screen) && screen === 'dispatch' && <button onClick={() => { devEmit('dispatch:close'); miscDemo('dispatch', 'alert'); }}>+ alert (closed)</button>}
+        {isMisc(screen) && screen === 'medical' && <><button onClick={() => miscDemo('medical', 'down')}>down</button><button onClick={() => miscDemo('medical', 'dead')}>dead</button></>}
         {screen === 'phone' && <>
           <button onClick={() => phoneDemo('message')}>+ message</button>
           <button onClick={() => phoneDemo('group')}>+ group msg</button>

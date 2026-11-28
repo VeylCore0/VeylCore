@@ -21,7 +21,7 @@ h2, h3 { margin: 0.1rem 0 0.4rem; }
 /* chips, pills, cards */
 .apt-chips, .apt-floors, .apt-homes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
 .apt-chip { font: inherit; color: var(--text); background: var(--ap-card); border: 1px solid var(--ap-card-border); border-radius: 999px; padding: 0.35rem 0.85rem; cursor: pointer; text-transform: capitalize; }
-.apt-chip.on { background: var(--accent); border-color: var(--accent); color: #1a1424; font-weight: 600; }
+.apt-chip.on { font-weight: 600; }
 .apt-pill { display: inline-flex; align-items: center; font-size: 0.75rem; padding: 0.12rem 0.55rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
 .apt-pill.ok { background: rgba(152, 211, 174, 0.14); color: var(--success); }
 .apt-pill.danger { background: rgba(239, 143, 150, 0.14); color: var(--danger); }

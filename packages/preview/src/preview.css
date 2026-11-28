@@ -5,10 +5,10 @@
 .pv-bar {
   position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 1000; display: flex; gap: 6px; align-items: center;
   background: rgba(0, 0, 0, 0.78); border: 1px dashed #b892f4; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: #f4f4f6;
-  flex-wrap: wrap; justify-content: center; max-width: 98vw;
+  flex-wrap: nowrap; overflow-x: auto; max-width: 98vw; scrollbar-width: thin;
 }
 .pv-bar strong { color: #e9be71; margin-right: 4px; }
-.pv-bar button { font: inherit; background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+.pv-bar button { flex: none; white-space: nowrap; font: inherit; background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
 .pv-bar button.on { background: #9b72d5; border-color: #9b72d5; }
 .pv-bar select { font: inherit; }
 .pv-bar label { display: inline-flex; align-items: center; gap: 4px; }

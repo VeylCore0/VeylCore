@@ -1,4 +1,5 @@
 import './theme.css';
+import './revamp.css';
 
 export * from './nui';
 export * from './components';
