@@ -3,13 +3,13 @@ import { announceReady, nui, useNuiMessage, type NuiResponse } from '@veyl/ui';
 import type { Ctx, Page } from './ctx';
 import type { Bench, ShopView, TabletState } from './types';
 import { api, Bar, Button, cx, ErrorBox, Ico, ITEM_LABELS, Loading, Ring, Toast } from './ui';
-import { Botanical, Dashboard, Production, Progression, Stats } from './Pages';
+import { Botanical, Dashboard, Production, Progression, Stats, Supplier } from './Pages';
 import { Properties } from './Properties';
 import { BenchPanel } from './Bench';
 import { Shop } from './Shop';
 
 const NAV: { id: Page; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }, { id: 'botanical', label: 'Botanical', icon: 'leaf' }, { id: 'production', label: 'Production', icon: 'gear' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' }, { id: 'botanical', label: 'Botanical', icon: 'leaf' }, { id: 'field', label: 'Field Operations', icon: 'pin' }, { id: 'supplier', label: 'Supplier Operations', icon: 'bag' }, { id: 'production', label: 'Production', icon: 'gear' },
   { id: 'properties', label: 'Properties', icon: 'home' }, { id: 'progression', label: 'Progression', icon: 'star' }, { id: 'stats', label: 'Statistics', icon: 'chart' },
 ];
 
@@ -21,6 +21,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [placement, setPlacement] = useState<{ visible: boolean; valid?: boolean; reason?: string; label?: string }>({ visible: false });
+  const [hazard, setHazard] = useState<{ level: number; warn: number }>({ level: 0, warn: 40 });
   const timer = useRef<number>();
   const openRef = useRef<Open | null>(null);
   openRef.current = open;
@@ -54,6 +55,7 @@ export function App() {
     else if (d.view === 'shop' || d.view === 'buyer') setOpen({ view: d.view, shop: d.data });
     else if (d.view === 'bench') setOpen({ view: 'bench', bench: d.data, labels: ITEM_LABELS });
   });
+  useNuiMessage<{ level: number; warn: number }>('production:hazard', (d) => setHazard(d));
   useNuiMessage('production:close', () => setOpen(null));
   useNuiMessage('production:refresh', () => { void refresh(); });
   useNuiMessage<typeof placement>('production:placement', (d) => setPlacement(d));
@@ -85,6 +87,9 @@ export function App() {
           <small><kbd>E</kbd> place · <kbd>R</kbd> or scroll rotate · <kbd>Esc</kbd> cancel</small>
         </div>
       )}
+      {hazard.level > 0 && (
+        <div className={cx('pr-hazard', hazard.level >= hazard.warn && 'hot')} role="status" aria-label="Fumes exposure"><Ico name="info" size={14} /><span>Fumes</span><i style={{ width: `${Math.min(100, hazard.level)}%` }} /></div>
+      )}
       {open && (
         <div className="pr-root">
           {open.view === 'tablet' ? <Tablet open={open} setPage={(p) => setOpen({ ...open, page: p })} run={run} refresh={refresh} waypoint={waypoint} busy={busy} close={close} error={error} />
@@ -108,7 +113,7 @@ function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: {
   const ctx: Ctx = { s: open.state, go: setPage, run, refresh, waypoint, busy };
   const s = open.state;
   const rep = s.progress.reputation;
-  const bot = s.progress.branches.botanical;
+  const bot = s.progress.branches[open.page === 'field' ? 'field' : open.page === 'supplier' ? 'supplier' : 'botanical'] ?? s.progress.branches.botanical;
   const title = NAV.find((n) => n.id === open.page)?.label ?? '';
   const initials = s.player.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (
@@ -116,11 +121,11 @@ function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: {
       <nav className="pr-side" aria-label="Sections">
         <div className="pr-brand"><span className="pr-logo"><Ico name="leaf" size={24} /></span><div><b>VEYL</b><i>PRODUCTION</i></div></div>
         <span className="pr-navlabel">WORKSPACE</span>
-        {NAV.slice(0, 3).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(0, 5).filter((n) => s.branches[n.id] === undefined || s.branches[n.id].enabled).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         <span className="pr-navlabel">ASSETS</span>
-        {NAV.slice(3, 4).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(5, 6).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         <span className="pr-navlabel">YOU</span>
-        {NAV.slice(4).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        {NAV.slice(6).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         {Object.entries(s.branches).filter(([, b]) => !b.enabled).map(([id, b]) => <span key={id} className="pr-nav soon" title="Not built yet"><Ico name="lock" size={17} />{b.label}</span>)}
         <div className="pr-usercard">
           <Ring value={bot?.progress ?? 0} size={42} stroke={4} color={bot?.color}><b className="sm">{initials}</b></Ring>
@@ -136,7 +141,7 @@ function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: {
         </header>
         <div className="pr-body" key={open.page}>
           {error ? <ErrorBox message={error} onRetry={() => void refresh()} /> : !s ? <Loading /> : open.page === 'dashboard' ? <Dashboard c={ctx} />
-            : open.page === 'botanical' ? <Botanical c={ctx} /> : open.page === 'production' ? <Production c={ctx} />
+            : open.page === 'botanical' ? <Botanical c={ctx} /> : open.page === 'field' ? <Botanical c={ctx} branch="field" /> : open.page === 'supplier' ? <Supplier c={ctx} /> : open.page === 'production' ? <Production c={ctx} />
             : open.page === 'properties' ? <Properties c={ctx} /> : open.page === 'progression' ? <Progression c={ctx} /> : <Stats c={ctx} />}
         </div>
       </main>

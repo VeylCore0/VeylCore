@@ -59,7 +59,7 @@ local function begin(data)
     if IsPedInAnyVehicle(ped, false) then return Veyl.Notify('Get out of the vehicle first', 'error') end
     local model, label
     if data.kind == 'plant' then
-        local v = C.Botanical.Varieties[data.variety]
+        local v = ProdUtil.variety(data.variety)
         if not v then return end
         model, label = v.stages[2] or v.stages[1], v.label
     else

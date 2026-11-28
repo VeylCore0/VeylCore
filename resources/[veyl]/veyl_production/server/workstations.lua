@@ -47,12 +47,12 @@ function Ws.view(row, cid)
     local t = typeOf(row)
     local batches = {}
     for _, b in ipairs(activeBatches(row.id)) do batches[#batches + 1] = batchView(b, now) end
-    local level = Prod.Prog.level(cid, 'botanical')
     local recipes = {}
     for id, r in pairs(W.Recipes) do
         for _, ty in ipairs(r.types) do
             if ty == row.type then
-                recipes[#recipes + 1] = { id = id, label = r.label, level = r.level, locked = level < r.level, inputs = r.inputs, output = r.output,
+                recipes[#recipes + 1] = { id = id, label = r.label, level = r.level, branch = r.branch, locked = Prod.Prog.level(cid, r.branch) < r.level, inputs = r.inputs, output = r.output,
+                    skill = r.skill and r.skill.rounds or nil, hazard = r.hazard == true, noQuality = r.noQuality == true,
                     seconds = (function() local s = 0 for _, st in ipairs(r.stages) do s = s + st.seconds end return math.floor(s * (t.speed * Prod.Props.benchSpeed(row.property_id))) end)(),
                     stages = r.stages }
             end
@@ -103,6 +103,8 @@ function Ws.place(src, cid, d)
     if not t.portable and not propertyId then return Veyl.Err('INVALID_INPUT', 'That bench belongs in a laboratory') end
     if propertyId then
         if not Prod.Props.can(cid, propertyId, 'bench') then return Veyl.Err('NO_PERMISSION', 'You cannot set up benches here') end
+        local pd = Prod.Props.def(propertyId)
+        if pd and pd.branch ~= t.branch then return Veyl.Err('INVALID_INPUT', ('That bench belongs in a %s laboratory'):format(t.branch)) end
         if count(nil, propertyId) >= Prod.Props.benchSlots(propertyId) then return Veyl.Err('LIMIT', 'No free bench slots in this laboratory. Upgrade it for more.') end
     elseif count(cid, nil) >= C.Placement.MaxWorkstationsPerPlayer then
         return Veyl.Err('LIMIT', ('You can keep %d portable benches'):format(C.Placement.MaxWorkstationsPerPlayer))
@@ -168,7 +170,24 @@ local function rollQuality(inputAvg, level, bonus)
     return ProdUtil.clamp(ProdUtil.round(q), 1, 100)
 end
 
-function Ws.start(src, cid, id, recipeId)
+local challenges = {} -- [src] = { token, ws, recipe, at }
+local S = ProductionConfig.Supplier
+
+--- Starts a skill check for a recipe that has one. The server notes when it began; the page runs the rounds and reports a score.
+function Ws.challenge(src, cid, id, recipeId)
+    local row, err = target(src, cid, id)
+    if not row then return err end
+    recipeId = Prod.Sec.str(recipeId, 24, '^[%w_]+$')
+    local r = recipeId and W.Recipes[recipeId]
+    if not r or not r.skill then return Veyl.Err('INVALID_INPUT', 'That recipe has no skill check') end
+    if Prod.Prog.level(cid, r.branch) < r.level then return Veyl.Err('LEVEL_REQUIRED', ('Needs %s level %d'):format(r.branch, r.level)) end
+    local token = Veyl.NewId()
+    challenges[src] = { token = token, ws = row.id, recipe = recipeId, at = GetGameTimer(), cid = cid }
+    return Veyl.Ok({ token = token, rounds = r.skill.rounds, difficulty = S and S.Skill.Difficulty or 'medium' })
+end
+AddEventHandler('playerDropped', function() challenges[source] = nil end)
+
+function Ws.start(src, cid, id, recipeId, token, score)
     local row, err = target(src, cid, id)
     if not row then return err end
     recipeId = Prod.Sec.str(recipeId, 24, '^[%w_]+$')
@@ -179,6 +198,18 @@ function Ws.start(src, cid, id, recipeId)
     if not allowed then Prod.Sec.invalid(src, cid, 'ws_bad_recipe', { recipe = recipeId }) return Veyl.Err('INVALID_INPUT', 'That bench cannot do that') end
     local level = Prod.Prog.level(cid, r.branch)
     if level < r.level then return Veyl.Err('LEVEL_REQUIRED', ('Needs %s level %d'):format(r.branch, r.level)) end
+    -- A recipe with a skill check needs a finished check: right player, bench and recipe, long enough since it began, a score within the rounds.
+    local swing, yieldPct = 0, 1.0
+    if r.skill then
+        local ch = challenges[src]
+        challenges[src] = nil
+        if not ch or ch.token ~= token or ch.cid ~= cid or ch.ws ~= row.id or ch.recipe ~= recipeId then Prod.Sec.invalid(src, cid, 'ws_bad_challenge') return Veyl.Err('SKILL_REQUIRED', 'Do the check first') end
+        score = Prod.Sec.int(score, r.skill.rounds)
+        if not score then Prod.Sec.invalid(src, cid, 'ws_bad_score') return Veyl.Err('INVALID_INPUT', 'Bad score') end
+        if GetGameTimer() - ch.at < r.skill.rounds * S.Skill.MinRoundSeconds * 1000 - 500 then Prod.Sec.invalid(src, cid, 'ws_skill_too_fast') return Veyl.Err('TOO_FAST', 'You rushed the check') end
+        swing = (score / r.skill.rounds - 0.5) * 2 * S.Skill.QualitySwing
+        if score == 0 then yieldPct = S.Skill.ZeroYield end
+    end
     local active = activeBatches(row.id)
     if #active >= t.slots then return Veyl.Err('LIMIT', 'The queue is full') end
 
@@ -204,9 +235,9 @@ function Ws.start(src, cid, id, recipeId)
     local now = os.time()
     local startsAt = now
     for _, b in ipairs(active) do if b.ends_at > startsAt then startsAt = b.ends_at end end
-    local quality = r.noQuality and 0 or rollQuality(qn > 0 and qsum / qn or 40, level, (t.qualityBonus or 0) + Prod.Props.benchBonus(row.property_id))
-    local batchId = MySQL.insert.await([[INSERT INTO veyl_prod_batches (workstation_id, owner_cid, recipe, state, input_quality, variety, quality, starts_at, ends_at, stages, refund, created_at)
-        VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)]], { row.id, cid, recipeId, qn > 0 and qsum / qn or 0, variety, quality, startsAt, startsAt + total, json.encode(stages), json.encode(taken), now })
+    local quality = r.noQuality and 0 or rollQuality(qn > 0 and qsum / qn or 40, level, (t.qualityBonus or 0) + Prod.Props.benchBonus(row.property_id) + swing)
+    local batchId = MySQL.insert.await([[INSERT INTO veyl_prod_batches (workstation_id, owner_cid, recipe, state, input_quality, variety, quality, starts_at, ends_at, stages, refund, created_at, yield_pct)
+        VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?)]], { row.id, cid, recipeId, qn > 0 and qsum / qn or 0, variety, quality, startsAt, startsAt + total, json.encode(stages), json.encode(taken), now, yieldPct })
     if not batchId then
         for j, g in ipairs(taken) do Prod.Inv.refund(cid, g.groups, g.item, ('%s:undo:%d'):format(batchTag, j), 1.0) end
         return Veyl.Err('DATABASE_ERROR', 'Could not start the batch')
@@ -227,20 +258,21 @@ function Ws.claim(src, cid, id)
             any = true
             local r = W.Recipes[b.recipe]
             local meta = r.noQuality and nil or Prod.Inv.productMeta(b.variety, b.quality, ('B%d'):format(b.id), r.branch)
-            if not Prod.Inv.canCarry(cid, r.output.item, r.output.count, meta) then
+            local n = math.max(1, math.floor(r.output.count * (b.yield_pct or 1) + 0.0001))
+            if not Prod.Inv.canCarry(cid, r.output.item, n, meta) then
                 lines[#lines + 1] = 'Not enough room for ' .. r.label
                 break
             end
             -- Only the caller that flips active -> claimed gets the output; the operation id makes a retry after a crash safe.
             local flipped = MySQL.update.await("UPDATE veyl_prod_batches SET state = 'claimed', claimed_at = ? WHERE id = ? AND state = 'active' AND ends_at <= ?", { now, b.id, now })
             if (flipped or 0) > 0 then
-                local g = Prod.Inv.give(cid, r.output.item, r.output.count, meta, ('prodbatch:%d'):format(b.id))
+                local g = Prod.Inv.give(cid, r.output.item, n, meta, ('prodbatch:%d'):format(b.id))
                 if g and g.ok then
-                    got = got + r.output.count
+                    got = got + n
                     Prod.Prog.award(cid, r.branch, 'craft')
                     Prod.Prog.stat(cid, 'batches_completed')
                     Prod.Log.event('craft', cid, ('collected %s (bench #%d)'):format(r.label, row.id), { batch = b.id })
-                    lines[#lines + 1] = ('%d x %s'):format(r.output.count, ProdItemLabels[r.output.item] or r.output.item)
+                    lines[#lines + 1] = ('%d x %s'):format(n, ProdItemLabels[r.output.item] or r.output.item)
                 else
                     MySQL.update("UPDATE veyl_prod_batches SET state = 'active', claimed_at = NULL WHERE id = ? AND state = 'claimed'", { b.id })
                     lines[#lines + 1] = 'Could not collect ' .. r.label
@@ -284,6 +316,19 @@ function Ws.diagnose()
     for _, b in ipairs(MySQL.query.await("SELECT id, workstation_id, owner_cid, ends_at FROM veyl_prod_batches WHERE state = 'active'") or {}) do
         if not Ws.rows[b.workstation_id] then out.orphaned[#out.orphaned + 1] = b.id
         elseif b.ends_at < now - 86400 then out.stuck[#out.stuck + 1] = b.id end
+    end
+    return out
+end
+
+--- Benches that are working a hazardous recipe right now (for the hazard system). Returns { { id, x, y, z } }.
+function Ws.hazardous()
+    local out = {}
+    local now = os.time()
+    local seen = {}
+    for _, b in ipairs(MySQL.query.await("SELECT workstation_id, recipe FROM veyl_prod_batches WHERE state = 'active' AND starts_at <= ? AND ends_at > ?", { now, now }) or {}) do
+        local r = W.Recipes[b.recipe]
+        local ws = Ws.rows[b.workstation_id]
+        if r and r.hazard and ws and not seen[ws.id] then seen[ws.id] = true out[#out + 1] = { id = ws.id, x = ws.x, y = ws.y, z = ws.z, owner = ws.owner_cid } end
     end
     return out
 end

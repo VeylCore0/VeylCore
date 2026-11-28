@@ -20,6 +20,9 @@ ProductionConfig.Police = {
         harvest = { chance = 0.2, cooldown = 300 },
         workstation = { chance = 0.2, cooldown = 300 },
         property_entry = { chance = 0.1, cooldown = 600 },
+        field_search = { chance = 0.08, cooldown = 300 },
+        supply_run = { chance = 0.25, cooldown = 300 },
+        hazard = { chance = 0.3, cooldown = 600 },
     },
     Raid = {
         BreachSeconds = 25,          -- base time to breach a door; security upgrades add to it
@@ -27,6 +30,8 @@ ProductionConfig.Police = {
         CooldownMinutes = 120,       -- the same lab cannot be raided again for this long
         SeizeItems = {               -- items taken by "Seize". Empty list = everything in storage.
             'prod_leaf', 'prod_blend', 'prod_pack', 'prod_wild_herb',
+            'prod_field_bloom', 'prod_field_extract', 'prod_field_pack', 'prod_field_find',
+            'prod_supply_kit', 'prod_compound', 'prod_batch_pack',
         },
         SeizeBenches = true,         -- running batches in the lab are cancelled and queued inputs lost
     },

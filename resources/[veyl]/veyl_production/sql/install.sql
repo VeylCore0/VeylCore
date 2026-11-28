@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS veyl_prod_batches (
     starts_at INT UNSIGNED NOT NULL, ends_at INT UNSIGNED NOT NULL,
     stages TEXT NOT NULL,
     refund TEXT NULL,
+    yield_pct DOUBLE NOT NULL DEFAULT 1,
     created_at INT UNSIGNED NOT NULL,
     claimed_at INT UNSIGNED NULL,
     PRIMARY KEY (id),
@@ -114,4 +115,17 @@ CREATE TABLE IF NOT EXISTS veyl_prod_audit (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_cid (citizenid, id), KEY idx_kind (kind, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS veyl_prod_runs (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    citizenid VARCHAR(16) NOT NULL,
+    supplier VARCHAR(32) NOT NULL,
+    state VARCHAR(12) NOT NULL DEFAULT 'active',
+    pickup TEXT NOT NULL, dropoff TEXT NOT NULL,
+    kits INT UNSIGNED NOT NULL,
+    started_at INT UNSIGNED NOT NULL, expires_at INT UNSIGNED NOT NULL,
+    picked_at INT UNSIGNED NULL, finished_at INT UNSIGNED NULL,
+    PRIMARY KEY (id),
+    KEY idx_cid (citizenid, state), KEY idx_day (citizenid, started_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

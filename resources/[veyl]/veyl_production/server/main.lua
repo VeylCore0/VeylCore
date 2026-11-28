@@ -10,6 +10,7 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
     Prod.Plants.load()
     Prod.Ws.load()
     Prod.Props.load()
+    Prod.Supplier.reconcile()
     Prod.ready = true
     print(('[veyl_production] ready: %d plants, %d benches'):format((function() local n = 0 for _ in pairs(Prod.Plants.rows) do n = n + 1 end return n end)(), (function() local n = 0 for _ in pairs(Prod.Ws.rows) do n = n + 1 end return n end)()))
     return true
@@ -19,13 +20,20 @@ end)
 -- nothing is consumed until the server accepts the placement.
 local function registerUse()
     exports.veyl_inventory:RegisterUseHandler('prod_seed', function(ctx)
-        for key, v in pairs(C.Botanical.Varieties) do
-            if v.seed == ctx.item then TriggerClientEvent('veyl_production:beginPlacement', ctx.source, { kind = 'plant', variety = key, property = Prod.Props.insideOf(ctx.source) }) return end
+        for _, key in ipairs(ProdUtil.varieties()) do
+            if ProdUtil.variety(key).seed == ctx.item then TriggerClientEvent('veyl_production:beginPlacement', ctx.source, { kind = 'plant', variety = key, property = Prod.Props.insideOf(ctx.source) }) return end
         end
     end)
+    -- Benches: the item picks the bench type; inside a laboratory it is the lab version.
     exports.veyl_inventory:RegisterUseHandler('prod_bench', function(ctx)
         local inside = Prod.Props.insideOf(ctx.source)
-        TriggerClientEvent('veyl_production:beginPlacement', ctx.source, { kind = 'workstation', type = inside and 'lab_bench' or 'prep_table', property = inside })
+        for key, t in pairs(C.Workstations.Types) do
+            if t.item == ctx.item and (inside ~= nil) == (not t.portable) then
+                TriggerClientEvent('veyl_production:beginPlacement', ctx.source, { kind = 'workstation', type = key, property = inside })
+                return
+            end
+        end
+        Veyl.Notify(ctx.source, inside and 'That bench does not belong in a laboratory.' or 'That bench belongs in a laboratory.', 'error')
     end)
 end
 

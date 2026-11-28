@@ -8,10 +8,12 @@ A fictional production game for VeylCore: buy supplies, gather, plant and tend, 
 |---|---|
 | Shared engines: placement, plant lifecycle, workstation queues, properties, progression, quality, logging, police hooks | Built and tested |
 | **Botanical branch**: supply shop, buyer, gathering, plants, workstations, laboratories | Built and tested |
-| **Field operations branch** (field zones, searching, branch growing) | **Not built.** The config already allows more branches; the tablet lists them greyed out and does nothing with them |
-| **Supplier operations branch** (supplier runs, hazards) | **Not built** |
+| **Field operations branch**: outfitter shop, field zones with several search points, field plants, field workstation recipes, field laboratory | Built and tested |
+| **Supplier operations branch**: supplier contacts and runs, supply-kit recipes with a skill check, a fictional fumes hazard, supplier laboratory | Built and tested |
 
-Why: the spec is a multi-week project. This is the shared infrastructure plus one complete branch, so the other two branches only need their own config and their own actions on top of the same engines. Nothing in the UI is a placeholder: every button works.
+The three branches run on the same engines (placement, plants, workstation queues, properties, progression); each only adds its own config (`config/botanical.lua`, `config/field_operations.lua`, `config/supplier_operations.lua`) and its own actions. Switch a branch off with `Branches.<name>.enabled` in `config/main.lua`. Nothing in the UI is a placeholder: every button works.
+
+What is not built: group runs for suppliers (a run is one player), and a stamina penalty for the hazard (it is health damage only).
 
 `veyl_drugs` is a separate, older resource and keeps running untouched. The two share nothing (own tables, items and UI), so you can run both, or drop `veyl_drugs` later.
 
@@ -40,6 +42,19 @@ ensure veyl_production
 - **Process:** set up a Prep Table, use it to queue recipes (blend, pack, mix tonic). Batches have timers that survive restarts; collect them when ready.
 - **Sell** finished goods to the buyer. Price depends on quality (Poor ×0.6 up to Flawless ×2.0).
 - **Laboratories:** buy one at its street door or in the Properties page. Inside you get private storage, lab benches (more slots with upgrades), plants and staff. Lock it, set an access code, add employees (storage, benches, plants) or guests (enter only). Upgrades: storage, bench slots, equipment, security. Sell it back for 60% and buy it back for a day, or give it to a nearby player.
+
+### Field operations
+
+- **Outfitter** (field seeds, planters, water, tools). Stock refills over time like the other shops.
+- **Field zones** (Alamo shore, Canyon floor by default): each zone has several search points. A prop shows at every point near you; target one and choose Search. The server checks you are within range on the ground plane, then gives a token; the reward comes only after the minimum search time. Each point has a global respawn (someone else just searched it) and you have your own cooldown on it.
+- **Field plants** (Dawnroot, Duskbloom) use the same plant engine as botanical, with their own seeds, growth times and yields. Field recipes run on any workstation, and a field laboratory is on the property list.
+
+### Supplier operations
+
+- **Contacts** (a ped each, with level, fee, opening hours and a daily run limit). Taking a run charges the fee, picks a pickup and a drop at random and gives you a time limit.
+- **Run:** go to the marked crate (it only exists on your screen near the pickup), load it (progress, then the server checks distance), carry it to the drop and hand it over. The server checks you are at each point, that the trip was not faster than `MaxSpeed` allows, and that the run has not expired. Delivering fast enough earns a bonus on supply kits. A run is stored in `veyl_prod_runs` so it survives a reconnect, and expired runs are closed on start. Dropping a run does not refund the fee and starts a wait.
+- **Supply kits** feed the supplier recipes at a workstation. Those recipes use a **skill check**: the server issues a token, the client plays a few rounds of `veyl_minigames` lockpick, and the score comes back with the start request. The score can only move quality within `QualitySwing` (or reduce the yield to `ZeroYield`); it can never create or skip the inputs, timers or limits. If you cannot trust a client score at all, set `Skill.QualitySwing = 0`.
+- **Hazard:** working at a hazardous station raises a fictional exposure meter on the server (the page just shows the number). Above the threshold you take small health damage; an item (`prod_respirator`) cuts exposure, and it falls when you step away. Nothing in it models a real substance.
 
 ## What the server enforces
 
@@ -91,6 +106,8 @@ Natives used: placement ray tests, `CreateObject`, `RequestIpl`, routing buckets
 ## Tests
 
 The server logic ran against a real MariaDB with VeylCore stubbed (120 checks): migrations, shop (price, stock, restock, level locks, forged names and quantities, cannot afford), gathering (distance, token, too-early finish, cooldown, one reward), plants (placement rules, caps, care, growth to ready, neglect, harvest quality metadata, failed-grant recovery, no double harvest), benches (placement, queue order, quality-first input use, cancel refunds, claim once, pack-up rules, restart), buyer (price by quality), laboratories (purchase, double-buy, entry, codes with lockout, staff roles and live access removal, upgrades with cost and cap, sell, buyback, transfer), police (disabled by default, raid timing, window, seizure), progression, and restarts. The tablet, shop, buyer and bench pages were clicked through in the preview (24 flows).
+
+Field and supplier branches add checks for: field points (range, per-point and per-player cooldown, token and minimum time), supplier runs (level, fee, hours, daily limit, pickup and drop distance, speed, expiry, one active run, cancel wait, idempotent delivery), skill-check tokens (single use, expiry, score clamp) and the hazard (exposure, protection, decay). The suite is 184 checks in all.
 
 Not tested: in-game spawning, the placement preview, targeting, the interior teleport and IPL, and CEF rendering. Try these on a development server first.
 

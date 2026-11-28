@@ -5,8 +5,8 @@ local C = ProductionConfig
 local registered, zones = {}, {}
 local gathering = false
 
-local function openShop(kind)
-    local res = Veyl.CallbackTimeout('veyl_production', kind == 'buyer' and 'buyerView' or 'shopView', 15000)
+local function openShop(kind, shopId)
+    local res = kind == 'buyer' and Veyl.CallbackTimeout('veyl_production', 'buyerView', 15000) or Veyl.CallbackTimeout('veyl_production', 'shopView', 15000, shopId)
     if not res.ok then return Veyl.NotifyResult(res) end
     ProdClient.open(kind, res.data)
 end
@@ -14,7 +14,7 @@ end
 local function gather(spot)
     if gathering then return end
     gathering = true
-    local start = Veyl.CallbackTimeout('veyl_production', 'gatherStart', 15000, spot.id)
+    local start = Veyl.CallbackTimeout('veyl_production', 'gatherStart', 15000, spot.id, 1)
     if not start.ok then gathering = false return Veyl.NotifyResult(start) end
     local done = vlib.progress({ label = 'Gathering', duration = start.data.durationMs, canCancel = true, disable = { move = true, car = true, combat = true },
         anim = { dict = 'amb@world_human_gardener_plant@male@base', clip = 'base', flag = 1 } })
@@ -25,12 +25,21 @@ local function gather(spot)
 end
 
 local function register()
-    local shop, buyer = C.Shop.Ped, C.Buyer.Ped
-    exports.veyl_interact:AddPed({ id = 'veyl_prod_shop', model = shop.model, coords = shop.coords, scenario = shop.scenario, radius = shop.radius, title = shop.label,
-        options = { { label = 'Browse supplies', icon = 'bag', onSelect = function() CreateThread(function() openShop('shop') end) end } } })
+    local buyer = C.Buyer.Ped
+    registered = {}
+    -- One shop per enabled branch.
+    for _, def in ipairs({ { C.Shop, 'botanical' }, { C.Field and C.Field.Shop, 'field' }, { C.Supplier and C.Supplier.Shop, 'supplier' } }) do
+        local d, branch = def[1], def[2]
+        if d and C.Branches[branch] and C.Branches[branch].enabled then
+            local ped = d.Ped
+            exports.veyl_interact:AddPed({ id = 'veyl_prod_shop_' .. d.Id, model = ped.model, coords = ped.coords, scenario = ped.scenario, radius = ped.radius, title = ped.label,
+                options = { { label = 'Browse supplies', icon = 'bag', onSelect = function() CreateThread(function() openShop('shop', d.Id) end) end } } })
+            registered[#registered + 1] = 'veyl_prod_shop_' .. d.Id
+        end
+    end
     exports.veyl_interact:AddPed({ id = 'veyl_prod_buyer', model = buyer.model, coords = buyer.coords, scenario = buyer.scenario, radius = buyer.radius, title = buyer.label,
         options = { { label = 'Sell goods', icon = 'money', onSelect = function() CreateThread(function() openShop('buyer') end) end } } })
-    registered = { 'veyl_prod_shop', 'veyl_prod_buyer' }
+    registered[#registered + 1] = 'veyl_prod_buyer'
 
     if C.Shop.Blip.show then
         local b = AddBlipForCoord(C.Shop.Ped.coords.x, C.Shop.Ped.coords.y, C.Shop.Ped.coords.z)

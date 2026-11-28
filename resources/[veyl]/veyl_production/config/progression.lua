@@ -14,6 +14,8 @@ ProductionConfig.XP = {
     harvest = { xp = 30, cooldown = 0 },
     craft = { xp = 15, cooldown = 0 },
     sell = { xp = 4, cooldown = 10 },
+    search = { xp = 7, cooldown = 15 },        -- field zone searches
+    run = { xp = 40, cooldown = 0 },           -- supplier runs
 }
 
 -- Overall reputation: the sum of every branch's XP, at these totals.

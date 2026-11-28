@@ -43,7 +43,7 @@ end
 ---------------------------------------------------------------------------
 -- Lifecycle
 ---------------------------------------------------------------------------
-local function varietyOf(row) return B.Varieties[row.variety] end
+local function varietyOf(row) return ProdUtil.variety(row.variety) end
 
 --- Advances a plant row to `now` and returns it (the row table is updated in place).
 function Plants.simulate(row, now)
@@ -146,12 +146,12 @@ end
 ---------------------------------------------------------------------------
 function Plants.place(src, cid, d)
     local varietyKey = Prod.Sec.str(d.variety, 24, '^[%w_]+$')
-    local v = varietyKey and B.Varieties[varietyKey]
+    local v = varietyKey and ProdUtil.variety(varietyKey)
     if not v then Prod.Sec.invalid(src, cid, 'plant_bad_variety') return Veyl.Err('INVALID_INPUT', 'Unknown plant') end
     local pos, heading = Place.position(d)
     if not pos then Prod.Sec.invalid(src, cid, 'plant_bad_position') return Veyl.Err('INVALID_INPUT', 'Bad position') end
-    local level = Prod.Prog.level(cid, 'botanical')
-    if level < v.level then return Veyl.Err('LEVEL_REQUIRED', ('Needs botanical level %d'):format(v.level)) end
+    local level = Prod.Prog.level(cid, v.branch)
+    if level < v.level then return Veyl.Err('LEVEL_REQUIRED', ('Needs %s level %d'):format(v.branch, v.level)) end
     if count(cid) >= C.Placement.MaxPlantsPerPlayer then return Veyl.Err('LIMIT', ('You can keep up to %d plants'):format(C.Placement.MaxPlantsPerPlayer)) end
     local propertyId = d.property and Prod.Sec.str(d.property, 32, '^[%w_]+$') or nil
     local others = {}
@@ -179,9 +179,9 @@ function Plants.place(src, cid, d)
         Prod.Inv.give(cid, B.PlanterItem, 1, nil, tag .. ':undo2')
         return Veyl.Err('DATABASE_ERROR', 'Could not plant it')
     end
-    Plants.rows[id] = { id = id, owner_cid = cid, branch = 'botanical', variety = varietyKey, x = pos.x, y = pos.y, z = pos.z, heading = heading, property_id = propertyId,
+    Plants.rows[id] = { id = id, owner_cid = cid, branch = v.branch, variety = varietyKey, x = pos.x, y = pos.y, z = pos.z, heading = heading, property_id = propertyId,
         water = Care.StartMeter + 0.0, nutrient = Care.StartMeter + 0.0, health = 100.0, growth = 0.0, care_minutes = 0.0, total_minutes = 0.0, state = 'growing', planted_at = now, updated_at = now }
-    Prod.Prog.award(cid, 'botanical', 'plant')
+    Prod.Prog.award(cid, v.branch, 'plant')
     Prod.Prog.stat(cid, 'plants_planted')
     Prod.Log.event('plant', cid, ('planted %s #%d'):format(varietyKey, id))
     Prod.Police.maybeAlert(cid, 'plant', pos)
@@ -220,7 +220,7 @@ function Plants.care(src, cid, id, kind)
     if not (t and t.ok) then return Veyl.Err('NO_ITEM', ('You need %s'):format(ProdItemLabels[item])) end
     row[field] = math.min(100, row[field] + (kind == 'water' and Care.WaterAdds or Care.NutrientAdds))
     save(row)
-    Prod.Prog.award(cid, 'botanical', 'water')
+    Prod.Prog.award(cid, (varietyOf(row) or { branch = 'botanical' }).branch, 'water')
     return Veyl.Ok(Plants.status(row), kind == 'water' and 'Watered' or 'Fed')
 end
 
@@ -231,7 +231,7 @@ function Plants.harvest(src, cid, id)
     if row.state ~= 'ready' then return Veyl.Err('INVALID_STATE', row.state == 'dead' and 'It is dead' or 'It is not ready yet') end
     if row.owner_cid ~= cid and not (row.property_id and Prod.Props.can(cid, row.property_id, 'plants')) then return Veyl.Err('NO_PERMISSION', 'Not yours') end
     local v = varietyOf(row)
-    local level = Prod.Prog.level(cid, 'botanical')
+    local level = Prod.Prog.level(cid, v.branch)
     if not Prod.Sec.try(cid, 'harvest', C.Cooldowns.Harvest) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
 
     local claim = row.harvest_claim
@@ -244,7 +244,7 @@ function Plants.harvest(src, cid, id)
         count_ = math.random(v.yield[1], v.yield[2])
         quality = Plants.quality(row, level, Prod.Props.benchBonus(row.property_id))
         token = Veyl.NewId():gsub('%W', ''):sub(1, 12)
-        if not Prod.Inv.canCarry(cid, ProdItems.leaf, count_, Prod.Inv.productMeta(row.variety, quality, '', 'botanical')) then
+        if not Prod.Inv.canCarry(cid, v.harvestItem, count_, Prod.Inv.productMeta(row.variety, quality, '', v.branch)) then
             return Veyl.Err('INVENTORY_FULL', 'You cannot carry the harvest')
         end
         local claimed = MySQL.update.await('UPDATE veyl_prod_plants SET harvest_claim = ? WHERE id = ? AND harvest_claim IS NULL AND state = ?',
@@ -253,7 +253,7 @@ function Plants.harvest(src, cid, id)
         row.harvest_claim = ('%s:%d:%d'):format(token, count_, quality)
     end
     local batch = ('H%d'):format(row.id)
-    local g = Prod.Inv.give(cid, ProdItems.leaf, count_, Prod.Inv.productMeta(row.variety, quality, batch, 'botanical'), ('prodharvest:%d:%s'):format(row.id, token))
+    local g = Prod.Inv.give(cid, v.harvestItem, count_, Prod.Inv.productMeta(row.variety, quality, batch, v.branch), ('prodharvest:%d:%s'):format(row.id, token))
     if not (g and g.ok) then
         -- Nothing was granted (the operation is recorded only when it commits), so release the claim and let them try again.
         MySQL.update('UPDATE veyl_prod_plants SET harvest_claim = NULL WHERE id = ?', { row.id })
@@ -271,7 +271,7 @@ function Plants.harvest(src, cid, id)
     end
     MySQL.update('DELETE FROM veyl_prod_plants WHERE id = ?', { row.id })
     Plants.rows[row.id] = nil
-    local xp = Prod.Prog.award(cid, 'botanical', 'harvest')
+    local xp = Prod.Prog.award(cid, v.branch, 'harvest')
     Prod.Prog.stat(cid, 'plants_harvested')
     Prod.Prog.stat(cid, 'leaves_harvested', count_)
     Prod.Log.event('harvest', cid, ('harvested %s x%d (quality %d)'):format(row.variety, count_, quality), { plant = row.id })

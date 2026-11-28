@@ -5,7 +5,7 @@ import { devEmit, type NuiResponse } from '@veyl/ui';
 const now = () => Math.floor(Date.now() / 1000);
 const ok = <T,>(data?: T, message?: string): NuiResponse<T> => ({ ok: true, data, message });
 const err = (code: string, message: string): NuiResponse<never> => ({ ok: false, code, message });
-const L: Record<string, string> = { prod_seed_ember: 'Emberleaf Seeds', prod_seed_violet: 'Violetbloom Seeds', prod_seed_azure: 'Azurefern Seeds', prod_planter: 'Planter', prod_water: 'Clean Water', prod_nutrient: 'Growth Tonic', prod_leaf: 'Fresh Leaves', prod_blend: 'Leaf Blend', prod_pack: 'Packed Product', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Prep Table' };
+const L: Record<string, string> = { prod_seed_ember: 'Emberleaf Seeds', prod_seed_violet: 'Violetbloom Seeds', prod_seed_azure: 'Azurefern Seeds', prod_planter: 'Planter', prod_water: 'Clean Water', prod_nutrient: 'Growth Tonic', prod_leaf: 'Fresh Leaves', prod_blend: 'Leaf Blend', prod_pack: 'Packed Product', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Prep Table', prod_fseed_dawn: 'Dawnroot Seeds', prod_fseed_dusk: 'Duskbloom Seeds', prod_supply_kit: 'Supply Kit' };
 
 let xp = 410, cash = 24000;
 let plants = [
@@ -21,6 +21,7 @@ let batches = [
 const recipes = [
   { id: 'blend', label: 'Blend Leaves', level: 1, locked: false, inputs: [{ item: 'prod_leaf', count: 4 }], output: { item: 'prod_blend', count: 2 }, seconds: 50, stages: [{ label: 'Sorting', seconds: 20 }, { label: 'Blending', seconds: 30 }] },
   { id: 'pack', label: 'Pack Product', level: 4, locked: true, inputs: [{ item: 'prod_blend', count: 2 }], output: { item: 'prod_pack', count: 3 }, seconds: 35, stages: [{ label: 'Weighing', seconds: 15 }, { label: 'Sealing', seconds: 20 }] },
+  { id: 'synthesize', label: 'Synthesise Compound', level: 2, branch: 'supplier', skill: 3, hazard: true, locked: false, inputs: [{ item: 'prod_supply_kit', count: 2 }], output: { item: 'prod_blend', count: 2 }, seconds: 90, stages: [{ label: 'Mixing', seconds: 90 }] },
   { id: 'tonic', label: 'Mix Growth Tonic', level: 1, locked: false, inputs: [{ item: 'prod_wild_herb', count: 3 }], output: { item: 'prod_nutrient', count: 2 }, seconds: 25, stages: [{ label: 'Steeping', seconds: 25 }] },
 ];
 const bench = () => ({ id: 1, type: 'prep_table', label: 'Portable Prep Table', property: null, mine: true, x: 2030, y: 4890, slots: 3, batches, recipes, serverTime: now() });
@@ -53,30 +54,49 @@ function props() {
   };
 }
 
+let supRun: any = null;
+function supplierState() {
+  return {
+    suppliers: [
+      { id: 'harbour_contact', label: 'Harbour contact', level: 1, locked: false, fee: 250, open: true, hours: [0, 24], runsLeft: 3, minutes: 20, kits: [2, 4], x: 1210, y: -3110 },
+      { id: 'night_contact', label: 'Night contact', level: 4, locked: lvOf() < 4, fee: 600, open: false, hours: [20, 28], runsLeft: 2, minutes: 25, kits: [4, 7], x: -430, y: -2170 },
+    ],
+    run: supRun, cancelWait: 0,
+  };
+}
+
 export function prodState() {
   const lv = lvOf();
   const floor = LEVELS[lv - 1], next = LEVELS[lv];
   return {
     player: { name: 'Alex Morgan' },
-    progress: { branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', xp, level: lv, levelName: NAMES[lv - 1], nextXp: next, floor, progress: next ? (xp - floor) / (next - floor) : 1 } },
+    progress: { branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', xp, level: lv, levelName: NAMES[lv - 1], nextXp: next, floor, progress: next ? (xp - floor) / (next - floor) : 1 },
+      field: { label: 'Field Operations', icon: 'compass', color: '#5ab0ff', xp: 220, level: 2, levelName: NAMES[1], nextXp: 360, floor: 120, progress: 0.42 },
+      supplier: { label: 'Supplier Operations', icon: 'truck', color: '#f2b443', xp: 90, level: 1, levelName: NAMES[0], nextXp: 120, floor: 0, progress: 0.75 } },
       stats: { plants_planted: 14, plants_harvested: 9, leaves_harvested: 38, gathered: 21, batches_completed: 7, purchases: 12, sales: 5, money_spent: 3180, money_earned: 4260 },
       reputation: { level: lv, name: NAMES[lv - 1], xp, next, floor } },
     plants,
     varieties: [
-      { key: 'ember', label: 'Emberleaf', rarity: 'Common', level: 1, locked: false, growMinutes: 45, yield: [3, 5], seed: 'prod_seed_ember' },
-      { key: 'violet', label: 'Violetbloom', rarity: 'Uncommon', level: 2, locked: lv < 2, growMinutes: 70, yield: [3, 6], seed: 'prod_seed_violet' },
-      { key: 'azure', label: 'Azurefern', rarity: 'Rare', level: 4, locked: lv < 4, growMinutes: 100, yield: [4, 7], seed: 'prod_seed_azure' },
+      { key: 'ember', label: 'Emberleaf', branch: 'botanical', rarity: 'Common', level: 1, locked: false, growMinutes: 45, yield: [3, 5], seed: 'prod_seed_ember' },
+      { key: 'violet', label: 'Violetbloom', branch: 'botanical', rarity: 'Uncommon', level: 2, locked: lv < 2, growMinutes: 70, yield: [3, 6], seed: 'prod_seed_violet' },
+      { key: 'dawn', label: 'Dawnroot', branch: 'field', rarity: 'Common', level: 1, locked: false, growMinutes: 40, yield: [2, 4], seed: 'prod_fseed_dawn' },
+      { key: 'dusk', label: 'Duskbloom', branch: 'field', rarity: 'Uncommon', level: 3, locked: lv < 3, growMinutes: 80, yield: [3, 6], seed: 'prod_fseed_dusk' },
+      { key: 'azure', label: 'Azurefern', branch: 'botanical', rarity: 'Rare', level: 4, locked: lv < 4, growMinutes: 100, yield: [4, 7], seed: 'prod_seed_azure' },
     ],
     workstations: [bench()], properties: props(),
     gathering: [
-      { id: 'grapeseed_a', label: 'Wild patch', level: 1, locked: false, cooldown: 0, x: 2024, y: 4880 }, { id: 'grapeseed_b', label: 'Wild patch', level: 1, locked: false, cooldown: 180, x: 1959, y: 4640 },
-      { id: 'paleto_a', label: 'Overgrown ditch', level: 2, locked: lv < 2, cooldown: 0, x: -216, y: 6330 },
+      { id: 'grapeseed_a', label: 'Wild patch', branch: 'botanical', points: 1, ready: 1, level: 1, locked: false, cooldown: 0, x: 2024, y: 4880 }, { id: 'grapeseed_b', label: 'Wild patch', branch: 'botanical', points: 1, ready: 0, level: 1, locked: false, cooldown: 180, x: 1959, y: 4640 },
+      { id: 'alamo_shore', label: 'Alamo shore', branch: 'field', points: 6, ready: 4, level: 1, locked: false, cooldown: 0, x: 1380, y: 3600 },
+      { id: 'canyon_floor', label: 'Canyon floor', branch: 'field', points: 5, ready: 5, level: 3, locked: lv < 3, cooldown: 0, x: -1200, y: 4300 },
+      { id: 'paleto_a', label: 'Overgrown ditch', branch: 'botanical', points: 1, ready: 1, level: 2, locked: lv < 2, cooldown: 0, x: -216, y: 6330 },
     ],
+    supplier: supplierState(), exposure: 0,
+    shops: [{ id: 'garden_supplier', label: 'Garden Supplier', branch: 'botanical', x: 0, y: 0 }, { id: 'field_outfitter', label: 'Field Outfitter', branch: 'field', x: 0, y: 0 }, { id: 'supply_dealer', label: 'Supply Dealer', branch: 'supplier', x: 0, y: 0 }],
     recent: [
       { kind: 'harvest', text: 'harvested ember x4 (quality 72)', at: now() - 300 }, { kind: 'craft', text: 'started blend on bench #1', at: now() - 900 }, { kind: 'purchase', text: 'bought 3x prod_seed_ember for $120', at: now() - 3600 },
     ],
     police: { enabled: false, dispatch: false, isPolice: false },
-    branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', enabled: true }, field: { label: 'Field Operations', icon: 'compass', color: '#5ab0ff', enabled: false }, supplier: { label: 'Supplier Operations', icon: 'truck', color: '#c58bff', enabled: false } },
+    branches: { botanical: { label: 'Botanical', icon: 'leaf', color: '#7bd88f', enabled: true }, field: { label: 'Field Operations', icon: 'compass', color: '#5ab0ff', enabled: true }, supplier: { label: 'Supplier Operations', icon: 'truck', color: '#f2b443', enabled: true } },
     ui: { Brand: 'VEYL PRODUCTION', Accent: '#8b5fd6', Accent2: '#3f8bff', Currency: '$' },
     tiers: [{ max: 24, label: 'Poor', mult: 0.6 }, { max: 49, label: 'Standard', mult: 1 }, { max: 74, label: 'Good', mult: 1.3 }, { max: 89, label: 'Excellent', mult: 1.6 }, { max: 100, label: 'Flawless', mult: 2 }],
     levelNames: NAMES, itemLabels: L, serverTime: now(),
@@ -85,6 +105,7 @@ export function prodState() {
 
 export function prodShop() {
   return {
+    id: 'garden_supplier', label: 'Garden Supplier',
     items: [
       { item: 'prod_planter', label: 'Planter', price: 60, stock: 26, max: 30, level: 1, locked: false }, { item: 'prod_water', label: 'Clean Water', price: 12, stock: 54, max: 60, level: 1, locked: false },
       { item: 'prod_nutrient', label: 'Growth Tonic', price: 25, stock: 6, max: 40, level: 1, locked: false }, { item: 'prod_seed_ember', label: 'Emberleaf Seeds', price: 40, stock: 33, max: 40, level: 1, locked: false },
@@ -101,7 +122,9 @@ export function prodApi(name: string, a: unknown[]): NuiResponse | undefined {
   switch (name) {
     case 'state': return ok(prodState());
     case 'shopView': case 'buyerView': return ok(prodShop());
-    case 'shopBuy': { const item = prodShop().items.find((i) => i.item === a[0]); if (!item) return err('INVALID_INPUT', 'Bad request'); const cost = item.price * Number(a[1]); if (cost > cash) return err('INSUFFICIENT_FUNDS', 'You cannot afford that'); cash -= cost; return ok(undefined, `Bought ${a[1]}x ${item.label} for $${cost}`); }
+    case 'shopBuy': { const item = prodShop().items.find((i) => i.item === a[1]); if (!item) return err('INVALID_INPUT', 'Bad request'); const cost = item.price * Number(a[2]); if (cost > cash) return err('INSUFFICIENT_FUNDS', 'You cannot afford that'); cash -= cost; return ok(undefined, `Bought ${a[2]}x ${item.label} for $${cost}`); }
+    case 'runStart': supRun = { id: 1, supplier: String(a[0]), state: 'active', kits: 4, expiresAt: now() + 1200, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 } }; return ok({ run: supRun }, 'Run started: head to the Container yard');
+    case 'runCancel': supRun = null; return ok(undefined, 'Run dropped');
     case 'shopSell': return ok({ total: 360, sold: Number(a[1]) }, `Sold ${a[1]} for $360`);
     case 'wsOpen': return ok(bench());
     case 'wsStart': { if (batches.length >= 3) return err('LIMIT', 'The queue is full'); const r = recipes.find((x) => x.id === a[1]); if (!r || r.locked) return err('LEVEL_REQUIRED', 'Needs a higher level'); const last = batches[batches.length - 1]?.endsAt ?? now(); batches = [...batches, { id: Date.now() % 100000, recipe: r.id, label: r.label, state: 'queued', startsAt: last, endsAt: last + r.seconds, quality: 66, tier: 'Good', output: r.output, stage: null, progress: 0 }]; return ok(bench(), `${r.label} queued`); }
@@ -123,11 +146,13 @@ export function prodApi(name: string, a: unknown[]): NuiResponse | undefined {
 }
 
 export const prodDemo = {
-  reset() { xp = 410; cash = 24000; owned = true; locked = true; ups = { storage: 1 }; members = [{ id: 'PB', role: 'employee', name: 'Jamie Cole' }]; },
+  reset() { supRun = null; xp = 410; cash = 24000; owned = true; locked = true; ups = { storage: 1 }; members = [{ id: 'PB', role: 'employee', name: 'Jamie Cole' }]; },
   tablet(page?: string) { devEmit('production:open', { view: 'tablet', data: { state: prodState(), page } }); },
   shop() { devEmit('production:open', { view: 'shop', data: prodShop() }); },
   buyer() { devEmit('production:open', { view: 'buyer', data: prodShop() }); },
   bench() { devEmit('production:open', { view: 'bench', data: bench() }); },
   placement(valid: boolean) { devEmit('production:placement', { visible: true, valid, reason: valid ? undefined : 'Too close to something else', label: 'Emberleaf' }); },
+  run() { supRun = { id: 1, supplier: 'harbour_contact', state: 'picked', kits: 4, expiresAt: now() + 900, serverTime: now(), pickup: { label: 'Container yard', x: 1205, y: -3118, z: 5 }, drop: { label: 'Auto yard', x: 1017, y: -2528, z: 28 } }; },
+  hazard(level: number) { devEmit('production:hazard', { level, warn: 40 }); },
   empty() { xp = 0; plants = []; batches = []; owned = false; },
 };

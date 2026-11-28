@@ -151,3 +151,11 @@
 /* The tablet header already names the page, so the page only needs its subtitle. */
 .pr-tablet .pr-page-head h2 { display: none; }
 .pr-tablet .pr-page-head p { margin-top: 0; }
+
+/* Fumes exposure meter (field/supplier chemistry): shown while the server reports exposure */
+.pr-hazard { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); width: 220px; height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 13px; background: rgba(12, 14, 18, 0.82); border: 1px solid rgba(255, 255, 255, 0.12); color: #f2b443; font-size: 12px; font-weight: 600; overflow: hidden; z-index: 5; }
+.pr-hazard i { position: absolute; left: 0; bottom: 0; height: 3px; background: #f2b443; transition: width 0.4s; }
+.pr-hazard.hot { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.5); } .pr-hazard.hot i { background: #ff6b6b; }
+.pr-note.warn { color: #f2b443; }
+.pr-run .pr-card-foot { gap: 8px; margin-top: 8px; }
+.pr-card-foot { gap: 8px; }

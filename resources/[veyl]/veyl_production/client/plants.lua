@@ -15,7 +15,7 @@ local function modelHash(name)
 end
 
 local function make(p)
-    local v = B.Varieties[p.variety]
+    local v = ProdUtil.variety(p.variety)
     if not v then return nil end
     local name = v.stages[math.max(1, math.min(#v.stages, p.stage))]
     local hash = modelHash(name)

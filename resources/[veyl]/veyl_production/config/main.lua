@@ -1,6 +1,6 @@
 -- veyl_production: general settings. All production here is fictional game logic with invented items; nothing models real processes.
--- Branches: only `botanical` is built so far. Field and supplier branches will plug into the same engines (plants, workstations,
--- properties, progression); the config keys below already allow more branches.
+-- Three branches (botanical, field, supplier) share the same engines (plants, workstations, properties, progression). Each has its own
+-- config file, items, levels and pages. Set `enabled = false` on a branch to hide it.
 
 ProductionConfig = ProductionConfig or {}
 local C = ProductionConfig
@@ -39,8 +39,8 @@ C.AbandonedAfterDays = 0
 -- Branch display data for the tablet.
 C.Branches = {
     botanical = { label = 'Botanical', icon = 'leaf', color = '#7bd88f', enabled = true },
-    field = { label = 'Field Operations', icon = 'compass', color = '#5ab0ff', enabled = false },
-    supplier = { label = 'Supplier Operations', icon = 'truck', color = '#c58bff', enabled = false },
+    field = { label = 'Field Operations', icon = 'compass', color = '#5ab0ff', enabled = true },
+    supplier = { label = 'Supplier Operations', icon = 'truck', color = '#c58bff', enabled = true },
 }
 
 -- Logging. Each event type can be switched on or off; set Webhook to a Discord webhook URL to also post them. Secrets

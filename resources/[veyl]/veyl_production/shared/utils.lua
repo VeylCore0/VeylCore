@@ -23,3 +23,28 @@ function ProdUtil.distance(a, b)
     local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
     return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
+
+--- A plant variety definition from any branch (botanical or field), with its branch and harvest item filled in.
+function ProdUtil.variety(key)
+    local B, F = ProductionConfig.Botanical, ProductionConfig.Field
+    local v = B and B.Varieties[key] or (F and F.Varieties[key])
+    if not v then return nil end
+    v.branch = v.branch or 'botanical'
+    v.harvestItem = v.harvestItem or 'prod_leaf'
+    return v
+end
+
+--- Every variety key (both branches).
+function ProdUtil.varieties()
+    local out = {}
+    for _, src in ipairs({ ProductionConfig.Botanical.Varieties, (ProductionConfig.Field or {}).Varieties or {} }) do
+        for k in pairs(src) do out[#out + 1] = k end
+    end
+    return out
+end
+
+--- Distance on the ground plane only (for field points whose height is only a guide).
+function ProdUtil.distance2d(a, b)
+    local dx, dy = a.x - b.x, a.y - b.y
+    return math.sqrt(dx * dx + dy * dy)
+end

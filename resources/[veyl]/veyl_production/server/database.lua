@@ -119,4 +119,24 @@ Prod.DB.Migrations = {
     },
 }
 
+Prod.DB.Migrations[#Prod.DB.Migrations + 1] = {
+    id = 'v1_002_branches',
+    sql = {
+        [[ALTER TABLE veyl_prod_batches ADD COLUMN yield_pct DOUBLE NOT NULL DEFAULT 1]],
+        -- Supplier runs: one row per run, claimed once at each step. Times are absolute server timestamps.
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_runs (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            citizenid VARCHAR(16) NOT NULL,
+            supplier VARCHAR(32) NOT NULL,
+            state VARCHAR(12) NOT NULL DEFAULT 'active',
+            pickup TEXT NOT NULL, dropoff TEXT NOT NULL,
+            kits INT UNSIGNED NOT NULL,
+            started_at INT UNSIGNED NOT NULL, expires_at INT UNSIGNED NOT NULL,
+            picked_at INT UNSIGNED NULL, finished_at INT UNSIGNED NULL,
+            PRIMARY KEY (id),
+            KEY idx_cid (citizenid, state), KEY idx_day (citizenid, started_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+    },
+}
+
 function Prod.DB.Migrate() return Veyl.Migrate(Prod.DB.Migrations) end

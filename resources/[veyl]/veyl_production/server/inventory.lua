@@ -32,7 +32,7 @@ end
 
 --- Authoritative metadata for a product (never taken from a client).
 function Inv.productMeta(variety, quality, batch, branch)
-    local v = ProductionConfig.Botanical.Varieties[variety]
+    local v = ProdUtil.variety(variety)
     return { variety = variety or 'none', varietyLabel = v and v.label or 'Mixed', quality = ProdUtil.clamp(ProdUtil.round(quality), 1, 100),
         batch = batch or '', branch = branch or 'botanical', created = os.time() }
 end

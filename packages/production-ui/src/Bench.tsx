@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Bench } from './types';
+import { nui } from '@veyl/ui';
 import { Bar, Button, Chip, Confirm, Empty, Ico, ItemImg, mmss, useClock } from './ui';
 
 /** One workstation: its recipes and its queue. `act` is false when read-only (the tablet away from the bench). */
@@ -52,9 +53,9 @@ export function BenchPanel({ bench, labels, act, run }: { bench: Bench; labels: 
               <Ico name="arrow" size={16} />
               <span className="pr-io"><ItemImg item={r.output.item} size={30} /><b>{r.output.count}</b></span>
             </span>
-            <span className="pr-recipe-main"><strong>{r.label}</strong><em>{r.inputs.map((i) => `${i.count} ${labels[i.item] ?? i.item}`).join(', ')} → {r.output.count} {labels[r.output.item] ?? r.output.item} · {mmss(r.seconds)}</em></span>
+            <span className="pr-recipe-main"><strong>{r.label}{r.skill ? <Chip tone="accent"><Ico name="bolt" size={11} />{r.skill} checks</Chip> : null}{r.hazard ? <Chip tone="warn"><Ico name="alert" size={11} />Hazard</Chip> : null}</strong><em>{r.inputs.map((i) => `${i.count} ${labels[i.item] ?? i.item}`).join(', ')} → {r.output.count} {labels[r.output.item] ?? r.output.item} · {mmss(r.seconds)}</em></span>
             {r.locked ? <Chip tone="warn"><Ico name="lock" size={12} />Level {r.level}</Chip>
-              : act && run ? <Button kind="primary" disabled={bench.batches.length >= bench.slots} onClick={() => void run('wsStart', bench.id, r.id)}>Start</Button> : null}
+              : act && run ? <Button kind="primary" disabled={bench.batches.length >= bench.slots} onClick={() => (r.skill ? void nui('skillStart', { id: bench.id, recipe: r.id }) : void run('wsStart', bench.id, r.id))}>{r.skill ? 'Start check' : 'Start'}</Button> : null}
           </li>
         ))}
       </ul>

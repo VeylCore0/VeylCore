@@ -183,7 +183,6 @@ end
 --- The properties tablet page for a player: what is for sale, what they own or work at.
 function Props.catalogue(cid, src)
     local out = {}
-    local level_ = Prod.Prog.level(cid, 'botanical')
     local now = os.time()
     for _, id in ipairs(order) do
         local d, r = def(id), Props.rows[id]
@@ -193,7 +192,7 @@ function Props.catalogue(cid, src)
         if not r.owner_cid then
             entry.forSale = true
             entry.canAfford = nil
-            entry.levelOk = level_ >= d.level
+            entry.levelOk = Prod.Prog.level(cid, d.branch) >= d.level
             if r.prev_owner_cid and r.buyback_until and r.buyback_until > now then
                 if r.prev_owner_cid == cid then entry.buyback = { price = r.buyback_price, seconds = r.buyback_until - now }
                 else entry.reserved = true end

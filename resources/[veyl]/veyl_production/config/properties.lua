@@ -24,6 +24,15 @@ ProductionConfig.Properties = {
             door = vector3(1066.3, -3183.4, -39.2),          -- the inside exit point
             radius = 40.0,                                   -- things can be placed within this distance of `spawn`
         },
+        -- Other Biker DLC interiors for the field and supplier labs. These are the usual coordinates for them: check them in game.
+        biker_field = {
+            ipl = 'bkr_biker_interior_placement_interior_2_biker_dlc_int_ware01_milo',
+            spawn = vector4(1093.6, -3196.6, -38.99, 0.0), door = vector3(1088.7, -3188.1, -38.99), radius = 40.0,
+        },
+        biker_supplier = {
+            ipl = 'bkr_biker_interior_placement_interior_4_biker_dlc_int_ware03_milo',
+            spawn = vector4(997.0, -3200.0, -36.4, 270.0), door = vector3(997.3, -3200.5, -36.4), radius = 40.0,
+        },
     },
 
     -- Properties for sale. `entry` is the street door (a vector4). Add as many as you like.
@@ -34,6 +43,14 @@ ProductionConfig.Properties = {
           entry = vector4(1205.6, -3117.9, 5.54, 90.0), description = 'Warehouse space by the container yards.' },
         { id = 'harmony_lab', label = 'Harmony Lab', interior = 'biker_warehouse', price = 110000, level = 3, branch = 'botanical',
           entry = vector4(2667.4, 1436.9, 24.5, 0.0), description = 'A big shed in the desert. Far from prying eyes.' },
+        { id = 'alamo_lab', label = 'Alamo Field Lab', interior = 'biker_field', price = 70000, level = 1, branch = 'field',
+          entry = vector4(1730.2, 3312.0, 41.2, 195.0), description = 'A quiet shed out by the Alamo Sea for field work.' },
+        { id = 'sandy_lab', label = 'Sandy Field Lab', interior = 'biker_field', price = 105000, level = 3, branch = 'field',
+          entry = vector4(1392.4, 3601.7, 34.9, 200.0), description = 'A bigger field lab with room to grow.' },
+        { id = 'docks_lab', label = 'Docks Supplier Lab', interior = 'biker_supplier', price = 95000, level = 2, branch = 'supplier',
+          entry = vector4(1245.0, -3150.0, 5.5, 270.0), description = 'A unit at the docks, close to your suppliers.' },
+        { id = 'rail_lab', label = 'Railyard Supplier Lab', interior = 'biker_supplier', price = 130000, level = 3, branch = 'supplier',
+          entry = vector4(480.0, -1980.0, 24.5, 30.0), description = 'A railside warehouse with plenty of space.' },
     },
 
     -- Upgrades: levels in order. `price` is for that level. Effects: storage { slots, maxWeight } extra, benches (+ slots),

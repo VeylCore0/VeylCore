@@ -32,7 +32,7 @@ AddEventHandler('veyl_production:openTabletLocal', function(page) CreateThread(f
 ---------------------------------------------------------------------------
 local ALLOWED = {
     state = true, shopView = true, buyerView = true, shopBuy = true, shopSell = true,
-    wsOpen = true, wsStart = true, wsClaim = true, wsCancel = true, wsPack = true,
+    wsOpen = true, wsStart = true, wsClaim = true, wsCancel = true, wsPack = true, runCancel = true,
     propCatalogue = true, propBuy = true, propSell = true, propTransfer = true, propUpgrade = true, propLock = true, propCode = true,
     propMemberAdd = true, propMemberRemove = true, propStorage = true, nearbyPlayers = true, raidSeize = true,
 }
@@ -62,6 +62,34 @@ end)
 RegisterNetEvent('veyl_production:refresh', function(kind)
     TriggerEvent('veyl_production:refreshLocal', kind)
     if screen:isOpen() then screen:send('production:refresh') end
+end)
+
+-- A recipe with a skill check: close the page, do the rounds, send the score with the token the server gave, then show the bench again.
+-- (veyl_minigames runs the rounds when it is started; without it the check counts as a full score.)
+RegisterNUICallback('skillStart', function(data, cb)
+    cb({ ok = true })
+    local id, recipe = tonumber(data and data.id), type(data) == 'table' and data.recipe
+    if not id or type(recipe) ~= 'string' then return end
+    CreateThread(function()
+        screen:close('skill')
+        Wait(250)
+        local ch = Veyl.CallbackTimeout('veyl_production', 'wsChallenge', 15000, id, recipe)
+        if not ch.ok then Veyl.NotifyResult(ch) else
+            local score = 0
+            for i = 1, ch.data.rounds do
+                local ok = true
+                if GetResourceState('veyl_minigames') == 'started' then
+                    local p = promise.new()
+                    exports.veyl_minigames:Lockpick({ difficulty = ch.data.difficulty or 'medium', title = ('Calibrate (%d/%d)'):format(i, ch.data.rounds) }, function(r) p:resolve(r) end)
+                    ok = Citizen.Await(p) == true
+                end
+                if ok then score = score + 1 end
+            end
+            Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_production', 'wsStart', 15000, id, recipe, ch.data.token, score))
+        end
+        local again = Veyl.CallbackTimeout('veyl_production', 'wsOpen', 15000, id)
+        if again.ok then ProdClient.open('bench', again.data) end
+    end)
 end)
 
 --- A short random id for a client request (the server also makes its own operation ids).
