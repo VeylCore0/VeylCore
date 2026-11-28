@@ -132,3 +132,15 @@ kbd { font: inherit; font-size: 0.72rem; font-weight: 600; padding: 0.1rem 0.4re
 .methods { display: inline-flex; gap: 0.3rem; }
 .buy-btn { font: inherit; font-size: 0.82rem; font-weight: 700; padding: 0.45rem 0.9rem; color: #06241c; background: var(--teal); border: 0; border-radius: 0.35rem; cursor: pointer; }
 .buy-btn:disabled { background: rgba(255, 255, 255, 0.1); color: var(--mute); cursor: not-allowed; }
+
+/* Readability over a bright game scene: a real dark backdrop, and each column sits on its own dark card. */
+.inv-root { background-color: rgba(5, 7, 8, 0.9); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.inv-root .body-panel, .inv-root .player-panel, .inv-root .pack-panel, .inv-root .side-panel {
+  box-sizing: content-box; padding: calc(var(--slot) * 0.22) calc(var(--slot) * 0.26); background: rgba(10, 13, 14, 0.82); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 0.7rem;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+.inv-root { --tile: rgba(255, 255, 255, 0.07); --tile-hi: rgba(255, 255, 255, 0.13); --mute: #a3afac; }
+.inv-root .slot.filled { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.06); }
+.inv-root .ichip { color: #c4cfcc; border-color: rgba(255, 255, 255, 0.14); }
+.inv-root .ifield { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.14); }
+.inv-hints { background: rgba(5, 7, 8, 0.7); padding: 0.4rem 1rem; border-radius: 99px; }
