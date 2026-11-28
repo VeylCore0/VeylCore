@@ -35,12 +35,25 @@ local function despawn(key)
     spawned[key] = nil
 end
 
+-- Farms placed by staff (/drugadmin) arrive from the server and are drawn exactly like the configured field zones.
+ProdClient.farms = {}
+RegisterNetEvent('veyl_production:farms', function(list) ProdClient.farms = type(list) == 'table' and list or {} end)
+
+local function allZones()
+    local out = {}
+    for _, z in ipairs((C.Field and C.Field.Zones) or {}) do out[#out + 1] = z end
+    for _, z in ipairs(ProdClient.farms) do out[#out + 1] = z end
+    return out
+end
+
 local function sync()
     local pc = GetEntityCoords(PlayerPedId())
-    for _, z in ipairs((C.Field and C.Field.Zones) or {}) do
+    local valid = {}
+    for _, z in ipairs(allZones()) do
         if C.Branches[z.branch or 'field'] and C.Branches[z.branch or 'field'].enabled then
             for idx, p in ipairs(z.points) do
                 local key = z.id .. ':' .. idx
+                valid[key] = true
                 local d = #(vector2(pc.x, pc.y) - vector2(p.x, p.y))
                 local gone = (hidden[key] or 0) > GetGameTimer()
                 if spawned[key] and (gone or d > STREAM_OUT or ProdClient.inside) then despawn(key) end
@@ -66,10 +79,14 @@ local function sync()
             end
         end
     end
+    -- A farm or point that staff removed: take its prop away.
+    for key in pairs(spawned) do if not valid[key] then despawn(key) end end
 end
 
 CreateThread(function()
     while not Veyl.IsLoaded() do Wait(1000) end
+    local res = Veyl.CallbackTimeout('veyl_production', 'farmsList', 15000)
+    if res.ok and type(res.data) == 'table' then ProdClient.farms = res.data end
     while GetResourceState('veyl_target') ~= 'started' do Wait(500) end
     while true do Wait(2500) sync() end
 end)

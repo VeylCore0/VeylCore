@@ -127,6 +127,18 @@ register('raidFinish', function(src, cid, token) return Prod.Props.raidFinish(sr
 register('raidSeize', function(src, cid, id) return Prod.Props.raidSeize(src, cid, Sec.str(id, 32, '^[%w_]+$')) end, 1500)
 register('propCatalogue', function(src, cid) return Veyl.Ok(Prod.Props.catalogue(cid, src)) end, 500)
 
+-- Farms (placed by staff with /drugadmin) and selling to pedestrians
+register('farmsList', function(src, cid) return Veyl.Ok(Prod.Farms.publicList()) end, 1500)
+register('adminState', function(src, cid) return Prod.Farms.adminView(src, cid) end, 400)
+register('farmCreate', function(src, cid, kind, label) return Prod.Farms.create(src, cid, kind, label) end, 800)
+register('farmAddPoint', function(src, cid, id) return Prod.Farms.addPoint(src, cid, id) end, 600)
+register('farmRemovePoint', function(src, cid, id, index) return Prod.Farms.removePoint(src, cid, id, index) end, 600)
+register('farmUpdate', function(src, cid, id, d) return Prod.Farms.update(src, cid, id, d) end, 600)
+register('farmRewards', function(src, cid, id, list) return Prod.Farms.setRewards(src, cid, id, list) end, 600)
+register('farmDelete', function(src, cid, id) return Prod.Farms.delete(src, cid, id) end, 800)
+register('streetOffer', function(src, cid, netId) return Prod.Street.offer(src, cid, netId) end, 800)
+register('streetSell', function(src, cid, token, item, count) return Prod.Street.sell(src, cid, token, item, count) end, 500)
+
 -- Supplier runs
 register('supplierView', function(src, cid) return Veyl.Ok(Prod.Supplier.view(cid)) end, 500)
 register('runStart', function(src, cid, id) return Prod.Supplier.start(src, cid, id) end, 1000)

@@ -23,6 +23,7 @@ ProductionConfig.Police = {
         field_search = { chance = 0.08, cooldown = 300 },
         supply_run = { chance = 0.25, cooldown = 300 },
         hazard = { chance = 0.3, cooldown = 600 },
+        street_sale = { chance = 0.12, cooldown = 300 },
     },
     Raid = {
         BreachSeconds = 25,          -- base time to breach a door; security upgrades add to it

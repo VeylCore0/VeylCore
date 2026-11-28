@@ -139,4 +139,25 @@ Prod.DB.Migrations[#Prod.DB.Migrations + 1] = {
     },
 }
 
+Prod.DB.Migrations[#Prod.DB.Migrations + 1] = {
+    id = 'v1_003_farms',
+    sql = {
+        -- Farms placed by staff with /drugadmin: points and rewards are JSON.
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_farms (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            label VARCHAR(48) NOT NULL,
+            kind VARCHAR(16) NOT NULL,
+            branch VARCHAR(16) NOT NULL,
+            level TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            prop VARCHAR(64) NOT NULL,
+            respawn_min INT UNSIGNED NOT NULL DEFAULT 12,
+            cooldown_min INT UNSIGNED NOT NULL DEFAULT 40,
+            rewards TEXT NOT NULL, points TEXT NOT NULL,
+            created_by VARCHAR(16) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+    },
+}
+
 function Prod.DB.Migrate() return Veyl.Migrate(Prod.DB.Migrations) end

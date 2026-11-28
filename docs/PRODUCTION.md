@@ -107,9 +107,25 @@ Natives used: placement ray tests, `CreateObject`, `RequestIpl`, routing buckets
 
 The server logic ran against a real MariaDB with VeylCore stubbed (120 checks): migrations, shop (price, stock, restock, level locks, forged names and quantities, cannot afford), gathering (distance, token, too-early finish, cooldown, one reward), plants (placement rules, caps, care, growth to ready, neglect, harvest quality metadata, failed-grant recovery, no double harvest), benches (placement, queue order, quality-first input use, cancel refunds, claim once, pack-up rules, restart), buyer (price by quality), laboratories (purchase, double-buy, entry, codes with lockout, staff roles and live access removal, upgrades with cost and cap, sell, buyback, transfer), police (disabled by default, raid timing, window, seizure), progression, and restarts. The tablet, shop, buyer and bench pages were clicked through in the preview (24 flows).
 
-Field and supplier branches add checks for: field points (range, per-point and per-player cooldown, token and minimum time), supplier runs (level, fee, hours, daily limit, pickup and drop distance, speed, expiry, one active run, cancel wait, idempotent delivery), skill-check tokens (single use, expiry, score clamp) and the hazard (exposure, protection, decay). The suite is 188 checks in all.
+Field and supplier branches add checks for: field points (range, per-point and per-player cooldown, token and minimum time), supplier runs (level, fee, hours, daily limit, pickup and drop distance, speed, expiry, one active run, cancel wait, idempotent delivery), skill-check tokens (single use, expiry, score clamp) and the hazard (exposure, protection, decay). The suite is 218 checks in all, including the admin farms and street sales.
 
 Not tested: in-game spawning, the placement preview, targeting, the interior teleport and IPL, and CEF rendering. Try these on a development server first.
+
+## Admin farms (`/drugadmin`)
+
+Staff with the `production.admin` permission get an in-game menu to place farms without touching config:
+
+1. Stand where the farm should be and run `/drugadmin`, then **Add a farm here**. Pick a kind: **weed farm** (weed buds and seeds), **coke farm** (coca leaf and coca seeds), **mushroom patch** (wild mushrooms and spores) or **custom** (herbs, change it after). The spot you stand on is the first point.
+2. Open the farm in the list to **add a point** at your position (walk, add, walk, add), remove a point, set GPS or teleport to it, or delete it. A prop appears at every point for everyone as soon as it is added.
+3. **Rewards** lists what a search can give: pick an item, a chance (percent), least and most, and an optional level. The first reward always pays. **Name, level and timings** sets the level needed, how long a point stays picked over for everyone (respawn) and for the same player (cooldown), and the prop model.
+
+Players search a farm's points like a field zone: a timed search, a per-point and a per-player cooldown, everything decided by the server. Farms are saved in `veyl_prod_farms`. The server checks the permission on every request, so a player who calls these callbacks by hand is refused and logged. Presets, limits and the allowed reward items are in `config/street.lua`. Weed farms count toward the botanical level, coke farms and mushroom patches toward field operations.
+
+## Selling to pedestrians
+
+Target any ped and pick **Offer product**. The server checks the ped (a real ped, not a player, not police or medics, close, alive), whether you carry anything sellable, then rolls whether they are interested (`AcceptChance`). If they are, you choose what to sell and how many; they take 1 to 3 units and pay `PriceMultiplier` (70%) of the buyer's price at your item's quality. A ped is used up for everyone for `PedCooldown` (15 minutes) whatever they answered, so asking again gains nothing, and there is a per-player offer limit per hour. Only finished goods can be sold this way (`Street.Items`). A sale or a refusal can raise a police alert with the `street_sale` rule in `config/police.lua` when police alerts are on.
+
+Not tested in game: target options on pedestrians, the reactions (turning, standing still, wandering off) and whether every ambient ped has a network id on your server settings. This needs OneSync, because the server has to see the ped; if it cannot, the offer is refused with "Get closer to them".
 
 ## Admin
 

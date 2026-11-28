@@ -18,6 +18,7 @@ function G.spots()
         out[#out + 1] = { id = z.id, label = z.label, branch = z.branch or 'field', level = z.level, points = z.points, radius = 3.0, cooldown = (z.PlayerCooldownMinutes or 40) * 60,
             respawn = (z.RespawnMinutes or 12) * 60, rewards = C.Field.Rewards, durationMs = C.Field.SearchMs, xp = 'search', alert = 'field_search', flat = true, prop = z.prop }
     end
+    for _, f in ipairs(Prod.Farms and Prod.Farms.spots() or {}) do out[#out + 1] = f end
     return out
 end
 

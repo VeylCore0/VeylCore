@@ -11,6 +11,7 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function()
     Prod.Ws.load()
     Prod.Props.load()
     Prod.Supplier.reconcile()
+    Prod.Farms.load()
     Prod.ready = true
     print(('[veyl_production] ready: %d plants, %d benches'):format((function() local n = 0 for _ in pairs(Prod.Plants.rows) do n = n + 1 end return n end)(), (function() local n = 0 for _ in pairs(Prod.Ws.rows) do n = n + 1 end return n end)()))
     return true
