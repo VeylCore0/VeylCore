@@ -345,3 +345,12 @@ button.ph-row { cursor: pointer; transition: background 0.15s; } button.ph-row:h
 .ph-meter { display: flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; } .ph-meter i { flex: 1; height: 4px; border-radius: 2px; background: var(--ph-fill-2); } .ph-meter i.s1 { background: var(--ph-danger); } .ph-meter i.s2 { background: var(--ph-gold); } .ph-meter i.s3, .ph-meter i.s4 { background: var(--ph-green); } .ph-meter b { font-size: 11.5px; font-weight: 600; min-width: 56px; text-align: right; color: var(--ph-muted); }
 .ph-acct-hero { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 18px 0 6px; text-align: center; } .ph-acct-hero > span { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; color: #fff; background: linear-gradient(150deg, #4f8cff, #3a2a7a); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); margin-bottom: 6px; } .ph-acct-hero strong { font-size: 18px; } .ph-acct-hero em { font-style: normal; font-size: 13px; color: var(--ph-muted); }
 @keyframes ph-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-12px); } 40% { transform: translateX(10px); } 60% { transform: translateX(-8px); } 80% { transform: translateX(5px); } }
+
+/* Home screen pages: swipe, scroll sideways, or tap a dot */
+.ph-pages { flex: 1; min-height: 0; overflow: hidden; touch-action: pan-y; }
+.ph-track { display: flex; height: 100%; transition: transform 0.38s cubic-bezier(0.2, 0.85, 0.25, 1); }
+.ph-page { flex: 0 0 100%; width: 100%; box-sizing: border-box; height: 100%; flex-basis: 100%; }
+.ph-grid.later { margin-top: 10px; }
+.ph-dots { position: absolute; left: 0; right: 0; bottom: 124px; display: flex; justify-content: center; gap: 7px; z-index: 3; }
+.ph-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 99px; background: rgba(255, 255, 255, 0.4); cursor: pointer; transition: width 0.2s, background 0.2s; }
+.ph-dots button.on { width: 18px; background: #fff; }
