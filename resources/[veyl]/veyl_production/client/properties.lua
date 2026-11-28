@@ -40,6 +40,7 @@ local function enterWith(data)
     ProdClient.inside = data.id
     ProdClient.interior = { spawn = data.spawn, radius = data.radius, door = data.door, id = data.id }
     teleport(data.spawn.x, data.spawn.y, data.spawn.z, data.spawn.w)
+    if ProdClient.dressLab then ProdClient.dressLab(data.interior, data.looks, data.spawn) end
     exports.veyl_interact:AddZone({
         id = INSIDE_ZONE, coords = vector3(data.door.x, data.door.y, data.door.z), radius = 1.6, title = data.label,
         options = {

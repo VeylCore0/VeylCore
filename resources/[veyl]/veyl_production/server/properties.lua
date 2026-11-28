@@ -48,6 +48,13 @@ local function upgradesOf(row)
     return type(u) == 'table' and u or {}
 end
 
+--- The upgrade levels of a lab, for the client to dress its interior (storage, benches, equipment, security; 0 = none).
+function Props.looks(id)
+    local r = Props.rows[id]
+    local u = r and upgradesOf(r) or {}
+    return { storage = u.storage or 0, benches = u.benches or 0, equipment = u.equipment or 0, security = u.security or 0 }
+end
+
 local function level(id, key)
     local row = Props.rows[id]
     return row and upgradesOf(row)[key] or 0
@@ -359,6 +366,10 @@ function Props.upgrade(src, cid, id, key)
     end
     r.upgrades = after
     if key == 'storage' then registerStash(id) end
+    -- Anyone standing inside sees the new equipment appear.
+    for who, inId in pairs(Props.inside) do
+        if inId == id then TriggerClientEvent('veyl_production:looks', who, id, Props.looks(id), key, lv) end
+    end
     Prod.Log.event('upgrade', cid, ('%s: %s level %d ($%d)'):format(id, key, lv, step.price))
     return Veyl.Ok({ level = lv }, ('%s upgraded to level %d'):format(u.label, lv))
 end
@@ -482,7 +493,15 @@ function Props.enter(src, cid, id, code)
     end
     local interior = P.Interiors[d.interior]
     return Veyl.Ok({ id = id, label = d.label, role = via, ipl = interior.ipl, spawn = { x = interior.spawn.x, y = interior.spawn.y, z = interior.spawn.z, w = interior.spawn.w },
-        door = { x = interior.door.x, y = interior.door.y, z = interior.door.z }, radius = interior.radius })
+        door = { x = interior.door.x, y = interior.door.y, z = interior.door.z }, radius = interior.radius,
+        interior = d.interior, looks = Props.looks(id) })
+end
+
+--- The look of the lab you are standing in (the client asks again after a reconnect to the interior).
+function Props.looksInside(src)
+    local id = Props.inside[src]
+    if not id then return Veyl.Err('INVALID_STATE', 'You are not inside a laboratory') end
+    return Veyl.Ok({ id = id, looks = Props.looks(id) })
 end
 
 function Props.exit(src, cid)

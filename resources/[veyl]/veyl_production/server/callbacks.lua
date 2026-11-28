@@ -118,6 +118,7 @@ register('propCode', function(src, cid, id, code) return Prod.Props.setCode(src,
 register('propMemberAdd', function(src, cid, id, target, role) return Prod.Props.addMember(src, cid, Sec.str(id, 32, '^[%w_]+$'), target, role) end, 800)
 register('propMemberRemove', function(src, cid, id, target) return Prod.Props.removeMember(src, cid, Sec.str(id, 32, '^[%w_]+$'), target) end, 800)
 register('propEnter', function(src, cid, id, code) return Prod.Props.enter(src, cid, Sec.str(id, 32, '^[%w_]+$'), type(code) == 'string' and code:sub(1, 16) or nil) end, 800)
+register('propLooks', function(src) return Prod.Props.looksInside(src) end, 800)
 register('propExit', function(src, cid) return Prod.Props.exit(src, cid) end, 800)
 register('propRecover', function(src, cid) return Prod.Props.recover(src) or Veyl.Ok(nil) end, 3000)
 register('propStorage', function(src, cid, id) return Prod.Props.storage(src, cid, Sec.str(id, 32, '^[%w_]+$')) end, 500)

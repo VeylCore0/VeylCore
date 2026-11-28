@@ -15,6 +15,7 @@ ProductionConfig.Properties = {
     RequireAccessCard = false,       -- true: entering also needs the prod_access_card item
     TransferSeconds = 45,            -- how long a transfer offer stays open
     BaseStorage = { slots = 40, maxWeight = 120000 },
+    Visuals = true,                  -- dress the interior as you upgrade it (equipment, plants, lights, security appear, like GTA Online)
     BaseBenchSlots = 2,              -- laboratory benches allowed (upgrades add more)
 
     Interiors = {

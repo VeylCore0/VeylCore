@@ -21,7 +21,7 @@ server_scripts {
 }
 client_scripts {
     '@veyl_core/lib/client.lua',
-    'client/main.lua', 'client/placement.lua', 'client/plants.lua', 'client/workstations.lua', 'client/properties.lua', 'client/interactions.lua', 'client/field.lua', 'client/supplier.lua', 'client/hazard.lua', 'client/admin.lua', 'client/street.lua',
+    'client/main.lua', 'client/placement.lua', 'client/plants.lua', 'client/workstations.lua', 'client/properties.lua', 'client/lablooks.lua', 'client/interactions.lua', 'client/field.lua', 'client/supplier.lua', 'client/hazard.lua', 'client/admin.lua', 'client/street.lua',
 }
 
 ui_page 'web/dist/index.html'

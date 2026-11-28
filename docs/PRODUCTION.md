@@ -157,3 +157,15 @@ Not tested in game: target options on pedestrians, the reactions (turning, stand
 - **Map blips:** a blip appears on each laboratory you own or work at, and only those (a lab you have not bought shows nothing). It appears after you buy, goes when you sell or lose access, and refreshes every minute otherwise. Tune or turn off with `ProductionConfig.Properties.Blip`.
 
 - **Who can use `/drugadmin` and `/prodadmin`:** anyone with the `production.admin` permission, and also anyone with the general `veyl.admin` permission (the one `group.admin` gets in `server.cfg`), so full admins need no extra line.
+
+## Labs that grow as you upgrade them
+
+Each upgrade you buy changes what the lab looks like inside, the way the GTA Online biker businesses do. The three lab interiors are the Biker DLC ones, and each has switchable sets of props (tables, plants, lamps, hoses, presses, cameras and a steel door). The server sends only the four upgrade levels; your game switches the right sets on. If you buy an upgrade while standing inside, the screen fades, the new equipment appears and you get a message.
+
+| Lab (interior) | Storage | Workstation slots (benches) | Equipment | Security |
+|---|---|---|---|---|
+| **Weed farm** (`biker_warehouse`) | product on the tables, then chairs, then drying racks | 3 → 5 → 7 → 9 grow rooms, each with its lamp and hose | standard kit, then upgraded kit, brighter lamps, then fans and mould buckets | cameras, then the steel door |
+| **Meth lab** (`biker_field`, the field labs) | finished product appears | empty room → basic kit | basic → upgraded kit | steel door at level 2 |
+| **Cocaine lockup** (`biker_supplier`, the supplier labs) | cut coke on the tables | the production line appears | basic → upgraded presses and tables, then the upgraded line | low → high security |
+
+Turn it off with `ProductionConfig.Properties.Visuals = false`. The set names and the rules for each level are in `client/lablooks.lua`. Nothing here changes how the lab plays; it is only how it looks.
