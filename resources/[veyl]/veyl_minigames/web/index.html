@@ -147,5 +147,184 @@
   post('ui:ready');
 })();
 </script>
+<!-- ===== Car minigames: the door tumbler (slip a car lock) and the hotwire (reconnect the ignition wires) ===== -->
+<style>
+  #cm { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; }
+  #cm.on { display: flex; }
+  .cmcard { width: 440px; padding: 22px; border-radius: 18px; background: rgba(9, 11, 16, 0.86); border: 1px solid rgba(255,255,255,.09); box-shadow: 0 20px 60px rgba(0,0,0,.6); backdrop-filter: blur(6px); text-align: center; animation: pop .18s ease-out; }
+  .cmcard.shake { animation: shake .3s; }
+  .cmcard .title { font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #f5c451; }
+  .cmcard .sub { font-size: 12px; color: #9aa0ae; margin-top: 4px; }
+  .cmcard .state { margin-top: 12px; font-size: 18px; font-weight: 800; letter-spacing: .1em; height: 22px; }
+  .cmcard .state.ok { color: #6ee7b7; } .cmcard .state.bad { color: #f87171; }
+  .cmcard .hint { margin-top: 10px; font-size: 12px; color: #9aa0ae; }
+  .dots { display: flex; justify-content: center; gap: 8px; margin: 14px 0 6px; }
+  .dots i { width: 14px; height: 14px; border-radius: 50%; background: #2a2e38; border: 1px solid #3a3f4c; transition: all .15s; }
+  .dots i.on { background: #6ee7b7; border-color: #6ee7b7; box-shadow: 0 0 10px rgba(110,231,183,.6); }
+  .dots.strikes i.on { background: #f87171; border-color: #f87171; box-shadow: 0 0 10px rgba(248,113,113,.6); }
+  /* tumbler */
+  .track { position: relative; height: 54px; margin: 18px 4px 8px; border-radius: 10px; background: linear-gradient(180deg, #1c1f27, #12141a); border: 1px solid #343845; overflow: hidden; }
+  .track .zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, rgba(110,231,183,.55), rgba(110,231,183,.25)); border-left: 2px solid #6ee7b7; border-right: 2px solid #6ee7b7; }
+  .track .needle { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #f5c451; box-shadow: 0 0 12px rgba(245,196,81,.9); border-radius: 2px; }
+  .track .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 19px, rgba(255,255,255,.05) 19px 20px); }
+  /* hotwire */
+  .wires { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0 150px; margin: 16px 18px 6px; }
+  .wcol { display: flex; flex-direction: column; gap: 12px; }
+  .wend { height: 36px; border-radius: 8px; border: 2px solid var(--c); background: #181b22; cursor: pointer; position: relative; transition: transform .1s, box-shadow .1s; }
+  .wend::after { content: ''; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: var(--c); }
+  .wcol.left .wend::after { right: -9px; } .wcol.right .wend::after { left: -9px; }
+  .wend:hover { transform: scale(1.04); } .wend.sel { box-shadow: 0 0 0 3px rgba(255,255,255,.45), 0 0 16px var(--c); } .wend.done { background: var(--c); cursor: default; opacity: .9; }
+  #wiresvg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .clock { height: 6px; border-radius: 3px; background: #2a2e38; overflow: hidden; margin: 12px 18px 0; }
+  .clock i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #f87171, #f5c451); transform-origin: left; }
+</style>
+<div id="cm"><div class="cmcard" id="cmcard">
+  <div class="title" id="cmtitle"></div><div class="sub" id="cmsub"></div>
+  <div id="tum" style="display:none">
+    <div class="dots" id="tumdots"></div>
+    <div class="track" id="tumtrack"><div class="ticks"></div><div class="zone" id="tumzone"></div><div class="needle" id="tumneedle"></div></div>
+    <div class="dots strikes" id="tumstrikes"></div>
+    <div class="hint"><kbd>SPACE</kbd> or click when the needle is in the green &middot; <kbd>ESC</kbd> give up</div>
+  </div>
+  <div id="hot" style="display:none">
+    <div class="clock"><i id="hotclock"></i></div>
+    <div class="wires" id="hotwires"><svg id="wiresvg"></svg><div class="wcol left" id="hotleft"></div><div class="wcol right" id="hotright"></div></div>
+    <div class="dots strikes" id="hotstrikes"></div>
+    <div class="hint">Click a wire, then the matching terminal &middot; <kbd>ESC</kbd> give up</div>
+  </div>
+  <div class="state" id="cmstate"></div>
+</div></div>
+<script>
+(() => {
+  const RES = (window.GetParentResourceName && window.GetParentResourceName()) || 'veyl_minigames';
+  const post = (name, body) => fetch(`https://${RES}/${name}`, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(body || {}) }).catch(() => {});
+  const $ = (id) => document.getElementById(id);
+  let audio = null;
+  function tone(freq, dur, type = 'square', vol = 0.05) {
+    try {
+      audio = audio || new AudioContext();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + dur);
+    } catch (e) {}
+  }
+  const dots = (el, n, on, cls) => { el.innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < on ? 'on' : ''}"></i>`).join(''); };
+  const shake = () => { const c = $('cmcard'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); };
+  let mode = null, st = null, raf = 0;
+
+  function end(success, delay) {
+    if (!st || st.done) return;
+    st.done = true; cancelAnimationFrame(raf);
+    $('cmstate').textContent = success ? st.okText : st.badText;
+    $('cmstate').className = 'state ' + (success ? 'ok' : 'bad');
+    if (success) { tone(880, .12, 'triangle', .08); setTimeout(() => tone(1320, .2, 'triangle', .08), 110); } else { tone(110, .35, 'sawtooth', .07); }
+    const s = st.session, m = mode;
+    setTimeout(() => { $('cm').classList.remove('on'); post('result', { success, session: s, mode: m }); st = null; mode = null; }, delay || (success ? 700 : 850));
+  }
+
+  // ---------------------------------------------------------------- door tumbler
+  const TUM = { easy: { rounds: 3, zone: 0.24, speed: 0.75, strikes: 4 }, medium: { rounds: 4, zone: 0.17, speed: 1.0, strikes: 3 }, hard: { rounds: 5, zone: 0.12, speed: 1.35, strikes: 3 } };
+  function tumZone() { st.zoneW = Math.max(0.05, st.zone0 * Math.pow(0.88, st.round)); st.zoneX = 0.08 + Math.random() * (0.84 - st.zoneW); $('tumzone').style.left = (st.zoneX * 100) + '%'; $('tumzone').style.width = (st.zoneW * 100) + '%'; }
+  function tumLoop(t) {
+    if (!st || st.done || mode !== 'tumbler') return;
+    const dt = Math.min(0.05, (t - (st.last || t)) / 1000); st.last = t;
+    st.pos += st.dir * st.speed * (1 + st.round * 0.12) * dt;
+    if (st.pos > 1) { st.pos = 1; st.dir = -1; } if (st.pos < 0) { st.pos = 0; st.dir = 1; }
+    $('tumneedle').style.left = (st.pos * 100) + '%';
+    raf = requestAnimationFrame(tumLoop);
+  }
+  function tumHit() {
+    if (!st || st.done) return;
+    if (st.pos >= st.zoneX && st.pos <= st.zoneX + st.zoneW) {
+      st.round++; tone(1000 + st.round * 150, .07); dots($('tumdots'), st.rounds, st.round);
+      if (st.round >= st.rounds) return end(true);
+      tumZone();
+    } else {
+      st.strikes++; tone(170, .12, 'sawtooth'); shake(); dots($('tumstrikes'), st.maxStrikes, st.strikes);
+      if (st.strikes >= st.maxStrikes) end(false);
+    }
+  }
+  function openTumbler(data, session) {
+    const p = Object.assign({}, TUM[data.difficulty] || TUM.medium);
+    mode = 'tumbler';
+    st = { session, rounds: Math.min(8, Math.max(1, (data.rounds || p.rounds) | 0)), zone0: p.zone, speed: p.speed, maxStrikes: p.strikes, round: 0, strikes: 0, pos: 0, dir: 1, last: 0, done: false, okText: 'CLICK', badText: 'PICK SNAPPED' };
+    $('cmtitle').textContent = data.title || 'Slip the lock'; $('cmsub').textContent = data.subtitle || 'Feel for the tumblers';
+    $('tum').style.display = 'block'; $('hot').style.display = 'none';
+    $('cmstate').textContent = ''; $('cmstate').className = 'state';
+    dots($('tumdots'), st.rounds, 0); dots($('tumstrikes'), st.maxStrikes, 0);
+    tumZone(); $('cm').classList.add('on'); raf = requestAnimationFrame(tumLoop);
+  }
+
+  // ---------------------------------------------------------------- hotwire
+  const COLORS = ['#ef4444', '#3b82f6', '#facc15', '#22c55e', '#f8fafc', '#a855f7'];
+  const HOT = { easy: { wires: 3, seconds: 38, strikes: 4 }, medium: { wires: 4, seconds: 30, strikes: 3 }, hard: { wires: 5, seconds: 24, strikes: 3 } };
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function hotDraw() {
+    const wrap = $('hotwires').getBoundingClientRect();
+    $('wiresvg').setAttribute('viewBox', `0 0 ${wrap.width} ${wrap.height}`);
+    $('wiresvg').innerHTML = st.links.map((l) => {
+      const a = $('wl' + l.color).getBoundingClientRect(), b = $('wr' + l.color).getBoundingClientRect();
+      const x1 = a.right - wrap.left, y1 = a.top + a.height / 2 - wrap.top, x2 = b.left - wrap.left, y2 = b.top + b.height / 2 - wrap.top, mx = (x1 + x2) / 2;
+      return `<path d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" stroke="${COLORS[l.color]}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+    }).join('');
+  }
+  function hotLoop(t) {
+    if (!st || st.done || mode !== 'hotwire') return;
+    const left = st.seconds - (performance.now() - st.t0) / 1000;
+    $('hotclock').style.transform = `scaleX(${Math.max(0, left / st.seconds)})`;
+    if (left <= 0) { $('cmstate').textContent = ''; return end(false); }
+    raf = requestAnimationFrame(hotLoop);
+  }
+  function hotPick(side, color) {
+    if (!st || st.done) return;
+    if (st.links.some((l) => l.color === color)) return;
+    if (side === 'l') { st.sel = color; tone(520, .04); }
+    else if (st.sel !== null) {
+      if (st.sel === color) {
+        st.links.push({ color }); st.sel = null; tone(900 + st.links.length * 140, .08, 'triangle');
+        if (st.links.length >= st.wires) { hotRender(); return end(true); }
+      } else {
+        st.strikes++; st.sel = null; tone(150, .15, 'sawtooth'); shake(); dots($('hotstrikes'), st.maxStrikes, st.strikes);
+        if (st.strikes >= st.maxStrikes) { hotRender(); return end(false); }
+      }
+    }
+    hotRender();
+  }
+  function hotRender() {
+    $('hotleft').innerHTML = st.left.map((c) => `<div class="wend ${st.links.some((l) => l.color === c) ? 'done' : ''} ${st.sel === c ? 'sel' : ''}" id="wl${c}" style="--c:${COLORS[c]}" data-side="l" data-c="${c}"></div>`).join('');
+    $('hotright').innerHTML = st.right.map((c) => `<div class="wend ${st.links.some((l) => l.color === c) ? 'done' : ''}" id="wr${c}" style="--c:${COLORS[c]}" data-side="r" data-c="${c}"></div>`).join('');
+    hotDraw();
+  }
+  function openHotwire(data, session) {
+    const p = Object.assign({}, HOT[data.difficulty] || HOT.medium);
+    mode = 'hotwire';
+    const n = Math.min(6, Math.max(2, (data.wires || p.wires) | 0));
+    const set = shuffle(COLORS.map((_, i) => i)).slice(0, n);
+    st = { session, wires: n, seconds: data.seconds || p.seconds, maxStrikes: p.strikes, strikes: 0, sel: null, links: [], left: shuffle(set.slice()), right: shuffle(set.slice()), t0: performance.now(), done: false, okText: 'ENGINE TURNS OVER', badText: 'SHORTED OUT' };
+    $('cmtitle').textContent = data.title || 'Hotwire'; $('cmsub').textContent = data.subtitle || 'Match every wire to its terminal';
+    $('tum').style.display = 'none'; $('hot').style.display = 'block';
+    $('cmstate').textContent = ''; $('cmstate').className = 'state';
+    dots($('hotstrikes'), st.maxStrikes, 0);
+    $('cm').classList.add('on'); hotRender(); raf = requestAnimationFrame(hotLoop);
+  }
+  $('hotwires').addEventListener('mousedown', (e) => { const el = e.target.closest('.wend'); if (el && mode === 'hotwire') hotPick(el.dataset.side, Number(el.dataset.c)); });
+
+  // ---------------------------------------------------------------- plumbing
+  window.addEventListener('message', (e) => {
+    const m = e.data || {};
+    if (m.action === 'tumbler:open') openTumbler(m.data || {}, m.session);
+    if (m.action === 'hotwire:open') openHotwire(m.data || {}, m.session);
+    if ((m.action === 'tumbler:close' || m.action === 'hotwire:close') && st) { st.done = true; cancelAnimationFrame(raf); st = null; mode = null; $('cm').classList.remove('on'); }
+  });
+  window.addEventListener('keydown', (e) => {
+    if (!st) return;
+    if (mode === 'tumbler' && (e.code === 'Space' || e.code === 'KeyE')) { e.preventDefault(); if (!e.repeat) tumHit(); }
+    if (e.code === 'Escape') { e.preventDefault(); end(false, 120); }
+  });
+  window.addEventListener('mousedown', (e) => { if (st && mode === 'tumbler' && e.button === 0) tumHit(); });
+})();
+</script>
+
 </body>
 </html>

@@ -61,6 +61,8 @@ exports('StorageAccess', function(src, citizenid, stashId, key)
     -- A fake plate must not open someone else's trunk: use the real one.
     local plate = (Entity(entity).state.realPlate or GetVehicleNumberPlateText(entity) or ''):gsub('[^%w]', ''):upper()
     if plate == '' then return '!NOT_FOUND' end
+    -- A car nobody owns may have something left in it (veyl_cartheft fills it once per plate).
+    if GetResourceState('veyl_cartheft') == 'started' then pcall(function() exports.veyl_cartheft:EnsureLoot(stashId, 'p' .. plate) end) end
     return 'p' .. plate
 end)
 

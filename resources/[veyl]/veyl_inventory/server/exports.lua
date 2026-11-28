@@ -199,6 +199,16 @@ asyncExport('GiveToStash', function(invoker, stashId, item, count, metadata, opI
     return Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
 end)
 
+--- GiveToKeyedStash(stashId, key, item, count, metadata, opId) — into one instance of a keyed stash (a vehicle's trunk or glovebox: stashId
+--- 'veh_trunk', key 'pABC123'), loading it if nobody has opened it yet. Used by veyl_cartheft to leave things in cars nobody owns.
+asyncExport('GiveToKeyedStash', function(invoker, stashId, key, item, count, metadata, opId)
+    local def = type(stashId) == 'string' and Stashes[stashId]
+    if not def or not def.keyed or type(key) ~= 'string' or #key > 32 or not key:match('^[%w_%-]+$') then return Ops.err('NOT_FOUND', 'Unknown stash') end
+    local inv = Store.Get(('stash:%s:%s'):format(def.id, key), { type = 'stash', label = def.label, slots = def.slots, maxWeight = def.maxWeight })
+    if not inv then return Ops.err('NOT_READY', 'Stash unavailable') end
+    return Ops.Add(inv, item, count, metadata, { opId = opId, actor = invoker, reason = invoker })
+end)
+
 --- TakeItem(citizenid, item, count, metadata, opId)
 asyncExport('TakeItem', function(invoker, citizenid, item, count, metadata, opId)
     local inv = playerInv(citizenid)

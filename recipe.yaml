@@ -112,6 +112,7 @@ tasks:
       ensure veyl_weedprops   # custom weed models (must start before veyl_production)
       ensure veyl_production
       ensure veyl_scavenge
+      ensure veyl_cartheft
       ensure veyl_phone
       ensure veyl_loadscreen
       ensure zydrec-starlitemotel

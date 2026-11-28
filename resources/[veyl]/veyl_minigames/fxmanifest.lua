@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 
 name 'veyl_minigames'
-description 'VeylCore mini games: lockpick (store registers, safes, doors)'
+description 'VeylCore mini games: lockpick (registers, safes, doors), car door tumbler and hotwire'
 version '0.1.0'
 
 dependencies { 'veyl_lib', 'veyl_core' }

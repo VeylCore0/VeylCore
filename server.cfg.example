@@ -74,6 +74,7 @@ ensure veyl_delivery
 ensure veyl_citizenjobs
 ensure veyl_gathering
 ensure veyl_scavenge
+ensure veyl_cartheft
 ensure veyl_crafting
 ensure veyl_admin
 ensure veyl_qbexample       # optional example
