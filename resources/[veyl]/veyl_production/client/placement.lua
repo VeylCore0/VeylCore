@@ -106,8 +106,10 @@ local function begin(data)
 
     local done = vlib.progress({ label = data.kind == 'plant' and 'Planting' or 'Setting up', duration = C.ActionMs.Place, canCancel = true,
         disable = { move = true, car = true, combat = true },
-        anim = data.kind == 'plant' and { dict = 'amb@world_human_gardener_plant@male@base', clip = 'base', flag = 1 } or { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 1 } })
+        anim = data.kind == 'plant' and { dict = 'amb@world_human_gardener_plant@male@base', clip = 'base', flag = 1 } or { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 49 } })
+    StopAnimTask(ped, 'mini@repair', 'fixing_a_ped', 1.0)
     ClearPedTasks(ped)
+    FreezeEntityPosition(ped, false)
     if not done then return Veyl.Notify('Placement cancelled', 'info') end
     local c = confirmed.pos
     local req = { x = c.x, y = c.y, z = c.z, heading = confirmed.heading, property = data.property }

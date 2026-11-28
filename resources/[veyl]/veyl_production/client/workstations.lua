@@ -20,12 +20,20 @@ local function options(id)
               if busy then return end
               busy = true
               CreateThread(function()
-                  if vlib.alertDialog({ title = 'Pack up this workstation?', message = 'It goes back into your inventory.', confirmLabel = 'Pack up' }) == 'confirm' then
-                      local done = vlib.progress({ label = 'Packing up', duration = C.ActionMs.Pickup, canCancel = true, disable = { move = true, car = true, combat = true },
-                          anim = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 1 } })
-                      ClearPedTasks(PlayerPedId())
-                      if done then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_production', 'wsPack', 15000, id)) end
-                  end
+                  local ok, err = pcall(function()
+                      if vlib.alertDialog({ title = 'Pack up this workstation?', message = 'It goes back into your inventory.', confirmLabel = 'Pack up' }) == 'confirm' then
+                          Wait(250) -- let the dialog hand its focus back before the progress bar starts
+                          local done = vlib.progress({ label = 'Packing up', duration = C.ActionMs.Pickup, canCancel = true, disable = { move = true, car = true, combat = true },
+                              anim = { dict = 'mini@repair', clip = 'fixing_a_ped', flag = 49 } })
+                          if done then Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_production', 'wsPack', 15000, id)) end
+                      end
+                  end)
+                  -- Whatever happened above, never leave the player stuck in the animation.
+                  local ped = PlayerPedId()
+                  StopAnimTask(ped, 'mini@repair', 'fixing_a_ped', 1.0)
+                  ClearPedTasks(ped)
+                  FreezeEntityPosition(ped, false)
+                  if not ok then print(('^1[veyl_production] pack up failed: %s^7'):format(tostring(err))) end
                   busy = false
               end)
           end },
