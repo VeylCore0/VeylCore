@@ -34,6 +34,7 @@ export function Properties({ c }: { c: Ctx }) {
 function PropCard({ p, onOpen, onBuy }: { p: Property; onOpen?: () => void; onBuy?: () => void }) {
   return (
     <article className={cx('pr-prop', !p.role && p.owned && 'taken')}>
+      <div className="pr-prop-banner"><Ico name="home" size={30} /><span>{p.role ? (p.locked ? 'Locked' : 'Open') : 'Laboratory'}</span></div>
       <div className="pr-prop-top"><strong>{p.label}</strong>{p.role ? <Chip tone="accent">{p.role}</Chip> : p.owned ? <Chip tone="mute">Owned</Chip> : p.buyback ? <Chip tone="warn">Buyback</Chip> : <Chip tone="ok">For sale</Chip>}</div>
       <p>{p.description}</p>
       {p.role ? (

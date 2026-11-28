@@ -121,3 +121,24 @@ export const ITEM_LABELS: Record<string, string> = {
   prod_seed_ember: 'Emberleaf Seeds', prod_seed_violet: 'Violetbloom Seeds', prod_seed_azure: 'Azurefern Seeds', prod_planter: 'Planter', prod_water: 'Clean Water',
   prod_nutrient: 'Growth Tonic', prod_leaf: 'Fresh Leaves', prod_blend: 'Leaf Blend', prod_pack: 'Packed Product', prod_wild_herb: 'Wild Herbs', prod_workstation: 'Prep Table', prod_access_card: 'Lab Access Card',
 };
+
+/** A circular progress ring with room for content in the middle. */
+export function Ring({ value, size = 64, stroke = 6, color = 'var(--pr-acc)', children }: { value: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(1, value));
+  return (
+    <span className="pr-ring" style={{ width: size, height: size }} role="progressbar" aria-valuenow={Math.round(v * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.09)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${c * v} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dasharray .6s' }} />
+      </svg>
+      <span className="pr-ring-in">{children}</span>
+    </span>
+  );
+}
+
+/** A small coloured icon tile. */
+export function Tile({ icon, color, size = 40 }: { icon: string; color: string; size?: number }) {
+  return <span className="pr-tile" style={{ width: size, height: size, background: `linear-gradient(135deg, ${color}, rgba(255,255,255,.0) 160%), ${color}33`, color }}><Ico name={icon} size={size * 0.5} /></span>;
+}

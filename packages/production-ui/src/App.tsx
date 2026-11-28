@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { announceReady, nui, useNuiMessage, type NuiResponse } from '@veyl/ui';
 import type { Ctx, Page } from './ctx';
 import type { Bench, ShopView, TabletState } from './types';
-import { api, Button, cx, ErrorBox, Ico, ITEM_LABELS, Loading, Toast } from './ui';
+import { api, Bar, Button, cx, ErrorBox, Ico, ITEM_LABELS, Loading, Ring, Toast } from './ui';
 import { Botanical, Dashboard, Production, Progression, Stats } from './Pages';
 import { Properties } from './Properties';
 import { BenchPanel } from './Bench';
@@ -107,25 +107,38 @@ function Head({ title, close }: { title: string; close: () => void }) {
 function Tablet({ open, setPage, run, refresh, waypoint, busy, close, error }: { open: Extract<Open, { view: 'tablet' }>; setPage: (p: Page) => void; run: Ctx['run']; refresh: Ctx['refresh']; waypoint: Ctx['waypoint']; busy: boolean; close: () => void; error: string | null }) {
   const ctx: Ctx = { s: open.state, go: setPage, run, refresh, waypoint, busy };
   const s = open.state;
+  const rep = s.progress.reputation;
+  const bot = s.progress.branches.botanical;
+  const title = NAV.find((n) => n.id === open.page)?.label ?? '';
+  const initials = s.player.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (
     <div className="pr-tablet" role="application" aria-label="Production tablet">
       <nav className="pr-side" aria-label="Sections">
-        <div className="pr-brand"><span className="pr-logo"><Ico name="leaf" size={24} /></span><b>VEYL</b><i>PRODUCTION</i></div>
-        {NAV.map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        <div className="pr-brand"><span className="pr-logo"><Ico name="leaf" size={24} /></span><div><b>VEYL</b><i>PRODUCTION</i></div></div>
+        <span className="pr-navlabel">WORKSPACE</span>
+        {NAV.slice(0, 3).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        <span className="pr-navlabel">ASSETS</span>
+        {NAV.slice(3, 4).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
+        <span className="pr-navlabel">YOU</span>
+        {NAV.slice(4).map((n) => <button key={n.id} className={cx('pr-nav', open.page === n.id && 'on')} onClick={() => setPage(n.id)} aria-current={open.page === n.id ? 'page' : undefined}><Ico name={n.icon} size={19} />{n.label}</button>)}
         {Object.entries(s.branches).filter(([, b]) => !b.enabled).map(([id, b]) => <span key={id} className="pr-nav soon" title="Not built yet"><Ico name="lock" size={17} />{b.label}</span>)}
+        <div className="pr-usercard">
+          <Ring value={bot?.progress ?? 0} size={42} stroke={4} color={bot?.color}><b className="sm">{initials}</b></Ring>
+          <div><strong>{s.player.name}</strong><em>Level {rep.level} · {rep.name}</em></div>
+        </div>
       </nav>
       <main className="pr-main">
         <header className="pr-top">
-          <div className="pr-id"><strong>{s.player.name}</strong><em>{s.progress.reputation.name}</em></div>
-          <div className="pr-grow"><Ico name="star" size={15} /> Reputation level {s.progress.reputation.level}</div>
+          <div className="pr-title"><small>PRODUCTION</small><h1>{title}</h1></div>
+          <div className="pr-xp"><span>{bot?.label} level {bot?.level}</span><Bar value={bot?.progress ?? 0} color={bot?.color} label="Botanical progress" /></div>
+          <button className="pr-icon" onClick={() => void refresh()} aria-label="Sync" title="Sync"><Ico name="bolt" size={16} /></button>
           <button className="pr-keyhint" onClick={close}><kbd>ESC</kbd>Close</button>
         </header>
-        <div className="pr-body">
+        <div className="pr-body" key={open.page}>
           {error ? <ErrorBox message={error} onRetry={() => void refresh()} /> : !s ? <Loading /> : open.page === 'dashboard' ? <Dashboard c={ctx} />
             : open.page === 'botanical' ? <Botanical c={ctx} /> : open.page === 'production' ? <Production c={ctx} />
             : open.page === 'properties' ? <Properties c={ctx} /> : open.page === 'progression' ? <Progression c={ctx} /> : <Stats c={ctx} />}
         </div>
-        <footer className="pr-foot"><Button kind="ghost" onClick={() => void refresh()}><Ico name="check" size={14} />Sync</Button></footer>
       </main>
     </div>
   );

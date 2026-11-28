@@ -31,7 +31,8 @@ export function BenchPanel({ bench, labels, act, run }: { bench: Bench; labels: 
                 <ItemImg item={b.output?.item ?? 'prod_blend'} size={36} />
                 <span className="pr-batch-main">
                   <strong>{b.label}</strong>
-                  <em>{state === 'done' ? 'Ready to collect' : state === 'queued' ? `Starts in ${mmss(b.startsAt - now)}` : `${b.stage ?? 'Working'} · ${mmss(left)} left`}{b.tier ? ` · ${b.tier} (${b.quality})` : ''}</em>
+                  <em>{state === 'done' ? 'Ready to collect' : state === 'queued' ? `Starts in ${mmss(b.startsAt - now)}` : `${b.stage ?? 'Working'} · ${mmss(left)} left`}</em>
+                  {b.tier && <Chip tone={b.quality >= 75 ? 'warn' : b.quality >= 50 ? 'ok' : 'mute'}>{b.tier} · {b.quality}</Chip>}
                   <Bar value={progress} label={`${b.label} progress`} />
                 </span>
                 {act && run && state !== 'done' && <Button kind="ghost" onClick={() => setConfirm({ kind: 'cancel', id: b.id })}>Cancel</Button>}
