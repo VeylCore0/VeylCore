@@ -54,7 +54,7 @@ kbd { font: inherit; font-size: 0.72rem; font-weight: 600; padding: 0.1rem 0.4re
 .body-panel { width: calc(var(--slot) * 4.6); }
 .body-grid { display: grid; grid-template-columns: var(--slot) 1fr var(--slot); gap: calc(var(--slot) * 0.2); align-items: start; }
 .ieq-col { display: flex; flex-direction: column; gap: var(--gap); }
-.body-figure { width: 100%; height: calc(var(--slot) * 5 + var(--gap) * 4); }
+.body-figure { width: 100%; height: calc(var(--slot) * 6 + var(--gap) * 5); }
 .cash-tile { position: relative; width: var(--slot); height: var(--slot); box-sizing: border-box; display: grid; place-items: center; background: var(--tile); border-radius: 0.25rem; }
 .cash-tile .slot-count { right: 0.2rem; font-size: clamp(0.55rem, 0.68vw, 0.72rem); }
 .info-title { display: flex; align-items: center; gap: 0.5rem; margin: calc(var(--slot) * 0.35) 0 0.55rem; font-size: 0.9rem; }

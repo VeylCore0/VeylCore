@@ -170,6 +170,8 @@ return {
     coke_baggie = { label = 'Bag of Coke', description = 'Packaged for sale.', image = 'coke_baggie.png', weight = 20, stack = true, maxStack = 50, metadataSchema = 'drug_batch' },
     -- Wearables (equipment slots). wear = what the character shows while it is equipped: a prop (hat 0, glasses 1, ears 2) or a component
     -- (mask 1). The drawable and texture numbers depend on the ped model; change them to taste.
+    backpack = { label = 'Backpack', description = 'Wear it in the backpack slot to open a second container. Take it off and the bag closes; what is inside stays saved.',
+        image = 'backpack.png', weight = 800, stack = false, equip = 'backpack', wear = { kind = 'component', id = 5, drawable = 45, texture = 0 } },
     baseball_cap = { label = 'Baseball Cap', description = 'A plain cap.', image = 'baseball_cap.png', weight = 150, stack = false, equip = 'hat',
         wear = { kind = 'prop', id = 0, drawable = 9, texture = 0 } },
     sunglasses = { label = 'Sunglasses', description = 'Dark lenses.', image = 'sunglasses.png', weight = 80, stack = false, equip = 'glasses',

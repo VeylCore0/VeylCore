@@ -30,6 +30,7 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     D('identity_card', 'ID Card', 10, { stack: false, equip: 'id', category: 'equipment', description: 'Government-issued ID.' }),
     D('tablet', 'Tablet', 600, { stack: false, equip: 'tablet', category: 'equipment' }),
     D('door_key', 'Key', 20, { stack: false, equip: 'key', category: 'equipment', description: 'Opens one door.' }),
+    D('backpack', 'Backpack', 800, { stack: false, equip: 'backpack', category: 'equipment', description: 'Wear it in the backpack slot to open a second container.' }),
     D('baseball_cap', 'Baseball Cap', 150, { stack: false, equip: 'hat', category: 'equipment', description: 'A plain cap.' }),
     D('sunglasses', 'Sunglasses', 80, { stack: false, equip: 'glasses', category: 'equipment' }),
     D('face_mask', 'Face Mask', 60, { stack: false, equip: 'mask', category: 'equipment' }),
@@ -53,18 +54,18 @@ export function inventoryOpen(empty: boolean): InventoryOpen {
     { slot: 9, name: 'sim_card', count: 1 },
   ];
   const pack = empty ? [] : [{ slot: 2, name: 'first_aid_kit', count: 1 }, { slot: 6, name: 'flashlight', count: 1 }];
-  const equip = empty ? [] : [{ slot: 8, name: 'phone', count: 1 }, { slot: 9, name: 'door_key', count: 1, metadata: { label: 'Apartment 4B' } }, { slot: 3, name: 'sunglasses', count: 1 }];
+  const equip = empty ? [] : [{ slot: 8, name: 'phone', count: 1 }, { slot: 10, name: 'door_key', count: 1, metadata: { label: 'Apartment 4B' } }, { slot: 3, name: 'sunglasses', count: 1 }, { slot: 6, name: 'backpack', count: 1 }];
   const locker = empty ? [] : [{ slot: 15, name: 'bandage', count: 3 }];
   const equipSlots = [
     { slot: 1, id: 'ears', label: 'Headset', icon: 'headset', side: 'left' }, { slot: 2, id: 'mask', label: 'Mask', icon: 'mask', side: 'left' },
     { slot: 3, id: 'glasses', label: 'Glasses', icon: 'glasses', side: 'left' }, { slot: 4, id: 'armor', label: 'Armour', icon: 'shield', side: 'left' },
-    { slot: 5, id: 'hat', label: 'Hat', icon: 'hat', side: 'left' }, { slot: 6, id: 'id', label: 'ID card', icon: 'id', side: 'right' },
-    { slot: 7, id: 'phone', label: 'Phone', icon: 'phone', side: 'right' }, { slot: 8, id: 'tablet', label: 'Tablet', icon: 'tablet', side: 'right' }, { slot: 9, id: 'key', label: 'Key', icon: 'key', side: 'right' },
+    { slot: 5, id: 'hat', label: 'Hat', icon: 'hat', side: 'left' }, { slot: 6, id: 'backpack', label: 'Backpack', icon: 'backpack', side: 'left' }, { slot: 7, id: 'id', label: 'ID card', icon: 'id', side: 'right' },
+    { slot: 8, id: 'phone', label: 'Phone', icon: 'phone', side: 'right' }, { slot: 9, id: 'tablet', label: 'Tablet', icon: 'tablet', side: 'right' }, { slot: 10, id: 'key', label: 'Key', icon: 'key', side: 'right' },
   ];
   return {
     primary: { ref: 'primary', id: 'player:DEMO', label: 'Pockets', type: 'player', slots: 30, maxWeight: 55000, weight: empty ? 0 : 1200, revision: 1, items: personal },
     backpack: { ref: 'backpack', id: 'pack:DEMO', label: 'Backpack', type: 'stash', slots: 15, maxWeight: 15000, weight: empty ? 0 : 1800, revision: 1, items: pack },
-    equip: { ref: 'equip', id: 'equip:DEMO', label: 'Equipment', type: 'stash', slots: 9, maxWeight: 100000000, weight: 0, revision: 1, items: equip },
+    equip: { ref: 'equip', id: 'equip:DEMO', label: 'Equipment', type: 'stash', slots: 10, maxWeight: 100000000, weight: 0, revision: 1, items: equip },
     secondary: empty ? { ref: 'secondary', id: 'ground', label: 'Ground', type: 'drop', slots: 20, maxWeight: 200000, weight: 0, revision: 0, items: [] }
       : { ref: 'secondary', id: 'stash:DEMO', label: 'Personal Locker', type: 'stash', slots: 24, maxWeight: 70000, weight: 345, revision: 1, items: locker },
     equipSlots, categories: [{ id: 'all', label: 'All' }, { id: 'weapons', label: 'Weapons' }, { id: 'consumables', label: 'Consumables' }, { id: 'equipment', label: 'Equipment' }, { id: 'goods', label: 'Goods' }, { id: 'misc', label: 'Other' }],

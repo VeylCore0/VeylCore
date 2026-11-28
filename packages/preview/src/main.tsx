@@ -65,6 +65,7 @@ const backdropOf = (s: Screen) => (s === 'invshop' ? 'inventory' : isAppearance(
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 let apState: AppearanceOpen | null = null;
 const shopBal = { cash: 420, bank: 12840 };
+let packSaved: unknown;
 type Mode = 'normal' | 'loading' | 'empty' | 'error' | 'restricted' | 'pending';
 const SCREENS: { id: Screen; label: string; app: ComponentType }[] = [
   { id: 'inventory', label: 'Inventory', app: InventoryApp }, { id: 'invshop', label: 'Inv shop', app: InventoryApp }, { id: 'shop', label: 'Shop', app: ShopApp },
@@ -164,9 +165,18 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
         if (from.ref === to.ref) toItems = toItems.filter((i, idx, arr) => arr.findIndex((j) => j.slot === i.slot) === idx);
         const next: Record<string, unknown> = { ...o, [from.ref]: { ...o[from.ref]!, items: from.ref === to.ref ? toItems : fromItems, revision: o[from.ref]!.revision + 1 } };
         if (from.ref !== to.ref) next[to.ref] = { ...o[to.ref]!, items: toItems, revision: o[to.ref]!.revision + 1 };
+        {
+          // Wearing a backpack opens the backpack container; taking it off closes it (what is inside stays saved).
+          const moved = o[from.ref].items.find((i) => i.slot === from.slot);
+          if (moved?.name === 'backpack') {
+            if (from.ref === 'equip' && to.ref !== 'equip') { packSaved = o.backpack; delete (next as Record<string, unknown>).backpack; devEmit('inventory:packClosed'); }
+            else if (to.ref === 'equip') { (next as Record<string, unknown>).backpack = packSaved ?? o.backpack; packSaved = undefined; }
+          }
+        }
         inv.current = next as unknown as InventoryOpen;
         devEmit('inventory:snapshot', (next as any)[from.ref]);
         if (from.ref !== to.ref) devEmit('inventory:snapshot', (next as any)[to.ref]);
+        if (to.ref === 'equip' && (next as Record<string, unknown>).backpack && !(o as unknown as Record<string, unknown>).backpack) devEmit('inventory:snapshot', (next as Record<string, unknown>).backpack);
         return { ok: true };
       }
       case 'inventory:use': return { ok: true };

@@ -37,6 +37,50 @@ function Containers.Load(citizenid)
     return eq, pk
 end
 
+--- True while a backpack item sits in the backpack slot of this character's equipment.
+function Containers.PackIsOpen(citizenid)
+    local B = InventoryConfig.Backpack
+    if not (B and B.Enabled) then return false end
+    local eq = Store.Get(Containers.EquipId(citizenid))
+    if not eq or not eq.slotRules then return false end
+    for slot, rule in pairs(eq.slotRules) do
+        if rule == 'backpack' and eq.items[slot] then return true end
+    end
+    return false
+end
+
+--- The backpack inventory, but only while it is open. Everything that reads or moves backpack items goes through this, so a
+--- closed backpack cannot be reached, counted, given to or taken from.
+function Containers.OpenPack(citizenid)
+    if not Containers.PackIsOpen(citizenid) then return nil end
+    return Store.Get(Containers.PackId(citizenid))
+end
+
+--- Opens or closes the backpack on a player's screen to match what they wear now. The items inside stay saved while it is closed.
+function Containers.Sync(src)
+    local p = Players[src]
+    if not p or not p.packId then return end
+    local open = Containers.PackIsOpen(p.citizenid)
+    if open == (p.packOpen == true) then return end
+    p.packOpen = open
+    local pk = Store.Get(p.packId)
+    if open and pk then
+        pk.viewers[src] = 'backpack'
+        Store.Snapshot(pk, src)
+    else
+        if pk then pk.viewers[src] = nil end
+        TriggerClientEvent('veyl_inventory:packClosed', src)
+    end
+end
+
+AddEventHandler('veyl_inventory:changed', function(invId)
+    if type(invId) ~= 'string' or invId:sub(1, 6) ~= 'equip:' then return end
+    local cid = invId:sub(7)
+    for src, p in pairs(Players) do
+        if p.citizenid == cid then Containers.Sync(src) end
+    end
+end)
+
 --- A few facts for the personal-information panel (read from the framework; nothing here is trusted from the client).
 function Containers.Profile(src, citizenid)
     local ok, pd = pcall(function() return exports.veyl_core:GetPlayerData(src) end)

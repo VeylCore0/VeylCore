@@ -12,6 +12,7 @@ const ICONS: Record<string, string> = {
   phone: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2',
   tablet: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM11 17h2',
   key: 'M7 14a4 4 0 1 1 3.9-5H21v3h-2v2h-3v-2h-5.1A4 4 0 0 1 7 14z',
+  backpack: 'M8 8V6a4 4 0 0 1 8 0v2M6 8h12l1 12H5zM9 14h6M9 11h6',
 };
 
 export function SlotIcon({ name }: { name: string }) {

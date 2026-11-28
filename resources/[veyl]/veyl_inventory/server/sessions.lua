@@ -8,6 +8,12 @@ local function err(code, message) return Ops.err(code, message) end
 
 function PlayerInventoryId(citizenid) return 'player:' .. citizenid end
 
+--- The pockets, or the backpack (only while it is worn). nil when the ref names a closed backpack.
+local function personalInv(p, ref)
+    if ref == 'backpack' then return Containers.OpenPack(p.citizenid) end
+    return Store.Get(p.invId)
+end
+
 local function playerDefaults(citizenid, label)
     return { type = 'player', owner = citizenid, label = label or 'Pockets', slots = InventoryConfig.PlayerSlots, maxWeight = InventoryConfig.PlayerMaxWeight }
 end
@@ -24,9 +30,11 @@ function Inventory_OnCharacterLoaded(src, citizenid, generation, label)
     Players[src] = { citizenid = citizenid, generation = generation, invId = inv.id, equipId = eq and eq.id or nil, packId = pk and pk.id or nil }
     inv.viewers[src] = 'primary'
     if eq then eq.viewers[src] = 'equip' end
-    if pk then pk.viewers[src] = 'backpack' end
+    local packOpen = pk ~= nil and Containers.PackIsOpen(citizenid)
+    Players[src].packOpen = packOpen
+    if packOpen then pk.viewers[src] = 'backpack' end
     TriggerClientEvent('veyl_inventory:init', src, { primary = Store.View(inv, 'primary'), equip = eq and Store.View(eq, 'equip') or nil,
-        backpack = pk and Store.View(pk, 'backpack') or nil, equipSlots = Containers.SlotList(), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
+        backpack = packOpen and Store.View(pk, 'backpack') or nil, equipSlots = Containers.SlotList(), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
     Drops.Sync(src)
     if Cash then CreateThread(function() Cash.Sync(src) end) end
 end
@@ -79,7 +87,7 @@ end
 local function resolveRef(src, p, ref, create)
     if ref == 'primary' then return Store.Get(p.invId) end
     if ref == 'equip' then return p.equipId and Store.Get(p.equipId) or nil, 'NOT_FOUND' end
-    if ref == 'backpack' then return p.packId and Store.Get(p.packId) or nil, 'NOT_FOUND' end
+    if ref == 'backpack' then return Containers.OpenPack(p.citizenid), 'NOT_FOUND' end
     if ref == 'secondary' then
         local s = Sessions[src]
         if not s or not s.secondary then return nil, 'NO_SESSION' end
@@ -157,7 +165,7 @@ vlib.callback.register('veyl_inventory:open', function(src, stashId)
         if prev then prev.viewers[src] = nil Store.Unload(prev.id) end
     end
     Sessions[src] = s
-    local eqInv, pkInv = p.equipId and Store.Get(p.equipId), p.packId and Store.Get(p.packId)
+    local eqInv, pkInv = p.equipId and Store.Get(p.equipId), Containers.OpenPack(p.citizenid)
     return Ops.ok({ primary = Store.View(inv, 'primary'), secondary = secondaryView, equip = eqInv and Store.View(eqInv, 'equip') or nil,
         backpack = pkInv and Store.View(pkInv, 'backpack') or nil, equipSlots = Containers.SlotList(), categories = InventoryConfig.Categories,
         profile = Containers.Profile(src, p.citizenid), items = ClientItemDefs(), imagePath = InventoryConfig.ImagePath })
@@ -204,7 +212,7 @@ end, { cooldownMs = 0 })
 vlib.callback.register('veyl_inventory:useStart', function(src, slot, ref)
     local p = actor(src)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
-    local inv = Store.Get((ref == 'backpack' and p.packId) or p.invId)
+    local inv = personalInv(p, ref)
     if not inv then return err('NOT_READY', 'Inventory unavailable') end
     return Use.Start(src, p.citizenid, p.generation, inv, slot)
 end, { cooldownMs = 500 })
@@ -329,7 +337,7 @@ vlib.callback.register('veyl_inventory:give', function(src, req)
     local target
     for _, n in ipairs(nearbyPlayers(src)) do if n.id == req.target then target = n break end end
     if not target or not Players[req.target] then return err('TOO_FAR', 'That player is no longer nearby') end
-    local from = Store.Get((req.ref == 'backpack' and p.packId) or p.invId)
+    local from = personalInv(p, req.ref)
     local to = Store.Get(Players[req.target].invId)
     if not from or not to then return err('NOT_READY', 'Inventory unavailable') end
     local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
@@ -359,7 +367,7 @@ vlib.callback.register('veyl_inventory:drop', function(src, req)
     if not p then return err('NO_CHARACTER', 'No character loaded') end
     if type(req) ~= 'table' then return err('INVALID_INPUT', 'Bad request') end
     if IsPedInAnyVehicle(GetPlayerPed(src), false) then return err('IN_VEHICLE', 'Get out of the vehicle to drop items') end
-    local from = Store.Get((req.ref == 'backpack' and p.packId) or p.invId)
+    local from = personalInv(p, req.ref)
     if not from then return err('NOT_READY', 'Inventory unavailable') end
     local it = vlib.validate.int(req.slot, 1, from.slots) and from.items[req.slot] or nil
     if not it then return err('NOT_FOUND', 'Nothing in that slot') end

@@ -16,7 +16,7 @@ local function allOf(target)
         local p = Players[target]
         if not p then return {} end
         local out = {}
-        for _, id in ipairs({ p.invId, p.packId, p.equipId }) do local inv = id and Store.Get(id) if inv then out[#out + 1] = inv end end
+        for _, inv in ipairs({ Store.Get(p.invId) or false, Containers.OpenPack(p.citizenid) or false, p.equipId and Store.Get(p.equipId) or false }) do if inv then out[#out + 1] = inv end end
         return out
     end
     local inv = resolve(target)
@@ -156,9 +156,9 @@ local function playerInv(citizenid)
         slots = InventoryConfig.PlayerSlots, maxWeight = InventoryConfig.PlayerMaxWeight })
 end
 
---- The backpack of a character that is online, if they have one.
+--- The backpack of a character, if they are wearing one.
 local function packInv(citizenid)
-    return InventoryConfig.Backpack and InventoryConfig.Backpack.Enabled and Store.Get(Containers.PackId(citizenid)) or nil
+    return Containers.OpenPack(citizenid)
 end
 
 local function fits(inv, item, count, metadata)

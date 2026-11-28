@@ -9,12 +9,12 @@ Everything is decided on the server. The page can only ask: move this slot to th
 | Container | Ref | Notes |
 |---|---|---|
 | Pockets | `primary` | `PlayerSlots`, `PlayerMaxWeight`. The first `HotbarSlots` slots are the number keys. |
-| Backpack | `backpack` | `Backpack = { Enabled, Slots, MaxWeight }`. Items can be used, given and dropped from it. |
+| Backpack | `backpack` | `Backpack = { Enabled, Slots, MaxWeight }`. It exists only while a **Backpack item** is worn in the backpack slot of the body panel (drag it in or double-click it); take it off and the panel closes. What is inside stays saved. While it is closed nothing in it can be moved, counted, taken or given to. Items can be used, given and dropped from it. |
 | Equipment | `equip` | One slot per entry in `Equipment`. A slot only takes an item whose definition has the same `equip`, one at a time. |
 | Stash, trunk, glovebox, ground | `secondary` | Registered stashes (`RegisterStash`), keyed stashes (`veyl_vehicles` registers `veh_trunk` and `veh_glovebox`) and ground drops. |
 | Shop | (own panel) | Opened by `veyl_shops` when `ShopsConfig.UseInventoryUi` is on. |
 
-Pockets, backpack and equipment all count as "you have it": `GetItemCount`, `Search` and `GetSlotWithItem` look through all three, `TakeItem` takes from the pockets first and then the backpack and what is worn, and `GiveItem` falls back to the backpack when the pockets are full. A phone in its equipment slot still counts for the phone app.
+Pockets, backpack and equipment all count as "you have it" (the backpack only while it is worn): `GetItemCount`, `Search` and `GetSlotWithItem` look through all three, `TakeItem` takes from the pockets first and then the backpack and what is worn, and `GiveItem` falls back to the backpack when the pockets are full. A phone in its equipment slot still counts for the phone app.
 
 ## The screen
 
@@ -55,6 +55,6 @@ Unchanged, plus: `GetItemCount`, `Search`, `GetSlotWithItem` and `TakeItem` span
 
 ## Tests
 
-The server logic runs against a real MariaDB with the framework stubbed (`26 checks`): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 21 checks in the preview.
+The server logic runs against a real MariaDB with the framework stubbed (33 checks): container loading, slot rules (right slot, wrong slot, one at a time, no cross-player access), backpack weight, counts and takes across containers, give falling back to the backpack, persistence after a reload, the backpack opening and closing as the bag is worn and removed, and unloading. The page flows (equip by drag and double click, menus, filters, search, shift-click, shop buying) pass 26 checks in the preview.
 
 Not tested in game: the wearable props on a real ped (drawable numbers), hover and drag in CEF at your resolution, and the shop panel against a live `veyl_shops`.

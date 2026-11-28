@@ -85,6 +85,7 @@ export function App() {
   useNuiMessage('inventory:close', () => { setOpen(false); setDrag(null); setMenu(null); setQty(null); setGive(null); setTray(null); setTip(null); });
   useNuiMessage<Delta>('inventory:delta', (d) => setViews((v) => (v[d.ref] ? { ...v, [d.ref]: applyDelta(v[d.ref]!, d) } : v)));
   useNuiMessage<ShopInfo>('inventory:shop', (s) => setShop(s));
+  useNuiMessage('inventory:packClosed', () => setViews((v) => ({ ...v, backpack: undefined })));
   useNuiMessage<View>('inventory:snapshot', (view) => setViews((v) => ({ ...v, [view.ref]: view })));
 
   const say = useCallback((kind: 'error' | 'success', text: string) => {

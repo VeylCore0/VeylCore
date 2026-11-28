@@ -11,7 +11,7 @@ InventoryConfig = {
 
     -- Backpack: a second personal container shown under your pockets. Slots and weight apply to new characters; for existing ones the
     -- slot count only grows. Set Enabled = false to hide it.
-    Backpack = { Enabled = true, Slots = 15, MaxWeight = 15000, Label = 'Backpack' },
+    Backpack = { Enabled = true, Slots = 15, MaxWeight = 15000, Label = 'Backpack' },   -- the container exists only while a backpack item is worn (equip = 'backpack')
 
     -- Equipment slots (the body panel). An item goes in a slot only if its definition says equip = '<slot id>' (server-checked on every move).
     -- Order is the slot number. side/row place them on the body panel; only the order matters to the server.
@@ -21,6 +21,7 @@ InventoryConfig = {
         { id = 'glasses', label = 'Glasses',  icon = 'glasses', side = 'left' },
         { id = 'armor',   label = 'Armour',   icon = 'shield',  side = 'left' },
         { id = 'hat',     label = 'Hat',      icon = 'hat',     side = 'left' },
+        { id = 'backpack', label = 'Backpack', icon = 'backpack', side = 'left' },
         { id = 'id',      label = 'ID card',  icon = 'id',      side = 'right' },
         { id = 'phone',   label = 'Phone',    icon = 'phone',   side = 'right' },
         { id = 'tablet',  label = 'Tablet',   icon = 'tablet',  side = 'right' },

@@ -56,6 +56,12 @@ RegisterNetEvent('veyl_inventory:snapshot', function(view)
     UI_Forward('snapshot', view)
 end)
 
+RegisterNetEvent('veyl_inventory:packClosed', function()
+    InvState.backpack = nil
+    pushCounts()
+    UI_Forward('packClosed', {})
+end)
+
 RegisterNetEvent('VeylCore:Client:OnPlayerUnload', function()
     InvState.primary, InvState.secondary, InvState.equip, InvState.backpack = nil, nil, nil, nil
     pushCounts()
