@@ -21,6 +21,8 @@ let activity: Act[] = [];
 let pendingPayee: { token: string; name: string; label: string } | null = null;
 let listings: Listing[] = [];
 let flockMe: FProfile | null = null;
+let flockLegacy: { handle: string; display: string } | null = null;
+const flockPasswords: Record<string, string> = { alexm: 'password1' };
 let posts: FPost[] = [];
 const following = new Set<string>();
 const flockProfiles: Record<string, FProfile> = {
@@ -35,7 +37,7 @@ export function appsReset(empty: boolean) {
   seq = 1000;
   pendingPayee = null; following.clear();
   bank = { name: 'Alex Morgan', bank: 12840, cash: 420, account: 'VC00000482', accountMasked: '•••• 0482', max: 250000 };
-  if (empty) { notes = []; activity = []; listings = []; posts = []; flockMe = null; vehicles = []; return; }
+  if (empty) { notes = []; activity = []; listings = []; posts = []; flockMe = null; flockLegacy = { handle: 'oldtimer', display: 'Old Timer' }; vehicles = []; return; }
   notes = [
     { id: 1, title: 'Shopping list', body: 'Milk\nEggs\nCoffee beans\nBandages x5', at: now() - 3600 },
     { id: 2, title: 'Heist ideas (just kidding)', body: 'Never. Honest work only. Maybe take the taxi job this weekend.', at: now() - 90000 },
@@ -254,12 +256,37 @@ export function appsApi(name: string, a: unknown[]): NuiResponse | undefined {
     case 'marketDelete': listings = listings.filter((l) => l.id !== a[0]); return ok(undefined, 'Listing removed');
 
     // ---- flock
-    case 'flockMe': return ok({ profile: flockMe, counts: flockMe ? { posts: posts.filter((p) => p.mine && !p.replyTo).length, followers: 3, following: following.size } : undefined });
-    case 'flockSetup': {
+    case 'flockMe': return ok({ profile: flockMe, counts: flockMe ? { posts: posts.filter((p) => p.mine && !p.replyTo).length, followers: 3, following: following.size } : undefined, legacy: flockMe ? undefined : flockLegacy });
+    case 'flockSignup': {
       const h = String(a[0]).replace(/^@/, '').toLowerCase();
       if (!/^[a-z0-9_]{3,15}$/.test(h)) return err('INVALID_INPUT', 'Handles are 3-15 letters, numbers or _');
-      if (flockProfiles[h]) return err('DUPLICATE', `@${h} is taken`);
-      flockMe = { handle: h, display: String(a[1] || 'Alex Morgan'), bio: String(a[2] ?? '') || null };
+      if (String(a[2] ?? '').length < 6) return err('INVALID_INPUT', 'Use 6 to 64 characters for your password');
+      if (flockProfiles[h] || flockPasswords[h]) return err('DUPLICATE', `@${h} is taken`);
+      flockMe = { handle: h, display: String(a[1] || 'Alex Morgan'), bio: null };
+      flockPasswords[h] = String(a[2]);
+      return ok({ profile: flockMe, counts: { posts: 0, followers: 0, following: 0 } }, 'Welcome to Flock');
+    }
+    case 'flockLogin': {
+      const h = String(a[0]).replace(/^@/, '').toLowerCase();
+      if (flockPasswords[h] === undefined || flockPasswords[h] !== String(a[1])) return err('WRONG_LOGIN', 'Wrong handle or password');
+      flockMe = h === 'alexm' ? { handle: 'alexm', display: 'Alex Morgan', bio: 'Los Santos local.' } : { handle: h, display: h, bio: null };
+      return ok({ profile: flockMe, counts: { posts: 0, followers: 0, following: 0 } }, `Logged in as @${h}`);
+    }
+    case 'flockLogout': flockMe = null; return ok(undefined, 'Logged out');
+    case 'flockClaim': {
+      if (!flockLegacy) return err('NOT_FOUND', 'No old account to protect');
+      if (String(a[0]).length < 6) return err('INVALID_INPUT', 'Use 6 to 64 characters for your password');
+      flockMe = { handle: flockLegacy.handle, display: flockLegacy.display, bio: null };
+      flockPasswords[flockLegacy.handle] = String(a[0]);
+      flockLegacy = null;
+      return ok({ profile: flockMe, counts: { posts: 0, followers: 0, following: 0 } }, 'Account protected');
+    }
+    case 'flockSetup': {
+      if (!flockMe) return err('NOT_LOGGED_IN', 'Log in to Flock first');
+      const h = String(a[0]).replace(/^@/, '').toLowerCase();
+      if (!/^[a-z0-9_]{3,15}$/.test(h)) return err('INVALID_INPUT', 'Handles are 3-15 letters, numbers or _');
+      if (h !== flockMe.handle && (flockProfiles[h] || flockPasswords[h])) return err('DUPLICATE', `@${h} is taken`);
+      flockMe = { handle: h, display: String(a[1] || flockMe.display), bio: String(a[2] ?? '') || null };
       return ok(flockMe, 'Profile saved');
     }
     case 'flockFeed': {
@@ -276,7 +303,7 @@ export function appsApi(name: string, a: unknown[]): NuiResponse | undefined {
     }
     case 'flockPost': {
       const i = a[0] as { body: string; replyTo?: number };
-      if (!flockMe) return err('NO_PROFILE', 'Pick a handle first');
+      if (!flockMe) return err('NOT_LOGGED_IN', 'Log in to Flock first');
       if (!String(i.body).trim()) return err('INVALID_INPUT', 'Write something first');
       const p: FPost = { id: ++seq, body: i.body.trim(), replyTo: i.replyTo ?? null, likes: 0, replies: 0, at: now(), handle: flockMe.handle, display: flockMe.display, liked: false, mine: true, canDelete: true };
       posts.push(p);

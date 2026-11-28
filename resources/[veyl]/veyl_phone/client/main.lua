@@ -207,7 +207,7 @@ local ALLOWED = {
     bankOverview = true, bankHistory = true, bankResolve = true, bankSend = true, bankStatus = true,
     garageList = true, garageLocate = true, garageValet = true,
     marketList = true, marketPost = true, marketDelete = true,
-    flockMe = true, flockSetup = true, flockFeed = true, flockThread = true, flockUser = true, flockPost = true, flockLike = true, flockDelete = true, flockFollow = true,
+    flockMe = true, flockSetup = true, flockSignup = true, flockLogin = true, flockLogout = true, flockClaim = true, flockFeed = true, flockThread = true, flockUser = true, flockPost = true, flockLike = true, flockDelete = true, flockFollow = true,
     mapsData = true, placeSave = true, placeDelete = true, shareLocation = true,
     servicesData = true, serviceRequest = true, serviceTake = true, serviceClose = true,
     voicemailList = true, voicemailLeave = true, voicemailRead = true, voicemailDelete = true,

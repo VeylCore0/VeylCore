@@ -317,6 +317,20 @@ local MIGRATIONS = {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
         },
     },
+    {
+        -- Flock needs a sign-up or login: accounts get a password, and each character is logged in to one account (or none) at a time.
+        id = 'v2_008_flock_accounts',
+        sql = {
+            [[ALTER TABLE veyl_phone_flock_profiles ADD COLUMN pass_hash VARCHAR(160) NULL]],
+            [[CREATE TABLE IF NOT EXISTS veyl_phone_flock_sessions (
+                    citizenid VARCHAR(16) NOT NULL,
+                    account VARCHAR(16) NOT NULL,
+                    since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (citizenid),
+                    KEY idx_account (account)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        },
+    },
 }
 
 local function tableExists(name)

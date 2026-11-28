@@ -1,4 +1,4 @@
-// Flock: short public posts. One @handle per character; posts, replies, likes, follows and @mentions.
+// Flock: short public posts. Sign up or log in with a @handle and password (and log out again); posts, replies, likes, follows and @mentions.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { Ico } from '../icons';
@@ -8,52 +8,113 @@ import { ago, clientOp } from './kit';
 
 type Post = { id: number; body: string; replyTo: number | null; likes: number; replies: number; at: number; handle: string; display: string; liked: boolean; mine: boolean; canDelete: boolean };
 type Profile = { handle: string; display: string; bio?: string | null };
+type Me = { profile: Profile | null; counts?: Counts; legacy?: { handle: string; display: string } | null };
 type Counts = { posts: number; followers: number; following: number };
 type View = { k: 'feed' } | { k: 'thread'; id: number } | { k: 'user'; handle: string };
 
 const LIMIT = 280;
 
 export function FlockApp({ route }: { route?: string }) {
-  const [me, setMe] = useState<{ profile: Profile | null; counts?: Counts } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [view, setView] = useState<View>({ k: 'feed' });
-  const load = useCallback(async () => { const r = await api<{ profile: Profile | null; counts?: Counts }>('flockMe'); if (r.ok && r.data) setMe(r.data); }, []);
+  const load = useCallback(async () => { const r = await api<Me>('flockMe'); if (r.ok && r.data) setMe(r.data); }, []);
   useEffect(() => { void load(); }, [load]);
   useRouteOnce(route, (r) => { const m = /^p(\d+)$/.exec(r); if (m) setView({ k: 'thread', id: Number(m[1]) }); });
   useBack(view.k !== 'feed', () => { setView({ k: 'feed' }); return true; });
 
   if (!me) return <div className="ph-app"><Header title="Flock" /><Spinner /></div>;
-  if (!me.profile) return <Setup onDone={(p) => setMe({ profile: p })} />;
+  // Not logged in: sign up or log in first. Nothing else in Flock is reachable (the server refuses it too).
+  if (!me.profile) return <Auth legacy={me.legacy ?? null} onDone={() => { setView({ k: 'feed' }); void load(); }} />;
+  const loggedOut = () => { setView({ k: 'feed' }); void load(); };
   if (view.k === 'thread') return <Thread id={view.id} me={me.profile} onBack={() => setView({ k: 'feed' })} onUser={(h) => setView({ k: 'user', handle: h })} />;
   if (view.k === 'user') return <UserPage handle={view.handle} onBack={() => setView({ k: 'feed' })} onOpen={(id) => setView({ k: 'thread', id })} onUser={(h) => setView({ k: 'user', handle: h })} />;
-  return <Feed me={me.profile} counts={me.counts} onOpen={(id) => setView({ k: 'thread', id })} onUser={(h) => setView({ k: 'user', handle: h })} onEditProfile={() => setMe({ ...me, profile: null })} />;
+  return <Feed me={me.profile} counts={me.counts} onOpen={(id) => setView({ k: 'thread', id })} onUser={(h) => setView({ k: 'user', handle: h })} onProfile={(p) => setMe({ ...me, profile: p })} onLoggedOut={loggedOut} />;
 }
 
 // ---------------------------------------------------------------------------
-function Setup({ onDone }: { onDone: (p: Profile) => void }) {
+function Auth({ legacy, onDone }: { legacy: { handle: string; display: string } | null; onDone: () => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>(legacy ? 'login' : 'signup');
   const [handle, setHandle] = useState('');
   const [display, setDisplay] = useState('');
-  const [bio, setBio] = useState('');
+  const [password, setPassword] = useState('');
+  const [again, setAgain] = useState('');
   const [busy, setBusy] = useState(false);
-  const ok = /^[a-z0-9_]{3,15}$/i.test(handle) && !busy;
-  const save = async () => {
-    setBusy(true);
-    const r = await api<Profile>('flockSetup', handle, display, bio);
+  const [error, setError] = useState<string | null>(null);
+  const [claimPw, setClaimPw] = useState('');
+  const [claimAgain, setClaimAgain] = useState('');
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const cleanHandle = (v: string) => v.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15);
+  const handleOk = /^[a-z0-9_]{3,15}$/i.test(handle);
+  const pwOk = password.length >= 6 && password.length <= 64;
+  const ok = !busy && (mode === 'login' ? handleOk && password.length > 0 : handleOk && pwOk && again === password);
+  const submit = async () => {
+    if (!ok) return;
+    setBusy(true); setError(null);
+    const r = mode === 'login' ? await api('flockLogin', handle, password) : await api('flockSignup', handle, display, password);
     setBusy(false);
-    if (say(r) && r.data) onDone(r.data);
+    if (r.ok) { say(r); onDone(); } else setError(r.message ?? 'That did not work');
   };
+  const claim = async () => {
+    if (busy || claimPw.length < 6 || claimAgain !== claimPw) return;
+    setBusy(true); setClaimError(null);
+    const r = await api('flockClaim', claimPw);
+    setBusy(false);
+    if (r.ok) { say(r); onDone(); } else setClaimError(r.message ?? 'That did not work');
+  };
+  const switchTo = (m: 'login' | 'signup') => { setMode(m); setError(null); setPassword(''); setAgain(''); };
+
   return (
     <div className="ph-app">
       <Header title="Flock" />
       <div className="ph-scroll ph-pad">
-        <div className="ph-flockhero"><span><Ico name="bird" size={34} /></span><h2>Join the conversation</h2><p>Pick a handle. Everyone in the city can see your posts.</p></div>
-        <div className="ph-form">
-          <label>Handle<span className="ph-emailrow"><em>@</em><TextInput value={handle} onChange={(v) => setHandle(v.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15))} placeholder="yourname" autoFocus /></span></label>
-          <label>Display name<TextInput value={display} onChange={setDisplay} placeholder="Your name" maxLength={32} /></label>
-          <label>Bio (optional)<TextInput multiline value={bio} onChange={setBio} placeholder="A line about you" maxLength={120} /></label>
-          <Button kind="primary" block onClick={save} disabled={!ok}>Create profile</Button>
+        <div className="ph-flockhero"><span><Ico name="bird" size={34} /></span><h2>{mode === 'login' ? 'Welcome back' : 'Join the conversation'}</h2><p>{mode === 'login' ? 'Log in to see the feed and post.' : 'Create an account. Everyone in the city can see your posts.'}</p></div>
+        {legacy && (
+          <div className="ph-form ph-claim">
+            <p className="ph-hint">You already have <b>@{legacy.handle}</b> on this character. Choose a password to keep it, or log in to a different account below.</p>
+            <label>New password<TextInput type="password" value={claimPw} onChange={setClaimPw} placeholder="At least 6 characters" maxLength={64} /></label>
+            <label>Repeat it<TextInput type="password" value={claimAgain} onChange={setClaimAgain} placeholder="Type it again" maxLength={64} onEnter={claim} /></label>
+            <Button kind="primary" block onClick={claim} disabled={busy || claimPw.length < 6 || claimAgain !== claimPw}>Protect @{legacy.handle}</Button>
+            {claimError && <p className="ph-error" role="alert">{claimError}</p>}
+            <p className="ph-hint">Or use another account:</p>
+          </div>
+        )}
+        <Segmented options={[{ id: 'signup', label: 'Sign up' }, { id: 'login', label: 'Log in' }]} value={mode} onChange={switchTo} />
+        <div className="ph-form" style={{ marginTop: 14 }}>
+          <label>Handle<span className="ph-emailrow"><em>@</em><TextInput value={handle} onChange={(v) => setHandle(cleanHandle(v))} placeholder="yourname" autoFocus={!legacy} /></span></label>
+          {mode === 'signup' && <label>Display name<TextInput value={display} onChange={setDisplay} placeholder="Your name" maxLength={32} /></label>}
+          <label>Password<TextInput type="password" value={password} onChange={setPassword} placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'} maxLength={64} onEnter={mode === 'login' ? submit : undefined} /></label>
+          {mode === 'signup' && <label>Repeat password<TextInput type="password" value={again} onChange={setAgain} placeholder="Type it again" maxLength={64} onEnter={submit} /></label>}
+          {mode === 'signup' && password.length > 0 && again.length > 0 && again !== password && <p className="ph-error" role="alert">The passwords do not match</p>}
+          {error && <p className="ph-error" role="alert">{error}</p>}
+          <Button kind="primary" block onClick={submit} disabled={!ok}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}</Button>
+          <button className="ph-link" onClick={() => switchTo(mode === 'login' ? 'signup' : 'login')}>{mode === 'login' ? 'New here? Sign up' : 'Have an account? Log in'}</button>
         </div>
       </div>
     </div>
+  );
+}
+
+function EditProfile({ me, onClose, onSaved, onLogout }: { me: Profile; onClose: () => void; onSaved: (p: Profile) => void; onLogout: () => void }) {
+  const [handle, setHandle] = useState(me.handle);
+  const [display, setDisplay] = useState(me.display);
+  const [bio, setBio] = useState(me.bio ?? '');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    const r = await api<Profile>('flockSetup', handle, display, bio);
+    setBusy(false);
+    if (say(r) && r.data) { onSaved(r.data); onClose(); }
+  };
+  return (
+    <Sheet title="Your profile" onClose={onClose}>
+      <div className="ph-form">
+        <label>Handle<span className="ph-emailrow"><em>@</em><TextInput value={handle} onChange={(v) => setHandle(v.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15))} /></span></label>
+        <label>Display name<TextInput value={display} onChange={setDisplay} maxLength={32} /></label>
+        <label>Bio<TextInput multiline value={bio} onChange={setBio} maxLength={120} /></label>
+        <Button kind="primary" block onClick={save} disabled={busy || !/^[a-z0-9_]{3,15}$/i.test(handle)}>Save</Button>
+        <Button kind="danger" block onClick={onLogout}>Log out of @{me.handle}</Button>
+      </div>
+    </Sheet>
   );
 }
 
@@ -128,7 +189,9 @@ function useConfirmDelete(onDeleted: (p: Post) => void) {
 }
 
 // ---------------------------------------------------------------------------
-function Feed({ me, counts, onOpen, onUser, onEditProfile }: { me: Profile; counts?: Counts; onOpen: (id: number) => void; onUser: (h: string) => void; onEditProfile: () => void }) {
+function Feed({ me, counts, onOpen, onUser, onProfile, onLoggedOut }: { me: Profile; counts?: Counts; onOpen: (id: number) => void; onUser: (h: string) => void; onProfile: (p: Profile) => void; onLoggedOut: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [confirmOut, setConfirmOut] = useState(false);
   const [mode, setMode] = useState<'all' | 'following'>('all');
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [next, setNext] = useState<number | undefined>();
@@ -151,9 +214,19 @@ function Feed({ me, counts, onOpen, onUser, onEditProfile }: { me: Profile; coun
         {posts?.length === 0 && <Empty icon="bird" title={mode === 'following' ? 'Nothing from people you follow' : 'No posts yet'} text={mode === 'following' ? 'Follow people to fill this feed.' : 'Be the first to post.'} />}
         {posts?.map((p) => <PostCard key={p.id} p={p} onOpen={() => onOpen(p.id)} onUser={onUser} onChange={(n) => setPosts((l) => l?.map((x) => (x.id === n.id ? n : x)) ?? null)} onRemove={del.ask} />)}
         {next !== undefined && <button className="ph-more" onClick={() => void load(next)}>Load more</button>}
-        {counts && <button className="ph-link ph-editprofile" onClick={onEditProfile}>Edit profile</button>}
+        {counts && <button className="ph-link ph-editprofile" onClick={() => setEditing(true)}>Edit profile or log out</button>}
       </div>
       {del.sheet}
+      {editing && <EditProfile me={me} onClose={() => setEditing(false)} onSaved={onProfile} onLogout={() => { setEditing(false); setConfirmOut(true); }} />}
+      {confirmOut && (
+        <Sheet title="Log out of Flock?" onClose={() => setConfirmOut(false)}>
+          <div className="ph-form">
+            <p className="ph-hint">You will need @{me.handle} and its password to get back in. Your posts stay.</p>
+            <Button kind="danger" block onClick={async () => { const r = await api('flockLogout'); if (say(r)) { setConfirmOut(false); onLoggedOut(); } }}>Log out</Button>
+            <Button kind="ghost" block onClick={() => setConfirmOut(false)}>Stay logged in</Button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
