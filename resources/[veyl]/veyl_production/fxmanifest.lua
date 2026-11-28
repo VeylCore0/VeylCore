@@ -10,13 +10,13 @@ dependencies { 'oxmysql', 'veyl_lib', 'veyl_core', 'veyl_inventory', 'veyl_inter
 
 shared_scripts {
     '@veyl_lib/init.lua', '@veyl_core/lib/shared.lua',
-    'config/main.lua', 'config/progression.lua', 'config/botanical.lua', 'config/field_operations.lua', 'config/supplier_operations.lua', 'config/workstations.lua', 'config/properties.lua', 'config/police.lua', 'config/street.lua',
+    'config/main.lua', 'config/progression.lua', 'config/botanical.lua', 'config/field_operations.lua', 'config/supplier_operations.lua', 'config/workstations.lua', 'config/properties.lua', 'config/police.lua', 'config/street.lua', 'config/economy.lua',
     'shared/enums.lua', 'shared/items.lua', 'shared/utils.lua',
 }
 server_scripts {
     '@oxmysql/lib/MySQL.lua', '@veyl_core/lib/server.lua',
     'server/crypto.lua', 'server/logging.lua', 'server/database.lua', 'server/security.lua', 'server/inventory.lua', 'server/progression.lua',
-    'server/police.lua', 'server/plants.lua', 'server/workstations.lua', 'server/properties.lua', 'server/shop.lua', 'server/farms.lua', 'server/gathering.lua', 'server/street.lua', 'server/supplier.lua', 'server/hazard.lua',
+    'server/police.lua', 'server/plants.lua', 'server/workstations.lua', 'server/properties.lua', 'server/market.lua', 'server/crews.lua', 'server/shop.lua', 'server/farms.lua', 'server/gathering.lua', 'server/street.lua', 'server/admin.lua', 'server/supplier.lua', 'server/hazard.lua',
     'server/callbacks.lua', 'server/main.lua',
 }
 client_scripts {

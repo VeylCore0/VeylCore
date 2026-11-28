@@ -73,6 +73,7 @@ ProductionConfig.Supplier = {
         Radius = 7.0, TickSeconds = 2, GainPerTick = 6, DecayPerTick = 4, Threshold = 70, Damage = 4,
         ProtectionItem = 'prod_respirator', ProtectionPercent = 0.8,
         WarnAt = 40,
+        StaminaAt = 55,       -- from here you cannot sprint or jump until you breathe clean air again
     },
 
     -- What the buyer pays for supplier goods.

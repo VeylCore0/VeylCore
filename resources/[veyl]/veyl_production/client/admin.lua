@@ -4,7 +4,7 @@
 local function call(name, ...) return Veyl.CallbackTimeout('veyl_production', name, 15000, ...) end
 
 local state
-local openMain, openFarm, openRewards
+local openMain, openFarm, openRewards, openPlayers, openPlayer
 
 local function reload()
     local r = call('adminState')
@@ -128,9 +128,64 @@ function openFarm(id)
     vlib.showMenu('prodadmin:farm')
 end
 
+local function ago(at) local s = math.max(0, GetCloudTimeAsInt() - at) return s < 3600 and ('%d min ago'):format(s // 60) or ('%d h ago'):format(s // 3600) end
+
+local function showLog(title, target)
+    local r = call('adminLog', target)
+    if not r.ok then return Veyl.NotifyResult(r) end
+    local opts = {}
+    for i, l in ipairs(r.data) do opts[#opts + 1] = { id = 'l' .. i, label = l.text, description = ('%s · %s · %s'):format(l.kind, l.citizenid, ago(l.at)) } end
+    if #opts == 0 then opts[1] = { id = 'none', label = 'Nothing logged yet', disabled = true } end
+    vlib.registerMenu({ id = 'prodadmin:log', title = title, subtitle = 'Latest 25', parent = target and 'prodadmin:player' or 'prodadmin:main', options = opts })
+    vlib.showMenu('prodadmin:log')
+end
+
+function openPlayer(cid)
+    local r = call('adminPlayer', cid)
+    if not r.ok then Veyl.NotifyResult(r) return openPlayers() end
+    local d = r.data
+    local opts = {}
+    for _, b in ipairs(d.branches) do opts[#opts + 1] = { id = 'b' .. b.id, label = b.label, right = ('level %d · %d XP'):format(b.level, b.xp), disabled = true } end
+    opts[#opts + 1] = { id = 'plants', label = ('Plants (%d)'):format(#d.plants), description = ('%d benches. Pick one to remove it'):format(d.benches), menu = nil, onSelect = function() CreateThread(function()
+        if #d.plants == 0 then Veyl.Notify('They have no plants', 'info') return openPlayer(cid) end
+        local list = {}
+        for _, p in ipairs(d.plants) do list[#list + 1] = { value = tostring(p.id), label = ('#%d %s (%s%s)'):format(p.id, p.label, p.state, p.lab and ', in a lab' or '') } end
+        local v = vlib.inputDialog('Remove which plant?', { { name = 'id', label = 'Plant', type = 'select', required = true, options = list, default = list[1].value } }, { submitLabel = 'Remove' })
+        if v then Veyl.NotifyResult(call('adminRemovePlant', tonumber(v.id))) end
+        openPlayer(cid)
+    end) end }
+    opts[#opts + 1] = { id = 'xp', label = 'Give or take XP', onSelect = function() CreateThread(function()
+        local bo = {}
+        for _, b in ipairs(d.branches) do bo[#bo + 1] = { value = b.id, label = b.label } end
+        local v = vlib.inputDialog('XP for ' .. d.name, {
+            { name = 'branch', label = 'Branch', type = 'select', required = true, options = bo, default = bo[1].value },
+            { name = 'amount', label = 'Amount (negative takes XP away)', type = 'number', required = true, min = -100000, max = 100000, default = 100 },
+        }, { submitLabel = 'Apply' })
+        if v then Veyl.NotifyResult(call('adminGiveXp', cid, v.branch, tonumber(v.amount))) end
+        openPlayer(cid)
+    end) end }
+    opts[#opts + 1] = { id = 'cool', label = 'Reset their cooldowns', description = 'Searches, harvests, runs, purchases', onSelect = function() CreateThread(function() Veyl.NotifyResult(call('adminResetCooldowns', cid)) openPlayer(cid) end) end }
+    opts[#opts + 1] = { id = 'log', label = 'Their log', onSelect = function() CreateThread(function() showLog(d.name, cid) end) end }
+    vlib.registerMenu({ id = 'prodadmin:player', title = d.name, subtitle = d.crew and ('Crew: ' .. d.crew) or 'No crew', parent = 'prodadmin:players', options = opts })
+    vlib.showMenu('prodadmin:player')
+end
+
+function openPlayers()
+    local r = call('adminPlayers')
+    if not r.ok then return Veyl.NotifyResult(r) end
+    local opts = {}
+    for _, p in ipairs(r.data) do opts[#opts + 1] = { id = 'p' .. p.cid, label = p.name, right = ('id %d'):format(p.id), onSelect = function() CreateThread(function() openPlayer(p.cid) end) end } end
+    vlib.registerMenu({ id = 'prodadmin:players', title = 'Players online', subtitle = ('%d online'):format(#opts), parent = 'prodadmin:main', options = opts })
+    vlib.showMenu('prodadmin:players')
+end
+
 function openMain()
     if not reload() then return end
-    local opts = { { id = 'new', label = 'Add a farm here', description = 'Weed, coke, mushroom or custom, starting at your position', icon = 'plus', onSelect = function() CreateThread(createFarm) end } }
+    local opts = {
+        { id = 'new', label = 'Add a farm here', description = 'Weed, coke, mushroom or custom, starting at your position', icon = 'plus', onSelect = function() CreateThread(createFarm) end },
+        { id = 'players', label = 'Players', description = 'Plants, XP, cooldowns and logs of who is online', icon = 'users', onSelect = function() CreateThread(openPlayers) end },
+        { id = 'log', label = 'Recent activity', description = 'Everything players did, newest first', onSelect = function() CreateThread(function() showLog('Recent activity') end) end },
+    }
     for _, f in ipairs(state.farms) do
         opts[#opts + 1] = { id = 'f' .. f.id, label = f.label, description = ('%s · level %d'):format(f.kind, f.level), right = ('%d points'):format(#f.points),
             onSelect = function() CreateThread(function() openFarm(f.id) end) end }

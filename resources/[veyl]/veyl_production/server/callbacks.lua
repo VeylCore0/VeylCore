@@ -54,6 +54,7 @@ local function tabletState(src, cid)
         workstations = Prod.Ws.mine(cid),
         properties = Prod.Props.catalogue(cid, src),
         gathering = Prod.Gather.view(cid), supplier = Prod.Supplier.view(cid), shops = shopList(),
+        street = Prod.Street.view(cid), crew = Prod.Crews.view(cid),
         exposure = math.floor(Prod.Hazard.exposure[src] or 0),
         recent = Prod.Log.recent(cid, 8),
         police = { enabled = Prod.Police.enabled(), dispatch = Prod.Police.dispatchAvailable(), isPolice = Prod.Police.isPolice(src) },
@@ -138,6 +139,31 @@ register('farmRewards', function(src, cid, id, list) return Prod.Farms.setReward
 register('farmDelete', function(src, cid, id) return Prod.Farms.delete(src, cid, id) end, 800)
 register('streetOffer', function(src, cid, netId) return Prod.Street.offer(src, cid, netId) end, 800)
 register('streetSell', function(src, cid, token, item, count) return Prod.Street.sell(src, cid, token, item, count) end, 500)
+register('streetView', function(src, cid) return Veyl.Ok(Prod.Street.view(cid)) end, 800)
+register('regularCall', function(src, cid, id) return Prod.Street.regularCall(src, cid, id) end, 1000)
+register('regularOffer', function(src, cid, token) return Prod.Street.regularOffer(src, cid, token) end, 800)
+
+-- Crews
+register('crewView', function(src, cid) return Veyl.Ok(Prod.Crews.view(cid)) end, 500)
+register('crewCreate', function(src, cid, name) return Prod.Crews.create(src, cid, name) end, 1500)
+register('crewInvite', function(src, cid, target) return Prod.Crews.invite(src, cid, target) end, 1000)
+register('crewAnswer', function(src, cid, accept) return Prod.Crews.answer(src, cid, accept == true) end, 800)
+register('crewLeave', function(src, cid) return Prod.Crews.leave(src, cid) end, 1000)
+register('crewKick', function(src, cid, target) return Prod.Crews.kick(src, cid, target) end, 800)
+register('crewShare', function(src, cid, on) return Prod.Crews.setShare(src, cid, on == true) end, 800)
+register('crewDisband', function(src, cid) return Prod.Crews.disband(src, cid) end, 1500)
+
+-- Group supplier runs
+register('groupInvite', function(src, cid, target) return Prod.Supplier.invite(src, cid, target) end, 1000)
+register('groupAnswer', function(src, cid, accept) return Prod.Supplier.answer(src, cid, accept == true) end, 800)
+
+-- Staff tools (/drugadmin)
+register('adminPlayers', function(src, cid) return Prod.Admin.players(src, cid) end, 800)
+register('adminPlayer', function(src, cid, target) return Prod.Admin.player(src, cid, target) end, 600)
+register('adminRemovePlant', function(src, cid, id) return Prod.Admin.removePlant(src, cid, id) end, 600)
+register('adminResetCooldowns', function(src, cid, target) return Prod.Admin.resetCooldowns(src, cid, target) end, 800)
+register('adminGiveXp', function(src, cid, target, branch, amount) return Prod.Admin.giveXp(src, cid, target, branch, amount) end, 800)
+register('adminLog', function(src, cid, target) return Prod.Admin.log(src, cid, target) end, 800)
 
 -- Supplier runs
 register('supplierView', function(src, cid) return Veyl.Ok(Prod.Supplier.view(cid)) end, 500)

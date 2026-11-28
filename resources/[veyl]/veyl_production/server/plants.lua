@@ -116,6 +116,7 @@ local function count(cid) local n = 0 for _, r in pairs(Plants.rows) do if r.own
 --- May this player tend this plant? Owners always; lab members with the `plants` permission when the plant is in their lab.
 local function canTend(cid, row)
     if row.owner_cid == cid then return true end
+    if row.property_id == nil and Prod.Crews and Prod.Crews.shares(row.owner_cid, cid) then return true end
     return row.property_id ~= nil and Prod.Props.can(cid, row.property_id, 'plants')
 end
 
@@ -229,7 +230,7 @@ function Plants.harvest(src, cid, id)
     local row, err = target(src, cid, id)
     if not row then return err end
     if row.state ~= 'ready' then return Veyl.Err('INVALID_STATE', row.state == 'dead' and 'It is dead' or 'It is not ready yet') end
-    if row.owner_cid ~= cid and not (row.property_id and Prod.Props.can(cid, row.property_id, 'plants')) then return Veyl.Err('NO_PERMISSION', 'Not yours') end
+    if not canTend(cid, row) then return Veyl.Err('NO_PERMISSION', 'Not yours') end
     local v = varietyOf(row)
     local level = Prod.Prog.level(cid, v.branch)
     if not Prod.Sec.try(cid, 'harvest', C.Cooldowns.Harvest) then return Veyl.Err('RATE_LIMITED', 'Slow down') end

@@ -66,6 +66,12 @@ function Sec.try(cid, key, seconds)
     return true
 end
 
+--- Staff: forgets every cooldown a player has.
+function Sec.clearCooldowns(cid)
+    cool[cid] = {}
+    MySQL.update('DELETE FROM veyl_prod_cooldowns WHERE citizenid = ?', { cid })
+end
+
 AddEventHandler('playerDropped', function()
     local cid = Veyl.GetCitizenId(source)
     if cid then cool[cid] = nil strikes[cid] = nil end

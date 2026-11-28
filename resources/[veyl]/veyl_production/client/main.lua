@@ -35,6 +35,8 @@ local ALLOWED = {
     wsOpen = true, wsStart = true, wsClaim = true, wsCancel = true, wsPack = true, runCancel = true,
     propCatalogue = true, propBuy = true, propSell = true, propTransfer = true, propUpgrade = true, propLock = true, propCode = true,
     propMemberAdd = true, propMemberRemove = true, propStorage = true, nearbyPlayers = true, raidSeize = true,
+    streetView = true, regularCall = true, crewView = true, crewCreate = true, crewInvite = true, crewAnswer = true, crewLeave = true, crewKick = true, crewShare = true,
+    crewDisband = true, groupInvite = true, groupAnswer = true,
 }
 
 RegisterNUICallback('api', function(data, cb)
@@ -43,6 +45,8 @@ RegisterNUICallback('api', function(data, cb)
     CreateThread(function()
         local res = Veyl.CallbackTimeout('veyl_production', data.name, 20000, table.unpack(args, 1, 4))
         reply(cb, res)
+        -- A regular agreed to meet: the street script sets the GPS, the blip and the meeting spot.
+        if data.name == 'regularCall' and res.ok and res.data then TriggerEvent('veyl_production:meetSet', res.data) end
         -- The storage is a veyl_inventory stash: close the tablet and open it (the inventory asks the server again).
         if data.name == 'propStorage' and res.ok and res.data and res.data.stash then
             screen:close('storage')
@@ -94,3 +98,22 @@ end)
 
 --- A short random id for a client request (the server also makes its own operation ids).
 function ProdClient.opId() return ('%08x%06x'):format(GetGameTimer() % 0xffffffff, math.random(0, 0xffffff)) end
+
+---------------------------------------------------------------------------
+-- Invites: a crew, or a seat on someone's supplier run. Both are answered through the server, which re-checks everything.
+---------------------------------------------------------------------------
+RegisterNetEvent('veyl_production:crewInvite', function(d)
+    CreateThread(function()
+        local ans = vlib.alertDialog({ title = 'Crew invite', message = ('%s invites you to join %s.'):format(d.from, d.crew), confirmLabel = 'Join', cancelLabel = 'Decline' })
+        Veyl.NotifyResult(Veyl.CallbackTimeout('veyl_production', 'crewAnswer', 15000, ans == 'confirm'))
+    end)
+end)
+
+RegisterNetEvent('veyl_production:groupInvite', function(d)
+    CreateThread(function()
+        local ans = vlib.alertDialog({ title = 'Supply run', message = ('%s wants you on their supply run. You share the kits, with a bonus.'):format(d.from), confirmLabel = 'Join', cancelLabel = 'No thanks' })
+        local res = Veyl.CallbackTimeout('veyl_production', 'groupAnswer', 15000, ans == 'confirm')
+        Veyl.NotifyResult(res)
+        if res.ok and res.data and res.data.run then TriggerEvent('veyl_production:runChanged', res.data.run, 'groupJoin') end
+    end)
+end)

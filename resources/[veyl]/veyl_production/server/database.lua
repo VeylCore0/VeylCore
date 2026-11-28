@@ -160,4 +160,36 @@ Prod.DB.Migrations[#Prod.DB.Migrations + 1] = {
     },
 }
 
+Prod.DB.Migrations[#Prod.DB.Migrations + 1] = {
+    id = 'v1_004_economy',
+    sql = {
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_market (
+            item VARCHAR(48) NOT NULL, pressure DOUBLE NOT NULL DEFAULT 0, updated_at INT UNSIGNED NOT NULL,
+            PRIMARY KEY (item)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_crews (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT, name VARCHAR(24) NOT NULL, leader_cid VARCHAR(16) NOT NULL,
+            share TINYINT NOT NULL DEFAULT 1, xp INT UNSIGNED NOT NULL DEFAULT 0,
+            PRIMARY KEY (id), UNIQUE KEY uq_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_crew_members (
+            citizenid VARCHAR(16) NOT NULL, crew_id INT UNSIGNED NOT NULL, joined_at INT UNSIGNED NOT NULL,
+            PRIMARY KEY (citizenid), KEY idx_crew (crew_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_influence (
+            area VARCHAR(24) NOT NULL, owner VARCHAR(24) NOT NULL, value DOUBLE NOT NULL DEFAULT 0, updated_at INT UNSIGNED NOT NULL,
+            PRIMARY KEY (area, owner)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_regulars (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT, citizenid VARCHAR(16) NOT NULL, name VARCHAR(24) NOT NULL, model VARCHAR(48) NOT NULL,
+            territory VARCHAR(24) NOT NULL, loyalty INT UNSIGNED NOT NULL DEFAULT 1, sales INT UNSIGNED NOT NULL DEFAULT 0, created_at INT UNSIGNED NOT NULL,
+            PRIMARY KEY (id), KEY idx_cid (citizenid)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+        [[CREATE TABLE IF NOT EXISTS veyl_prod_run_members (
+            run_id INT UNSIGNED NOT NULL, citizenid VARCHAR(16) NOT NULL,
+            PRIMARY KEY (run_id, citizenid), KEY idx_cid (citizenid)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]],
+    },
+}
+
 function Prod.DB.Migrate() return Veyl.Migrate(Prod.DB.Migrations) end

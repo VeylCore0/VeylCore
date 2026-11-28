@@ -93,12 +93,24 @@ end
 --- The player's run in progress (expired runs are closed here, so nothing lingers).
 local function active(cid)
     local row = MySQL.single.await("SELECT * FROM veyl_prod_runs WHERE citizenid = ? AND state IN ('active', 'picked') ORDER BY id DESC LIMIT 1", { cid })
+    if not row then
+        -- Not your own run: are you riding along on someone's?
+        row = MySQL.single.await("SELECT r.* FROM veyl_prod_runs r JOIN veyl_prod_run_members m ON m.run_id = r.id WHERE m.citizenid = ? AND r.state IN ('active', 'picked') ORDER BY r.id DESC LIMIT 1", { cid })
+        if row then row.member = true end
+    end
     if row and row.expires_at < os.time() then
         MySQL.update("UPDATE veyl_prod_runs SET state = 'expired', finished_at = ? WHERE id = ? AND state IN ('active', 'picked')", { os.time(), row.id })
-        dropCrate(cid)
+        dropCrate(row.citizenid)
         return nil
     end
     return row
+end
+
+--- The people on a run besides its leader: { id, name }.
+function Sup.groupOf(row)
+    local out = {}
+    for _, m in ipairs(MySQL.query.await('SELECT citizenid FROM veyl_prod_run_members WHERE run_id = ?', { row.id }) or {}) do out[#out + 1] = { id = m.citizenid, name = Prod.Props.nameOf(m.citizenid) } end
+    return { leader = Prod.Props.nameOf(row.citizenid), members = out, max = C.Groups.MaxMembers }
 end
 
 local function view(row)
@@ -108,7 +120,8 @@ local function view(row)
     return { id = row.id, supplier = s and s.label or row.supplier, state = row.state, kits = row.kits, expiresAt = row.expires_at, serverTime = os.time(),
         pickup = { label = pickup.label, x = pickup.x, y = pickup.y, z = pickup.z },
         -- The drop is only revealed once the crate is in hand.
-        drop = row.state == 'picked' and { label = drop.label, x = drop.x, y = drop.y, z = drop.z } or nil }
+        drop = row.state == 'picked' and { label = drop.label, x = drop.x, y = drop.y, z = drop.z } or nil,
+        group = Prod.Supplier.groupOf(row), member = row.member == true }
 end
 
 function Sup.view(cid)
@@ -156,7 +169,7 @@ end
 
 local function mine(cid, wanted)
     local row = active(cid)
-    if not row or row.state ~= wanted then return nil end
+    if not row or row.state ~= wanted or row.member then return nil end
     return row
 end
 
@@ -204,6 +217,18 @@ function Sup.deliver(src, cid)
     local flipped = MySQL.update.await("UPDATE veyl_prod_runs SET state = 'done', finished_at = ? WHERE id = ? AND state = 'picked'", { now, row.id })
     if (flipped or 0) < 1 then return Veyl.Err('INVALID_STATE', 'Already delivered') end
     -- One inventory call: it refuses when you cannot carry the kits, and then the run is put back so you can make room and try again.
+    -- A group run: everyone who is at the drop gets the kits, with a bonus for each extra person.
+    local crew = {}
+    if C.Groups.Enabled then
+        for _, m in ipairs(MySQL.query.await('SELECT citizenid FROM veyl_prod_run_members WHERE run_id = ?', { row.id }) or {}) do
+            local msrc = Veyl.GetSourceByCitizenId and Veyl.GetSourceByCitizenId(m.citizenid)
+            local mc = msrc and Veyl.GetPlayerCoords(msrc)
+            if msrc and mc and ProdUtil.distance(mc, d) <= C.Groups.DropRadius then crew[#crew + 1] = { cid = m.citizenid, src = msrc } end
+        end
+    end
+    local each = kits
+    if #crew > 0 then each = math.floor(kits * (1 + C.Groups.KitBonusPerExtra * #crew) + 0.5) end
+    kits = each
     local g = Prod.Inv.give(cid, S.RewardItem, kits, nil, ('prodrun:%d'):format(row.id))
     if not (g and g.ok) then
         MySQL.update("UPDATE veyl_prod_runs SET state = 'picked', finished_at = NULL WHERE id = ? AND state = 'done'", { row.id })
@@ -211,6 +236,17 @@ function Sup.deliver(src, cid)
         return Veyl.Err(full and 'INVENTORY_FULL' or 'FAILED', full and 'You cannot carry the contents. Make room and hand it over again.' or 'Could not hand over the contents. Try again.')
     end
     dropCrate(cid)
+    for _, m in ipairs(crew) do
+        local mg = Prod.Inv.give(m.cid, S.RewardItem, kits, nil, ('prodrun:%d:%s'):format(row.id, m.cid))
+        if mg and mg.ok then
+            TriggerClientEvent('veyl_production:refresh', m.src, 'run')
+            Veyl.Notify(m.src, ('Run finished: you got %d supply kits'):format(kits), 'success')
+            CreateThread(function() Prod.Prog.award(m.cid, 'supplier', 'run') Prod.Prog.stat(m.cid, 'runs_completed') end)
+        else
+            Veyl.Notify(m.src, 'Run finished, but you could not carry your share.', 'error')
+        end
+    end
+    MySQL.update('DELETE FROM veyl_prod_run_members WHERE run_id = ?', { row.id })
     -- The kits are in. Everything else (XP, stats, log, police roll) happens after the answer has gone back, so it never delays the reward.
     CreateThread(function()
         Prod.Prog.award(cid, 'supplier', 'run')
@@ -225,12 +261,49 @@ end
 function Sup.cancel(src, cid)
     local row = active(cid)
     if not row then return Veyl.Err('NOT_FOUND', 'You have no run') end
+    if row.member then
+        MySQL.update('DELETE FROM veyl_prod_run_members WHERE run_id = ? AND citizenid = ?', { row.id, cid })
+        return Veyl.Ok(nil, 'You left the run')
+    end
+    MySQL.update('DELETE FROM veyl_prod_run_members WHERE run_id = ?', { row.id })
     local flipped = MySQL.update.await("UPDATE veyl_prod_runs SET state = 'cancelled', finished_at = ? WHERE id = ? AND state IN ('active', 'picked')", { os.time(), row.id })
     if (flipped or 0) < 1 then return Veyl.Err('INVALID_STATE', 'It already ended') end
     dropCrate(cid)
     Prod.Sec.setCooldown(cid, 'run_cancel', S.Cooldown.Cancel)
     Prod.Log.event('purchase', cid, ('cancelled run #%d'):format(row.id))
     return Veyl.Ok(nil, 'Run cancelled. The fee is not refunded.')
+end
+
+Sup.invites = {}
+
+--- The leader brings someone along. They have to be close, free, and the group has to have room.
+function Sup.invite(src, cid, targetSrc)
+    if not C.Groups.Enabled then return Veyl.Err('UNAVAILABLE', 'Group runs are off') end
+    local row = active(cid)
+    if not row or row.member then return Veyl.Err('INVALID_STATE', 'Start a run first') end
+    targetSrc = Prod.Sec.int(targetSrc, 65535)
+    local tcid = targetSrc and targetSrc ~= src and Veyl.GetCitizenId(targetSrc)
+    if not tcid then return Veyl.Err('INVALID_INPUT', 'Pick someone nearby') end
+    local mine, theirs = Veyl.GetPlayerCoords(src), Veyl.GetPlayerCoords(targetSrc)
+    if not mine or not theirs or ProdUtil.distance(mine, theirs) > C.Groups.InviteRange then return Veyl.Err('TOO_FAR', 'They are too far away') end
+    if active(tcid) then return Veyl.Err('INVALID_STATE', 'They are already on a run') end
+    if #Sup.groupOf(row).members + 1 >= C.Groups.MaxMembers then return Veyl.Err('LIMIT', 'The group is full') end
+    Sup.invites[tcid] = { run = row.id, at = os.time(), from = Prod.Props.nameOf(cid) }
+    TriggerClientEvent('veyl_production:groupInvite', targetSrc, { from = Prod.Props.nameOf(cid), seconds = C.Groups.InviteSeconds })
+    return Veyl.Ok(nil, 'Invite sent')
+end
+
+function Sup.answer(src, cid, accept)
+    local inv = Sup.invites[cid]
+    Sup.invites[cid] = nil
+    if not inv or os.time() - inv.at > C.Groups.InviteSeconds then return Veyl.Err('INVALID_STATE', 'That invite is gone') end
+    if accept ~= true then return Veyl.Ok(nil, 'Declined') end
+    local row = MySQL.single.await("SELECT * FROM veyl_prod_runs WHERE id = ? AND state IN ('active', 'picked')", { inv.run })
+    if not row or row.expires_at < os.time() then return Veyl.Err('INVALID_STATE', 'That run is over') end
+    if active(cid) then return Veyl.Err('INVALID_STATE', 'You are already on a run') end
+    if #Sup.groupOf(row).members + 1 >= C.Groups.MaxMembers then return Veyl.Err('LIMIT', 'The group is full') end
+    MySQL.update('INSERT INTO veyl_prod_run_members (run_id, citizenid) VALUES (?, ?)', { row.id, cid })
+    return Veyl.Ok(Sup.view(cid), 'You joined the run')
 end
 
 --- The run the client should draw (blips, crate, drop).

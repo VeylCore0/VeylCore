@@ -74,7 +74,11 @@ function Shop.view(cid, id)
         end
     end
     local sell = {}
-    for item, price in pairs(Shop.prices()) do sell[#sell + 1] = { item = item, label = ProdItemLabels[item] or item, base = price } end
+    local bonus = Prod.Crews.sellBonus(cid)
+    for item, price in pairs(Shop.prices()) do
+        local info = Prod.Market.info(item)
+        sell[#sell + 1] = { item = item, label = ProdItemLabels[item] or item, base = price, price = math.floor(price * Prod.Market.mult(item) * bonus), trend = info.trend }
+    end
     table.sort(sell, function(a, b) return a.base > b.base end)
     out.sell = sell
     return out
@@ -122,6 +126,7 @@ function Shop.sell(src, cid, item, qty)
     if not Prod.Sec.near(src, C.Buyer.Ped.coords, C.Distance.Shop) then return Veyl.Err('TOO_FAR', 'Go to the buyer') end
     if not Prod.Sec.try(cid, 'purchase', C.Cooldowns.Purchase) then return Veyl.Err('RATE_LIMITED', 'Slow down') end
     local remaining, total, sold = qty, 0, 0
+    local unit = Prod.Market.mult(item) * Prod.Crews.sellBonus(cid)
     local tag = ('prodsell:%s:%s'):format(cid, Veyl.NewId())
     for _, st in ipairs(Prod.Inv.stacks(src, item)) do
         if remaining <= 0 then break end
@@ -131,13 +136,14 @@ function Shop.sell(src, cid, item, qty)
         local mult = q and ProdUtil.tier(q).mult or 1.0
         local r = Prod.Inv.take(cid, item, n, meta, ('%s:%d'):format(tag, sold + 1))
         if r and r.ok then
-            total = total + math.floor(base * mult * n)
+            total = total + math.floor(base * mult * unit * n)
             remaining = remaining - n
             sold = sold + 1
         end
     end
     if total <= 0 then return Veyl.Err('NO_ITEM', ('You have no %s to sell'):format(ProdItemLabels[item] or item)) end
     Prod.Inv.credit(cid, total, ('Sold %s'):format(item), tag)
+    Prod.Market.record(item, qty - remaining)
     Prod.Prog.award(cid, ProdItemBranch(item), 'sell')
     Prod.Prog.stat(cid, 'sales')
     Prod.Prog.stat(cid, 'money_earned', total)

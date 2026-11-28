@@ -103,3 +103,68 @@ end)
 AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then pcall(function() exports.veyl_target:removeGlobalPed({ OPTION }) end) end
 end)
+
+---------------------------------------------------------------------------
+-- Regulars: a meeting spot the server sent you to. A private ped (only you see them) waits there; talk to them to sell.
+---------------------------------------------------------------------------
+local meet, meetPed, meetBlip
+
+local function endMeet()
+    if meetBlip and DoesBlipExist(meetBlip) then RemoveBlip(meetBlip) end
+    if meetPed and DoesEntityExist(meetPed) then
+        if GetResourceState('veyl_target') == 'started' then pcall(function() exports.veyl_target:removeLocalEntity(meetPed, { 'veyl_prod_regular' }) end) end
+        DeleteEntity(meetPed)
+    end
+    meet, meetPed, meetBlip = nil, nil, nil
+end
+
+local function talk()
+    if busy or not meet then return end
+    busy = true
+    local res = Veyl.CallbackTimeout('veyl_production', 'regularOffer', 15000, meet.token)
+    busy = false
+    if not res.ok then return Veyl.NotifyResult(res) end
+    local e = meetPed
+    say(e, 'GENERIC_HOWS_IT_GOING')
+    pickItem(e, res.data)
+end
+
+AddEventHandler('veyl_production:meetSet', function(d)
+    endMeet()
+    meet = d
+    meet.endsAt = GetGameTimer() + (d.seconds or 900) * 1000
+    SetNewWaypoint(d.x + 0.0, d.y + 0.0)
+    meetBlip = AddBlipForCoord(d.x, d.y, d.z)
+    SetBlipSprite(meetBlip, 280) SetBlipColour(meetBlip, 5)
+    BeginTextCommandSetBlipName('STRING') AddTextComponentSubstringPlayerName(d.name) EndTextCommandSetBlipName(meetBlip)
+    CreateThread(function()
+        while meet and GetGameTimer() < meet.endsAt do
+            Wait(1500)
+            if meet and not meetPed then
+                local pc = GetEntityCoords(PlayerPedId())
+                if #(pc - vector3(meet.x, meet.y, meet.z)) < 60.0 then
+                    local hash = joaat(meet.model)
+                    RequestModel(hash)
+                    local t = GetGameTimer() + 4000
+                    while not HasModelLoaded(hash) and GetGameTimer() < t do Wait(10) end
+                    if HasModelLoaded(hash) then
+                        local ok, gz = GetGroundZFor_3dCoord(meet.x, meet.y, meet.z + 2.0, false)
+                        meetPed = CreatePed(4, hash, meet.x, meet.y, ok and gz or meet.z, 0.0, false, false)
+                        SetEntityInvincible(meetPed, true)
+                        FreezeEntityPosition(meetPed, true)
+                        SetBlockingOfNonTemporaryEvents(meetPed, true)
+                        TaskStartScenarioInPlace(meetPed, 'WORLD_HUMAN_STAND_MOBILE', 0, true)
+                        SetModelAsNoLongerNeeded(hash)
+                        if GetResourceState('veyl_target') == 'started' then
+                            exports.veyl_target:addLocalEntity(meetPed, { { name = 'veyl_prod_regular', label = ('Talk to %s'):format(meet.name), icon = 'bag', distance = 2.5,
+                                canInteract = function() return not busy end, onSelect = function() CreateThread(talk) end } })
+                        end
+                    end
+                end
+            end
+        end
+        endMeet()
+    end)
+end)
+
+AddEventHandler('onResourceStop', function(res) if res == GetCurrentResourceName() then endMeet() end end)

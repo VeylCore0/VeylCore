@@ -37,9 +37,18 @@ function Prog.award(cid, branch, activity, multiplier)
     local gain = math.max(1, math.floor(def.xp * (multiplier or 1)))
     p.xp[branch] = (p.xp[branch] or 0) + gain
     MySQL.update('INSERT INTO veyl_prod_progress (citizenid, branch, xp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE xp = VALUES(xp)', { cid, branch, p.xp[branch] })
+    if Prod.Crews then Prod.Crews.addXp(cid, gain) end
     local after = ProdUtil.levelFor(p.xp[branch])
     if after > before then Prod.Log.event('reward', cid, ('reached %s level %d'):format(branch, after)) end
     return gain, after > before and after or nil
+end
+
+--- Staff: adds (or, when negative, removes) XP without any cooldown.
+function Prog.give(cid, branch, amount)
+    local p = load(cid)
+    p.xp[branch] = math.max(0, (p.xp[branch] or 0) + amount)
+    MySQL.update('INSERT INTO veyl_prod_progress (citizenid, branch, xp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE xp = VALUES(xp)', { cid, branch, p.xp[branch] })
+    return p.xp[branch]
 end
 
 function Prog.stat(cid, stat, n)

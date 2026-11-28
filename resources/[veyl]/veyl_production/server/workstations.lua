@@ -17,6 +17,7 @@ local function typeOf(row) return W.Types[row.type] end
 --- May this player use this bench? Owners always; lab members with the `bench` permission for benches in their lab.
 local function canUse(cid, row)
     if row.owner_cid == cid then return true end
+    if row.property_id == nil and Prod.Crews and Prod.Crews.shares(row.owner_cid, cid) then return true end
     return row.property_id ~= nil and Prod.Props.can(cid, row.property_id, 'bench')
 end
 

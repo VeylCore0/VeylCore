@@ -44,10 +44,10 @@ function Pol.send(coords, message)
 end
 
 --- Rolls the alert chance for an activity (plant, harvest, workstation, property_entry).
-function Pol.maybeAlert(cid, kind, coords)
+function Pol.maybeAlert(cid, kind, coords, mult)
     local rule = cfg().Alerts[kind]
     if not rule or not Pol.dispatchAvailable() then return false end
-    if math.random() >= rule.chance then return false end
+    if math.random() >= rule.chance * (mult or 1) then return false end
     if not Prod.Sec.try(cid, 'alert:' .. kind, rule.cooldown) then return false end
     return Pol.send(coords, ('Suspicious activity reported (%s)'):format(kind))
 end
