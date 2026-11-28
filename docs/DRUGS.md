@@ -1,5 +1,7 @@
 # veyl_drugs: criminal enterprise (fictional)
 
+> **Retired.** `veyl_production` replaces this resource and is what the recipe and `server.cfg.example` start now. This page is kept for reference. Nothing here is loaded unless you add `ensure veyl_drugs` yourself; its database tables and the `veyl_drugs` item definitions in `veyl_inventory` are left alone so existing items do not become unknown.
+
 This is a drug-gameplay resource for VeylCore. All production is abstract game mechanics: fictional varieties, care
 meters and challenges. There are no real recipes or instructions.
 
