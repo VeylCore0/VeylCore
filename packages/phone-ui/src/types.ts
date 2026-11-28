@@ -20,6 +20,8 @@ export type Hello = {
   number: string; display: string; name: string; settings: Settings; apps: App[];
   /** A PIN is set and has not been entered: the server sends no personal data until `unlock` succeeds. */
   locked: boolean; security: Security;
+  /** false = no SIM card: no service until one is inserted (right-click the phone in the inventory). */
+  sim?: boolean;
   voice: { available: boolean; provider?: string; reason?: string };
   call: Call | null;
   unread: { messages: number; notifications: number; mail: number };
@@ -52,6 +54,7 @@ export type MailFull = { id: number; from: string; subject: string; body: string
 export type PushEvent =
   | { event: 'notification'; data: { notification: Notification; unread: number; silent: boolean } }
   | { event: 'badge'; data: { app: string; count: number } }
+  | { event: 'sim'; data: { sim: boolean } }
   | { event: 'message'; data: { conversation: Conversation; message: Message; silent: boolean } }
   | { event: 'read'; data: { conversationId: number; number: string; lastReadId: number } }
   | { event: 'conversation'; data: { conversation?: Conversation; removed?: number } }

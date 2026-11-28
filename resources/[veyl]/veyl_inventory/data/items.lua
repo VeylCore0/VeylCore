@@ -44,7 +44,9 @@ return {
     flashlight = { label = 'Flashlight', description = 'Lights up the dark.', image = 'flashlight.png', weight = 600, stack = false },
     radio = { label = 'Radio', description = 'Short-range radio.', image = 'radio.png', weight = 400, stack = false },
     repair_kit = { label = 'Repair Kit', description = 'Fixes minor vehicle damage.', image = 'repair_kit.png', weight = 2500, stack = true, maxStack = 5 },
-    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false },
+    phone = { label = 'Phone', image = 'phone.png', weight = 200, stack = false,
+        actions = { { id = 'insert_sim', label = 'Insert SIM card', icon = 'use' } } },
+    sim_card = { label = 'SIM Card', description = 'Insert it into your phone (right-click the phone) to get service.', image = 'sim_card.png', weight = 5, stack = true, maxStack = 10 },
     tablet = { label = 'Tablet', image = 'tablet.png', weight = 600, stack = false, description = 'MDT, dispatch and property management on a bigger screen.',
         use = { handler = 'phone_tablet', durationMs = 0, consumeCount = 0 } },
     identity_card = {

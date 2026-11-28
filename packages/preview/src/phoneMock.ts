@@ -50,6 +50,9 @@ let mail: MailFull[] = [];
 let notifs: Notification[] = [];
 let recents: Recent[] = [];
 let blocked: string[] = [];
+// Preview only: open the preview with ?nosim=1 to see a phone without service; __veylInsertSim() plays "Insert SIM card".
+let sim = typeof location === 'undefined' || !/[?&]nosim/.test(location.search);
+if (typeof window !== 'undefined') (window as unknown as { __veylInsertSim: () => void }).__veylInsertSim = () => { sim = true; devEmit('phone:push', { event: 'sim', data: { sim: true } }); };
 let settings: Settings;
 type MockCall = Call & { number: string; dir: 'in' | 'out' };
 let call: MockCall | null = null;
@@ -150,7 +153,7 @@ export function phoneSession(empty: boolean): Hello {
     };
   }
   return {
-    locked: false, security,
+    locked: false, security, sim,
     number: ME, display: fmt(ME), name: 'Alex Morgan', settings, apps: APPS.map((a) => ({ ...a, installed: a.core || installed.has(a.id) })),
     voice: voiceOk ? { available: true, provider: 'pma-voice' } : { available: false, reason: 'Calls need a voice resource (start pma-voice).' },
     call: call ? callView(call) : null, unread: { messages: unreadTotal(), notifications: notifUnread(), mail: mailUnread() }, badges: { ...badges },
@@ -331,6 +334,7 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
       return ok({ unread: unreadTotal() });
     }
     case 'send': {
+      if (!sim) return err('NO_SERVICE', 'No service. Insert a SIM card first.');
       const p = a[0] as { conversationId?: number; to?: string; body?: string; kind?: Message['kind']; payload?: Message['payload']; clientOp: string };
       let c = convs.find((x) => x.id === p.conversationId);
       if (!c) {
@@ -391,6 +395,7 @@ export function phoneApi(name: string, a: unknown[]): NuiResponse | Promise<NuiR
       return ok({ saved: true }, 'Contact saved');
     }
     case 'callStart': {
+      if (!sim) return err('NO_SERVICE', 'No service. Insert a SIM card first.');
       if (!voiceOk) return err('VOICE_UNAVAILABLE', 'Calls need a voice resource (start pma-voice).');
       if (call) return err('BUSY', 'You are already in a call');
       const n = String(a[0]).replace(/\D/g, '');

@@ -198,6 +198,24 @@ vlib.callback.register('veyl_inventory:useStart', function(src, slot)
     return Use.Start(src, p.citizenid, p.generation, inv, slot)
 end, { cooldownMs = 500 })
 
+vlib.callback.register('veyl_inventory:itemAction', function(src, slot, actionId)
+    local p = actor(src)
+    if not p then return err('NO_CHARACTER', 'No character loaded') end
+    if not vlib.validate.str(actionId, 1, 40) then return err('INVALID_INPUT', 'Bad action') end
+    local inv = Store.Get(p.invId)
+    local it = inv and vlib.validate.int(slot, 1, inv.slots) and inv.items[slot]
+    if not it then return err('NOT_FOUND', 'Nothing in that slot') end
+    local d = ItemDefs[it.name]
+    local listed = false
+    for _, a in ipairs(d and d.actions or {}) do if a.id == actionId then listed = true end end
+    local entry = listed and ItemActions[it.name] and ItemActions[it.name][actionId]
+    if not entry then return err('INVALID_STATE', 'You cannot do that') end
+    local okC, ok, msg = pcall(entry.fn, { source = src, citizenid = p.citizenid, item = it.name, slot = slot, metadata = it.metadata })
+    if not okC then print(('^1[veyl_inventory] item action %s.%s failed: %s^7'):format(it.name, actionId, tostring(ok))) return err('SERVER_ERROR', 'Something went wrong') end
+    if ok then return Ops.ok(nil, msg) end
+    return err('REJECTED', msg or 'You cannot do that')
+end, { cooldownMs = 500 })
+
 vlib.callback.register('veyl_inventory:useComplete', function(src, useId)
     local p = actor(src)
     if not p then return err('NO_CHARACTER', 'No character loaded') end

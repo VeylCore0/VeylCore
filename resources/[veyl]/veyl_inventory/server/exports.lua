@@ -195,9 +195,19 @@ exports('RegisterUsableItem', function(item, fn)
     return true
 end)
 
+--- RegisterItemAction(item, actionId, fn): extra right-click actions an item definition lists in `actions`.
+--- fn({ source, citizenid, item, slot, metadata }) returns ok, message. Runs only when the slot holds that item.
+exports('RegisterItemAction', function(item, actionId, fn)
+    if type(item) ~= 'string' or type(actionId) ~= 'string' or not fn then return false end
+    ItemActions[item] = ItemActions[item] or {}
+    ItemActions[item][actionId] = { fn = fn, owner = GetInvokingResource() }
+    return true
+end)
+
 exports('GetUsableItem', function(item) return Use.IsUsable(item) end)
 
 AddEventHandler('onResourceStop', function(res)
+    for _, acts in pairs(ItemActions) do for id, a in pairs(acts) do if a.owner == res then acts[id] = nil end end end
     for name, h in pairs(Use.handlers) do if h.owner == res then Use.handlers[name] = nil end end
     for name, h in pairs(Use.legacy) do if h.owner == res then Use.legacy[name] = nil end end
 end)

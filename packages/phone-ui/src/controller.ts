@@ -121,6 +121,10 @@ export function onPushEvent(e: PushEvent) {
       else if (e.data.conversation) setState((st) => ({ conversations: upsertConversation(st.conversations, e.data.conversation!) }));
       break;
     case 'call': applyCall(e.data, true); break;
+    case 'sim':
+      setState((st) => (st.hello ? { hello: { ...st.hello, sim: e.data.sim !== false } } : {}));
+      if (e.data.sim !== false) banner({ app: 'settings', title: 'SIM card inserted', body: 'Your phone has service.', kind: 'notification' });
+      break;
     case 'share': {
       const r = e.data;
       setState({ share: r });

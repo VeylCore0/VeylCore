@@ -4,6 +4,8 @@
 
 Use = { handlers = {}, legacy = {}, active = {} } -- active[src] = reservation
 
+ItemActions = {} -- ItemActions[item][actionId] = { fn, owner }
+
 local seq = 0
 
 --- RegisterUseHandler('consume', function(ctx) end) — ctx = { source, citizenid, item, def, metadata, opId }

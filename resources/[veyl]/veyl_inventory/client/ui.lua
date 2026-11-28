@@ -76,6 +76,20 @@ RegisterNUICallback('use', function(data, cb)
     if slot then CreateThread(function() UseSlot(slot) end) end
 end)
 
+RegisterNUICallback('itemAction', function(data, cb)
+    cb({ ok = true })
+    local slot, id = tonumber(data and data.slot), data and data.id
+    if not slot or type(id) ~= 'string' then return end
+    screen:close('action')
+    CreateThread(function()
+        local res = vlib.callback.await('veyl_inventory:itemAction', { timeoutMs = 8000 }, slot, id)
+        if type(res) == 'table' then
+            local msg = res.message
+            if msg then vlib.notify({ message = msg, type = res.ok and 'success' or 'error' }) end
+        end
+    end)
+end)
+
 RegisterNUICallback('drop', function(data, cb)
     if not screen:isOpen() or type(data) ~= 'table' then return cb({ ok = false, code = 'INVALID_INPUT' }) end
     local res = vlib.callback.await('veyl_inventory:drop', { timeoutMs = 10000 }, {

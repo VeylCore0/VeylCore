@@ -122,6 +122,10 @@ PhoneConfig = {
     Account = { Domain = 'veylid.com', UsernameMin = 3, UsernameMax = 24, PasswordMin = 6 },
     Lock = { GraceSeconds = 10, MaxAttempts = 5, LockoutSeconds = 300 },   -- reopen within the grace period without the PIN; 5 wrong tries lock it for 5 minutes
 
+    -- SIM card: without one the phone has no service (no calls, texts, Flock, bank transfers, ...). Offline tools still work.
+    -- Buy a `sim_card` item (shops), then right-click the phone in the inventory and pick Insert SIM card. Existing characters keep service.
+    Sim = { Required = true, Item = 'sim_card' },
+
     Share = { Range = 4.0, ExpireSeconds = 60, CooldownSeconds = 30 },   -- "Share my number": metres, how long the prompt lasts, per-pair cooldown
     Voice = 'auto',                   -- 'auto' = pma-voice when it is started; calls are disabled without a voice resource
 

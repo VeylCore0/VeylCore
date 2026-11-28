@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { loadStations, syncSpeakers } from './music';
 import { announceReady, useNuiMessage } from '@veyl/ui';
 import { post } from './api';
 import { VIEWS } from './apps';
@@ -58,6 +59,7 @@ function StatusBar() {
   const callMin = useStore((s) => s.callMin);
   const shade = useStore((s) => s.shade);
   const locked = useStore((s) => !!s.hello?.locked);
+  const noSim = useStore((s) => s.hello?.sim === false && !s.hello.locked);
   const pill = !!call && callMin && call.state !== 'ended';
   useSecondTick(pill && call?.state === 'connected');
   return (
@@ -80,7 +82,8 @@ function StatusBar() {
         {settings.airplane && <Ico name="plane" size={14} />}
         {settings.dnd && <Ico name="moon" size={13} />}
         {settings.silent && <Ico name="bellOff" size={13} />}
-        <SignalBars off={settings.airplane} />
+        {noSim && <span className="ph-nosim">No SIM</span>}
+        <SignalBars off={settings.airplane || noSim} />
         <Battery />
       </div>
     </div>
@@ -161,6 +164,8 @@ export function App() {
   const scale = useScale(settings.size);
 
   useEffect(() => announceReady(), []);
+  // Phones playing out loud nearby (volume by distance, sent by the game client).
+  useNuiMessage<{ id: number; station: string; volume: number }[]>('phone:speakers', (list) => { void loadStations().then(() => syncSpeakers(list ?? [])); });
   useNuiMessage<Hello>('phone:session', (d) => d && onSession(d));
   useNuiMessage<Hello>('phone:open', (d) => d && onOpen(d));
   useNuiMessage('phone:close', () => { onClosed(); void post('ui:typing', { typing: false }); });

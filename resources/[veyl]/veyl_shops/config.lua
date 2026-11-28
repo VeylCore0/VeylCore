@@ -19,6 +19,7 @@ local MARKET = {
     { item = 'flashlight', price = 80, category = 'tools' },
     { item = 'radio', price = 250, category = 'tools' },
     { item = 'phone', price = 400, category = 'tools' },
+    { item = 'sim_card', price = 50, category = 'tools' },
     { item = 'repair_kit', price = 450, category = 'tools' },
     { item = 'fishing_rod', price = 150, category = 'tools' },
     { item = 'fishing_bait', price = 3, category = 'tools' },

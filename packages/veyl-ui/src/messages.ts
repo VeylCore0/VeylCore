@@ -35,6 +35,8 @@ export interface TargetState {
 // ---------------- veyl_inventory ----------------
 export interface ItemDef {
   name: string; label: string; description?: string; image?: string; weight: number; stack: boolean; maxStack?: number; usable: boolean;
+  /** Extra right-click actions (server-registered with RegisterItemAction). */
+  actions?: { id: string; label: string; icon?: string }[];
 }
 export interface SlotItem { slot: number; name: string; count: number; metadata?: Record<string, unknown>; durability?: number }
 export interface InventoryView {

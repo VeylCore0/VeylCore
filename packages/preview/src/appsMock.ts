@@ -79,9 +79,121 @@ const threadOf = (id: number) => {
 
 const payees: Record<string, { name: string }> = { '5550177': { name: 'Jamie Cole' }, '5550123': { name: 'Riley Park' }, '5550188': { name: 'Alex Carter' }, '5550166': { name: 'Marcus Webb' } };
 
+// ---- Group 2 state: maps, services, voicemail
+let mapSaved: { id: number; label: string; x: number; y: number }[] = [{ id: 1, label: 'My garage', x: 215, y: -810 }, { id: 2, label: 'Fishing pier', x: -1850, y: -1230 }];
+const MAP_PLACES = [
+  { label: 'City Hall', category: 'City', x: -544, y: -204 }, { label: 'Legion Square', category: 'City', x: 195, y: -934 },
+  { label: 'Mission Row PD', category: 'Services', x: 441, y: -981 }, { label: 'Pillbox Hospital', category: 'Services', x: 298, y: -584 },
+  { label: 'Burger Shot', category: 'Food', x: -1195, y: -884 }, { label: 'Bean Machine', category: 'Food', x: 280, y: -1030 },
+  { label: 'Premium Deluxe Motorsport', category: 'Vehicles', x: -33, y: -1102 }, { label: 'Del Perro Apartments', category: 'Housing', x: -1447, y: -537 },
+  { label: 'Job Center', category: 'Jobs', x: -265, y: -963 },
+];
+const SERVICES = [
+  { id: 'police', label: 'Police', icon: 'shield', onDuty: 3 }, { id: 'ems', label: 'EMS', icon: 'heart', onDuty: 1 },
+  { id: 'mechanic', label: 'Mechanic', icon: 'wrench', onDuty: 2 }, { id: 'taxi', label: 'Taxi', icon: 'car', onDuty: 0 },
+];
+let svcMine: { id: number; service: string; message: string; status: 'open' | 'taken' | 'closed'; taken_by: string | null; at: number }[] = [];
+let vms: { id: number; from_number: string; from_name: string | null; body: string; is_read: number; at: number }[] = [
+  { id: 1, from_number: '5550177', from_name: 'Jamie Cole', body: 'Hey, your car is ready at the shop. Come grab it before six, I close early today.', is_read: 0, at: now() - 1800 },
+  { id: 2, from_number: '5550911', from_name: null, body: 'This is a message about your vehicle extended warranty.', is_read: 1, at: now() - 90000 },
+];
+export function appsReset2() { mapSaved = mapSaved.slice(0, 2); svcMine = []; }
+
+// ---- Group 3 state: camera, jobs, bills, news, racing
+let photos: { id: number; at: number; image: string }[] = [];
+export function previewShot(): string {
+  const c = document.createElement('canvas'); c.width = 240; c.height = 320;
+  const g = c.getContext('2d');
+  if (!g) return '';
+  const sky = g.createLinearGradient(0, 0, 0, 320); sky.addColorStop(0, '#ff9a5a'); sky.addColorStop(0.55, '#b3489a'); sky.addColorStop(1, '#241a4a');
+  g.fillStyle = sky; g.fillRect(0, 0, 240, 320);
+  g.fillStyle = '#ffe9a8'; g.beginPath(); g.arc(150, 120, 34, 0, 7); g.fill();
+  g.fillStyle = '#1a1230'; for (let i = 0; i < 9; i++) { const h = 60 + ((i * 53) % 90); g.fillRect(i * 28, 320 - h, 24, h); }
+  return c.toDataURL('image/jpeg', 0.7);
+}
+let jobsMine = [
+  { name: 'mechanic', label: 'Mechanic', grade: 'Technician', pay: 480, primary: true },
+  { name: 'taxi', label: 'Taxi Driver', grade: 'Driver', pay: 310, primary: false },
+];
+let jobsOnDuty = false;
+const JOB_BOARD = [
+  { job: 'mechanic', label: 'Mechanic', description: 'Repair and tune vehicles at Strawberry Customs.', open: true, apply: true, member: true },
+  { job: 'police', label: 'Police Officer', description: 'Serve and protect Los Santos. Background check required.', open: false, apply: true, member: false },
+  { job: 'ems', label: 'Paramedic', description: 'Respond to emergencies across the city.', open: false, apply: true, member: false },
+  { job: 'burgershot', label: 'Burger Shot', description: 'Flip burgers, serve customers. No experience needed.', open: true, apply: true, member: false },
+];
+let jobApps: { id: number; job: string; status: string; at: number }[] = [{ id: 900, job: 'police', status: 'pending', at: now() - 7200 }];
+let jobInbox: { id: number; name: string; number: string; message: string; status: string; at: number }[] = [
+  { id: 801, name: 'Casey Nguyen', number: '5550166', message: 'Three years in a body shop, can start immediately and work nights.', status: 'open', at: now() - 3000 },
+];
+let bills: { kind: 'invoice' | 'citation'; id: number; amount: number; label: string; at: number }[] = [
+  { kind: 'invoice', id: 31, amount: 450, label: 'Invoice #31 · Engine repair', at: now() - 86400 },
+  { kind: 'citation', id: 12, amount: 200, label: 'Citation #12 · Speeding', at: now() - 172800 },
+  { kind: 'invoice', id: 36, amount: 85, label: 'Invoice #36 · Tow', at: now() - 3600 },
+];
+let standing: { id: number; to_label: string; amount: number; every_days: number; note: string | null; next_at: number; failures: number }[] = [
+  { id: 71, to_label: 'Jamie Cole', amount: 250, every_days: 7, note: 'Rent', next_at: now() + 86400 * 3, failures: 0 },
+];
+let news: { id: number; author: string; title: string; body: string; breaking: number; at: number }[] = [
+  { id: 1003, author: 'Mia Torres', title: 'Bank robbery foiled on Vinewood Boulevard', body: 'Police say a three-person crew was stopped outside Fleeca early this morning.\nNo injuries were reported and two suspects are in custody.', breaking: 1, at: now() - 900 },
+  { id: 2, author: 'Mia Torres', title: 'Street racing season returns to the harbor', body: 'Organisers confirmed new tracks around the docks this weekend, with prizes for the fastest laps in each class.', breaking: 0, at: now() - 14400 },
+  { id: 3, author: 'Dan Okoye', title: 'City Hall opens new job board', body: 'Residents can now browse openings and apply straight from their phones. Several businesses are already hiring.', breaking: 0, at: now() - 90000 },
+];
+let raceTracks: { id: number; name: string; creator: string; points: number; best: number | null }[] = [
+  { id: 1, name: 'Harbor Sprint', creator: 'Casey Nguyen', points: 12, best: 61840 },
+  { id: 2, name: 'Vinewood Loop', creator: 'Jamie Cole', points: 8, best: null },
+];
+let raceOpen: { id: number; track: string; host: string; racers: number; mine: boolean; joined: boolean }[] = [
+  { id: 41, track: 'Harbor Sprint', host: 'Casey Nguyen', racers: 3, mine: false, joined: false },
+];
+
 /** Returns undefined for names this file does not handle. */
 export function appsApi(name: string, a: unknown[]): NuiResponse | undefined {
   switch (name) {
+    // ---- maps
+    case 'mapsData': return ok({ saved: mapSaved, shared: [{ id: 1, from_name: 'Jamie Cole', x: 120, y: -900, live: 1, expires: now() + 780 }, { id: 2, from_name: 'Riley Park', x: -50, y: 300, live: 0, expires: now() + 300 }], places: MAP_PLACES, shareMinutes: [5, 15, 30, 60] });
+    case 'placeSave': { const l = String(a[0] ?? '').trim(); if (!l) return err('INVALID_INPUT', 'Name it first'); mapSaved.push({ id: ++seq, label: l, x: 215, y: -810 }); return ok(undefined, 'Place saved'); }
+    case 'placeDelete': mapSaved = mapSaved.filter((p) => p.id !== a[0]); return ok(undefined, 'Place deleted');
+    case 'shareLocation': { if (!payees[String(a[0]).replace(/\D/g, '')]) return err('NOT_FOUND', 'No phone with that number'); return ok(undefined, `Location shared for ${a[1]} min`); }
+    // ---- services
+    case 'servicesData': return ok({ services: SERVICES, mine: svcMine, duty: null, queue: null });
+    case 'serviceRequest': { const m = String(a[1] ?? '').trim(); if (m.length < 3) return err('INVALID_INPUT', 'Say what you need'); svcMine.unshift({ id: ++seq, service: String(a[0]), message: m, status: 'open', taken_by: null, at: now() }); return ok(undefined, 'Request sent'); }
+    case 'serviceClose': svcMine = svcMine.filter((r) => r.id !== a[0]); return ok(undefined, 'Request closed');
+    case 'serviceTake': return ok({ x: 215, y: -810 });
+    // ---- voicemail
+    case 'voicemailList': return ok([...vms].sort((x, y) => y.at - x.at));
+    case 'voicemailRead': { const v = vms.find((x) => x.id === a[0]); if (v) v.is_read = 1; return ok(); }
+    case 'voicemailDelete': vms = vms.filter((x) => x.id !== a[0]); return ok(undefined, 'Voicemail deleted');
+    case 'voicemailLeave': { if (!payees[String(a[0]).replace(/\D/g, '')]) return err('NOT_FOUND', 'No phone with that number'); return ok(undefined, 'Voicemail sent'); }
+    // ---- camera
+    case 'photoSave': { if (photos.length >= 40) return err('LIMIT', 'Your gallery is full (40 photos)'); const id = ++seq; photos.unshift({ id, at: now(), image: String(a[0]) }); return ok({ id }, 'Saved to Gallery'); }
+    case 'photoList': return ok(photos.map((p) => ({ id: p.id, at: p.at })));
+    case 'photoGet': { const p = photos.find((x) => x.id === a[0]); return p ? ok({ image: p.image }) : err('NOT_FOUND', 'Photo not found'); }
+    case 'photoDelete': photos = photos.filter((x) => x.id !== a[0]); return ok(undefined, 'Photo deleted');
+    // ---- jobs
+    case 'jobsData': return ok({ mine: jobsMine, primary: jobsMine.find((j) => j.primary)?.name ?? 'unemployed', onduty: jobsOnDuty, jobLabel: jobsMine.find((j) => j.primary)?.label ?? 'Unemployed', board: JOB_BOARD, apps: jobApps, inbox: jobInbox });
+    case 'jobsDuty': jobsOnDuty = !jobsOnDuty; return ok(undefined, jobsOnDuty ? 'Clocked in' : 'Clocked out');
+    case 'jobsPrimary': jobsMine = jobsMine.map((j) => ({ ...j, primary: j.name === a[0] })); return ok(undefined, 'Main job changed');
+    case 'jobsApply': { if (String(a[1] ?? '').trim().length < 10) return err('INVALID_INPUT', 'Write a few words about yourself'); const b = JOB_BOARD.find((x) => x.job === a[0]); jobApps.unshift({ id: ++seq, job: String(a[0]), status: 'pending', at: now() }); return ok(undefined, `Application sent to ${b?.label ?? 'them'}`); }
+    case 'jobsAppClose': jobInbox = jobInbox.filter((x) => x.id !== a[0]); return ok();
+    // ---- bills
+    case 'billsData': return ok({ bills, standing, score: 712 + (3 - bills.length) * 8 });
+    case 'billPay': { const b = bills.find((x) => x.kind === a[0] && x.id === a[1]); if (!b) return err('NOT_FOUND', 'Already paid or not yours'); bills = bills.filter((x) => x !== b); return ok(undefined, 'Paid'); }
+    case 'standingCreate': { const n = String(a[0]).replace(/\D/g, ''); if (!payees[n]) return err('NOT_FOUND', 'No phone with that number'); standing.push({ id: ++seq, to_label: payees[n].name, amount: Number(a[1]), every_days: Number(a[2]), note: String(a[3] ?? '') || null, next_at: now() + 86400, failures: 0 }); return ok(undefined, `$${a[1]} to ${payees[n].name} every ${a[2]} days`); }
+    case 'standingCancel': standing = standing.filter((x) => x.id !== a[0]); return ok(undefined, 'Standing order cancelled');
+    // ---- music
+    case 'speakerPlay': return ok(undefined, 'Playing out loud');
+    case 'speakerStop': return ok();
+    // ---- news
+    case 'newsList': return ok({ articles: [...news].sort((x, y) => y.id - x.id), reporter: true });
+    case 'newsPost': { const t = String(a[0] ?? '').trim(); const b = String(a[1] ?? '').trim(); if (t.length < 5 || b.length < 20) return err('INVALID_INPUT', 'Write a headline and a story'); news.push({ id: ++seq, author: 'Alex Morgan', title: t, body: b, breaking: a[2] === true ? 1 : 0, at: now() }); return ok(undefined, 'Published'); }
+    // ---- racing
+    case 'raceData': return ok({ tracks: raceTracks, open: raceOpen });
+    case 'raceBoard': return ok([{ name: 'Casey Nguyen', ms: 61840 }, { name: 'Jamie Cole', ms: 63220 }, { name: 'Alex Morgan', ms: 65010 }]);
+    case 'raceTrackSave': { if (!Array.isArray(a[1]) || a[1].length < 2) return err('INVALID_INPUT', 'A track needs 2 to 40 checkpoints'); raceTracks.unshift({ id: ++seq, name: String(a[0]), creator: 'Alex Morgan', points: a[1].length, best: null }); return ok(undefined, 'Track saved'); }
+    case 'raceHost': { const t = raceTracks.find((x) => x.id === a[0]); if (!t) return err('NOT_FOUND', 'Track not found'); raceOpen.unshift({ id: ++seq, track: t.name, host: 'Alex Morgan', racers: 1, mine: true, joined: true }); return ok({ id: seq, start: { x: 215, y: -810, z: 30 } }, 'Race open'); }
+    case 'raceJoin': { const r = raceOpen.find((x) => x.id === a[0]); if (!r) return err('NOT_FOUND', 'That race is gone'); r.joined = true; r.racers++; return ok({ start: { x: 215, y: -810, z: 30 } }, 'Joined. Wait for the host to start.'); }
+    case 'raceStart': raceOpen = raceOpen.filter((x) => x.id !== a[0]); return ok(undefined, 'Starting');
     // ---- notes
     case 'notes': return ok([...notes].sort((x, y) => y.at - x.at));
     case 'noteSave': {

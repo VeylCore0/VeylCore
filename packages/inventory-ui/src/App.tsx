@@ -259,6 +259,7 @@ export function App() {
           state={menu} item={itemAt(menu.at)} def={itemAt(menu.at) ? defs[itemAt(menu.at)!.name] : undefined} hasSecondary={!!views.secondary}
           onClose={() => setMenu(null)}
           onUse={() => { use(menu.at); setMenu(null); }}
+          onAction={(id) => { const a = menu.at; setMenu(null); if (a.ref === 'primary') void nui('itemAction', { slot: a.slot, id }); }}
           onGive={() => { const a = menu.at; setMenu(null); void startGive(a); }}
           onTransfer={() => { const a = menu.at; const it = itemAt(a); setMenu(null); if (it) quickTransfer(a, amountFor(it)); }}
           onSplit={() => {

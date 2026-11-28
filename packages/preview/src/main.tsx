@@ -3,6 +3,7 @@
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState, type ComponentType } from 'react';
 import { devEmit, setDevNuiHandler, type InventoryOpen, type NuiResponse, type TargetState } from '@veyl/ui';
+import { previewShot } from './appsMock';
 import { App as InventoryApp } from '../../inventory-ui/src/App';
 import { App as ShopApp } from '../../shop-ui/src/App';
 import { App as BankApp } from '../../bank-ui/src/App';
@@ -82,6 +83,9 @@ function installHandler(screen: Screen, mode: Mode, inv: { current: InventoryOpe
     if (isApt(screen)) return aptHandler(action, payload, mode);
     if (isMisc(screen)) return miscHandler(screen, action, payload);
     if (screen === 'phone') {
+      if (action === 'cameraShot') return { ok: true, data: { image: previewShot() } };
+      if (action === 'musicStations') return { ok: true, data: [{ id: 'veyl', label: 'Veyl Radio', style: 'synth' }, { id: 'lofi', label: 'Lo-Fi Beach', style: 'lofi' }, { id: 'night', label: 'Night Drive', style: 'night' }] };
+      if (action === 'raceMark') return { ok: true, data: { x: 200 + Math.random() * 100, y: -800 + Math.random() * 100, z: 30 } };
       if (action === 'valetSpot') return { ok: true, data: { x: 214, y: -806, z: 30, h: 90 } };
       if (action === 'close') { phoneClose(); return { ok: true }; }
       if (action === 'ui:typing' || action === 'waypoint' || action === 'openExternal') return { ok: true };

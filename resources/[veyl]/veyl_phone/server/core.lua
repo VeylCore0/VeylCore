@@ -8,12 +8,24 @@ local P = PhoneConfig.Presets
 
 -- A phone with a PIN that has not been unlocked refuses every request except these (answering a call must always work).
 local WHILE_LOCKED = { hello = true, unlock = true, lock = true, pinReset = true, callAnswer = true, callDecline = true, callEnd = true }
+-- Without a SIM card only these work (on-phone tools, account and lock). Everything else needs service.
+local OFFLINE_OK = {
+    hello = true, unlock = true, lock = true, pinReset = true, pinSet = true, pinRemove = true, accountCheck = true, accountCreate = true,
+    passwordChange = true, setupFinish = true, settingsSave = true, profileSave = true, homeSave = true,
+    notes = true, noteSave = true, noteDelete = true, contacts = true, contactSave = true, contactDelete = true, blocks = true, block = true,
+    recents = true, photoSave = true, photoList = true, photoGet = true, photoDelete = true,
+    notifications = true, notificationsRead = true, notificationsClear = true, callEnd = true, callDecline = true, callAnswer = true,
+}
 local registerCallback = Veyl.RegisterCallback
 Veyl.RegisterCallback = function(name, fn, opts)
     return registerCallback(name, function(src, citizenid, ...)
         if not WHILE_LOCKED[name] then
             local s = Phone.sessions[src]
             if s and s.locked then return Veyl.Err('LOCKED', 'Unlock your phone first') end
+        end
+        if PhoneConfig.Sim and PhoneConfig.Sim.Required and not OFFLINE_OK[name] then
+            local s = Phone.sessions[src]
+            if s and not s.sim then return Veyl.Err('NO_SERVICE', 'No service. Insert a SIM card first.') end
         end
         return fn(src, citizenid, ...)
     end, opts)
@@ -147,6 +159,14 @@ local MIGRATIONS = {
                 ADD COLUMN pass_locked_until INT UNSIGNED NOT NULL DEFAULT 0,
                 ADD COLUMN setup_done TINYINT(1) NOT NULL DEFAULT 0,
                 ADD UNIQUE KEY uq_email (email)]],
+        },
+    },
+    {
+        -- SIM card: 1 = the line has service. Characters that already had a phone keep it; new ones need a SIM item.
+        id = 'v2_005_sim',
+        sql = {
+            [[ALTER TABLE veyl_ph_accounts ADD COLUMN sim TINYINT(1) NOT NULL DEFAULT 0]],
+            [[UPDATE veyl_ph_accounts SET sim = 1]],
         },
     },
     {
@@ -443,7 +463,7 @@ end
 --- The live, reachable session for a number (has the phone item right now), or nil.
 function Phone.SessionByNumber(number)
     local s = Phone.byNumber[number]
-    if s and Phone.Session(s.src) and Phone.HasDevice(s.src) then return s end
+    if s and Phone.Session(s.src) and Phone.HasDevice(s.src) and (s.sim or not (PhoneConfig.Sim and PhoneConfig.Sim.Required)) then return s end
     return nil
 end
 
@@ -492,7 +512,7 @@ function Phone.HelloData(s, acc)
         settings = s.settings, voice = Calls.Availability(), call = Calls.StateFor(s.src), locked = locked,
         security = { email = (not locked) and s.email or nil, hasPin = s.hasPin, setupDone = s.setupDone, grace = PhoneConfig.Lock.GraceSeconds,
             domain = PhoneConfig.Account.Domain, passwordMin = PhoneConfig.Account.PasswordMin },
-        presets = P,
+        sim = (s.sim == true) or not (PhoneConfig.Sim and PhoneConfig.Sim.Required), presets = P,
         limits = { message = L.MessageLength, groupMembers = L.GroupMembers, groupName = L.GroupName, name = L.NameLength, pageSize = L.PageSize },
         serverTime = os.time(),
     }
@@ -528,7 +548,8 @@ Veyl.RegisterCallback('hello', function(src, citizenid)
     local hasPin = type(acc.pin_hash) == 'string' and acc.pin_hash ~= ''
     local keep = old and old.unlockedUntil or nil -- still inside the grace period after putting the phone away
     local s = { src = src, cid = citizenid, number = acc.number, name = acc.display_name, settings = settings,
-        hasPin = hasPin, email = acc.email, setupDone = acc.setup_done == 1 or acc.setup_done == true, unlockedUntil = keep }
+        hasPin = hasPin, email = acc.email, setupDone = acc.setup_done == 1 or acc.setup_done == true, unlockedUntil = keep,
+        sim = acc.sim == 1 or acc.sim == true }
     s.locked = hasPin and not (keep ~= nil and os.time() < keep)
     Phone.sessions[src] = s
     Phone.byNumber[acc.number] = s

@@ -6,20 +6,21 @@ export interface ItemMenuState { at: SlotAddress; x: number; y: number }
 /** Compact right-click menu rendered inside the inventory NUI (never a second resource's modal). */
 export function ItemMenu(props: {
   state: ItemMenuState; item?: SlotItem; def?: ItemDef; hasSecondary: boolean;
-  onClose: () => void; onUse: () => void; onGive: () => void; onTransfer: () => void; onSplit: () => void;
+  onClose: () => void; onUse: () => void; onGive: () => void; onTransfer: () => void; onSplit: () => void; onAction: (id: string) => void;
 }) {
   const { state, item, def } = props;
   if (!item || !def) return null;
   const personal = state.at.ref === 'primary';
   const rows: { label: string; icon: string; onClick: () => void; disabled?: string }[] = [
     { label: t('inv.use'), icon: 'use', onClick: props.onUse, disabled: !personal ? t('inv.useFromPersonal') : !def.usable ? t('inv.notUsable') : undefined },
+    ...(def.actions ?? []).map((a) => ({ label: a.label, icon: a.icon ?? 'use', onClick: () => props.onAction(a.id), disabled: !personal ? t('inv.useFromPersonal') : undefined })),
     { label: t('inv.give'), icon: 'give', onClick: props.onGive, disabled: !personal ? t('inv.useFromPersonal') : undefined },
     { label: t('inv.split'), icon: 'hotbar', onClick: props.onSplit, disabled: item.count < 2 ? 'Only one item in this stack' : undefined },
     { label: personal ? t('inv.moveToStorage') : t('inv.take'), icon: 'transfer', onClick: props.onTransfer, disabled: !props.hasSecondary ? 'No storage open' : undefined },
     { label: t('inv.drop'), icon: 'drop_item', onClick: props.onClose, disabled: t('inv.dropUnavailable') },
   ];
   const left = Math.min(state.x, window.innerWidth - 220);
-  const top = Math.min(state.y, window.innerHeight - 240);
+  const top = Math.min(state.y, window.innerHeight - 280);
   return (
     <div className="ctx-backdrop" onMouseDown={props.onClose}>
       <div className="ctx v-panel" style={{ left, top }} onMouseDown={(e) => e.stopPropagation()} role="menu">

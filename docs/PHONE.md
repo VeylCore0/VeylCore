@@ -32,6 +32,7 @@ Escape closes the innermost thing first (a sheet, then a thread, then the app, t
 - **Key:** F1 by default (`PhoneConfig.OpenKey`). Players can rebind it in the FiveM key settings.
 - **Data:** the base uses `veyl_ph_*` tables. On first start it copies numbers, display names, contacts and blocked numbers from the previous phone's `veyl_phone_*` tables. It never changes or drops those old tables, so you can delete them yourself once you're happy.
 - **Account and PIN:** each character can create an account (an email like `name@veylid.com` and a password) and set a 4-digit PIN. With a PIN on, the phone is locked every time it is opened (after a 10 second grace period), and the **server** refuses every request except answering calls until the PIN is entered; a locked phone is sent no messages, contacts, numbers or apps. Five wrong tries lock it for 5 minutes (stored in the database, so a restart does not reset it). Passwords and PINs are salted and hashed; nothing readable is stored. A forgotten PIN is reset with the account password, or by staff with `phonepinreset <citizenid>` in the server console (or a player with the `phone.admin` permission). Settings are in `PhoneConfig.Account` (email domain, lengths) and `PhoneConfig.Lock` (grace, attempts, lockout).
+- **SIM cards:** a phone needs service to call, text, use Flock, send money and so on. Buy a `sim_card` (shops sell it for $50), open the inventory, right-click the **phone** and pick **Insert SIM card**: the card is used up and the line goes live. Without one the status bar says *No SIM*, and on-phone tools (notes, contacts, camera gallery, settings, account and PIN) still work. Characters that already had a phone when this shipped keep service. `PhoneConfig.Sim = { Required = true, Item = 'sim_card' }` (set `Required = false` to turn the feature off). Inserting is done by the inventory's **item action** hook: an item definition lists `actions = { { id, label, icon } }` and a resource answers with `exports.veyl_inventory:RegisterItemAction(item, actionId, function(ctx) return ok, message end)` (`ctx` has `source`, `citizenid`, `item`, `slot`, `metadata`); the server checks the clicked slot really holds that item.
 - **First-run setup:** the first time a character opens the phone they see a short setup (account, then PIN). Every step can be skipped and everything can be done later in Settings, Account & Security.
 - **Config:** `config.lua` covers apps, presets (wallpapers, accents, ringtones, themes, cases), limits, call ring time and animations.
 - **Tablet item:** using a `tablet` opens a small menu with MDT and Dispatch (for police and EMS), My home, and Phone. It is handled by this resource (`client/tablet.lua`).
@@ -109,7 +110,7 @@ Every answer has this shape:
 ```ts
 type Res<T = unknown> = { ok: boolean; code?: ErrorCode; message?: string; data?: T };
 type ErrorCode = 'NO_SESSION' | 'NO_DEVICE' | 'NOT_READY' | 'INVALID_INPUT' | 'NOT_FOUND' | 'ALREADY_EXISTS' | 'LIMIT_REACHED'
-  | 'RATE_LIMITED' | 'BUSY' | 'UNAVAILABLE' | 'VOICE_UNAVAILABLE' | 'INVALID_STATE' | 'NO_PERMISSION' | 'DATABASE_ERROR' | 'INTERNAL' | string;
+  | 'RATE_LIMITED' | 'BUSY' | 'UNAVAILABLE' | 'VOICE_UNAVAILABLE' | 'INVALID_STATE' | 'NO_PERMISSION' | 'DATABASE_ERROR' | 'NO_SERVICE' | 'INTERNAL' | string;
 ```
 
 On `ok: false`, show `message`: it is written for players. On `ok: true`, `message` (when present) is a short confirmation you may toast.
@@ -205,10 +206,34 @@ While a phone is locked the server answers every other request with `LOCKED`, ex
 
 **Sending messages safely:** create a `clientOp` once per message (8–64 chars, for example `` `${Date.now().toString(36)}-${crypto.randomUUID()}` ``) and reuse it on retries. The server never posts the same `clientOp` twice. Show the message as pending until the answer arrives, then replace it with `data.message`.
 
+### Apps: server calls (`api`)
+
+Every call below needs a live session; with no SIM card (`hello.sim === false`) all but the on-phone tools answer `NO_SERVICE`.
+
+| app | calls (`name(args) → data`) |
+|---|---|
+| Notes | `notes() → Note[]`, `noteSave({ id?, title, body })`, `noteDelete(id)` |
+| Bank | `bankOverview() → { name, bank, cash, account, accountMasked, recent[] }`, `bankHistory(offset) → { rows, nextOffset }`, `bankResolve(target) → { token, name, label }`, `bankSend(token, amount, reference, clientOp)`, `bankStatus(clientOp)` |
+| Garage | `garageList() → { vehicles[], valetFee }`, `garageLocate(ownedId) → { x, y, label }`, `garageValet(ownedId, spot)` (the page first calls `valetSpot` for the spot) |
+| Marketplace | `marketList(category, beforeId)`, `marketPost({ title, body, price, category })`, `marketDelete(id)` |
+| Flock | `flockMe`, `flockSetup(handle, display, bio)`, `flockFeed(mode, beforeId)`, `flockThread(id)`, `flockUser(handle, beforeId)`, `flockPost({ body, replyTo? })`, `flockLike(id, on)`, `flockDelete(id)`, `flockFollow(handle, on)` |
+| Maps | `mapsData() → { saved[], shared[], places[], shareMinutes[] }`, `placeSave(label)` (saves where you stand), `placeDelete(id)`, `shareLocation(number, minutes, live)` |
+| Services | `servicesData() → { services[], mine[], duty, queue? }`, `serviceRequest(service, message)`, `serviceTake(id) → { x, y }`, `serviceClose(id)` |
+| Voicemail | `voicemailList()`, `voicemailLeave(number, body)`, `voicemailRead(id)`, `voicemailDelete(id)` |
+| Camera | `photoSave(dataUrl)`, `photoList()`, `photoGet(id) → { image }`, `photoDelete(id)` |
+| Jobs | `jobsData() → { mine[], primary, onduty, jobLabel, board[], apps[], inbox? }`, `jobsDuty()`, `jobsPrimary(name)`, `jobsApply(job, message)`, `jobsAppClose(id)` |
+| Bills | `billsData() → { bills[], standing[], score }`, `billPay(kind, id, 'cash' \| 'bank')`, `standingCreate(number, amount, days, note)`, `standingCancel(id)` |
+| Music | `speakerPlay(station)`, `speakerStop()` |
+| News | `newsList() → { articles[], reporter }`, `newsPost(title, body, breaking)` |
+| Racing | `raceData() → { tracks[], open[] }`, `raceBoard(trackId)`, `raceTrackSave(name, points[])`, `raceHost(trackId)`, `raceJoin(id)`, `raceStart(id)` |
+
+Extra client callbacks the apps use (answered by `veyl_phone`'s client script, not the server): `cameraShot` → `{ image }` (needs `screenshot-basic`), `musicStations` → the station list from `PhoneConfig.Music.Stations`, `raceMark` → `{ x, y, z }` of the player or their vehicle, `valetSpot` → the nearest road spot. The page also receives `phone:speakers` (`[{ id, station, volume }]`, other players' phones playing out loud, volume by distance) and should mix one stream per entry.
+
 ### Pushes (`phone:push` → `{ event, data }`)
 
 | event | data | UI behaviour |
 |---|---|---|
+| `sim` | `{ sim }` | Service changed (a SIM card was inserted). Update `hello.sim`; `false` shows *No SIM* in the status bar. Server calls other than the on-phone tools return `NO_SERVICE` while it is `false`. |
 | `notification` | `{ notification: Notification, unread, silent }` | Peek banner (play `notifySound` unless `silent`), add it to the list. |
 | `badge` | `{ app, count }` | Update the icon badge (`0` = none). |
 | `message` | `{ conversation: Conversation, message: Message, silent }` | Upsert the conversation and append the message if that thread is open. If the thread is visible, call `read`. Otherwise show a banner (sound unless `silent`). Messages from blocked numbers never arrive. |
@@ -296,6 +321,7 @@ These come from `PhoneConfig.Apps`:
 - **Phone:** dialer, recents and the call screen.
 - **Messages, Contacts, Settings, Mail, App Store.**
 - **Calculator and Clock:** client-only.
+- **Bank, Garage, Maps, Services, Jobs, Bills, Camera, Music, News, Racing, Flock, Marketplace, Notes, Voicemail:** the app calls are listed under *Apps: server calls*.
 
 Only show apps that are listed in `hello.apps` (and `installed`) or in `external`. Tapping an external app calls `openExternal`. Routes are free-form strings each app defines, like `phone/recents` from a missed-call notification or `apartments` from the apartments resource. Unknown routes just open the app.
 
