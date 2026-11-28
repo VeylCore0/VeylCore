@@ -11,7 +11,7 @@ ensure veyl_cartheft     # after veyl_inventory, veyl_target, veyl_minigames and
 ## What happens
 
 - **Every ambient car is locked,** parked or driven by a pedestrian, as it comes into range. Cars VeylCore manages (owned, dealer, job and mission vehicles) are never touched, and neither are cycles, boats, aircraft and trains (`Lock.ExcludeClasses`).
-- **Point a gun at a driver.** Hold your aim for about three seconds: the driver brakes, puts their hands up and, most of the time (`Carjack.SuccessChance`), gets out and runs, leaving you the keys. Lower your gun and they get their nerve back and drive off; sometimes they just floor it.
+- **Point a gun at a driver.** Hold your aim for about three seconds: the driver brakes, puts their hands up and, most of the time (`Carjack.SuccessChance`), pulls over to the kerb, gets out and runs, leaving you the keys. Lower your gun and they get their nerve back and drive off; sometimes they just floor it.
 - **Lockpick a parked car.** Look at it, pick **Lockpick the door** (you need a `lockpick`). A tumbler minigame plays: a needle sweeps a bar and you hit the green zone each round, which shrinks. Three misses snap the pick, and a failed attempt can use up the lockpick (`BreakChanceOnFail`). The car alarm may go off.
 - **Hotwire it.** Inside, the engine stays dead and a prompt says *Press H to hotwire it*. A wiring minigame plays: match every coloured wire to its terminal before time runs out (wrong terminals are strikes). Success gives you the keys.
 - **The keys** are to that plate, last `KeysMinutes` and are lost on a server restart. They are not the keys of owned vehicles (`veyl_vehiclekeys` handles those).

@@ -9,16 +9,45 @@
 local pending = {}
 local screens = {}
 
+-- All the games share one page, but every vlib screen registers its own 'ui:ready' callback and the last one wins, so only that screen would
+-- ever see the page load. One handler of our own marks every screen ready (and remembers it for screens made later).
+local pageReady = false
+local loadedAt = GetGameTimer()
+RegisterNUICallback('ui:ready', function(_, cb)
+    pageReady = true
+    for _, sc in pairs(screens) do sc.ready = true end
+    cb({ ok = true })
+end)
+
+local function screenFor(mode)
+    if not screens[mode] then
+        screens[mode] = vlib.createScreen({ name = mode, closeOnDeath = true, onClose = function()
+            local pp = pending[mode]
+            pending[mode] = nil
+            if pp then pp:resolve(false) end
+        end })
+        -- createScreen registered its own ui:ready; take the callback back so all screens are marked.
+        RegisterNUICallback('ui:ready', function(_, cb)
+            pageReady = true
+            for _, sc in pairs(screens) do sc.ready = true end
+            cb({ ok = true })
+        end)
+        -- The same goes for 'close' (Esc): close whichever game is open, not just the last screen made.
+        RegisterNUICallback('close', function(_, cb)
+            cb({ ok = true })
+            for _, sc in pairs(screens) do if sc.visible then sc:close('player') end end
+        end)
+        -- The page announces itself once, at load; a screen made later never hears it. By now the page has long been up.
+        if pageReady or GetGameTimer() - loadedAt > 8000 then screens[mode].ready = true end
+    end
+    return screens[mode]
+end
+
 local function run(mode, action, opts)
     if next(pending) then return false end
     pending[mode] = promise.new()
     local p = pending[mode]
-    screens[mode] = screens[mode] or vlib.createScreen({ name = mode, closeOnDeath = true, onClose = function()
-        local pp = pending[mode]
-        pending[mode] = nil
-        if pp then pp:resolve(false) end
-    end })
-    local ok = screens[mode]:open(action, type(opts) == 'table' and opts or {})
+    local ok = screenFor(mode):open(action, type(opts) == 'table' and opts or {})
     if not ok then pending[mode] = nil return false end
     return Citizen.Await(p) == true
 end

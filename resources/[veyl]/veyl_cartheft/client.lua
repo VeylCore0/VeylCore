@@ -199,7 +199,18 @@ local function carjack(veh, driver)
         mine[veh] = true
         SetVehicleDoorsLockedForAllPlayers(veh, false)
         SetVehicleDoorsLocked(veh, 1)
-        TaskLeaveVehicle(driver, veh, 256)
+        -- Pull over to the kerb first instead of stopping dead in the lane, then get out.
+        ClearPedTasks(driver)
+        SetBlockingOfNonTemporaryEvents(driver, true)
+        local tx, ty, tz = table.unpack(GetOffsetFromEntityInWorldCoords(veh, 3.5, 9.0, 0.0))
+        TaskVehicleDriveToCoord(driver, veh, tx, ty, tz, 6.0, 0, GetEntityModel(veh), 786603, 1.5, true)
+        local limit = GetGameTimer() + 4500
+        while GetGameTimer() < limit and DoesEntityExist(driver) and DoesEntityExist(veh) and #(GetEntityCoords(veh) - vector3(tx, ty, tz)) > 3.0 do Wait(100) end
+        if DoesEntityExist(driver) and DoesEntityExist(veh) then
+            TaskVehicleTempAction(driver, veh, 27, 1500)
+            Wait(700)
+            TaskLeaveVehicle(driver, veh, 0)
+        end
         Wait(900)
         SetBlockingOfNonTemporaryEvents(driver, false)
         TaskSmartFleePed(driver, ped, 80.0, -1, false, false)
