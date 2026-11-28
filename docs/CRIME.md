@@ -10,7 +10,7 @@ ensure veyl_boosting
 
 | Place | Police | Steps | Loot |
 |---|---|---|---|
-| **Fleeca** ×6 (Legion, Hawick, Del Perro, Rockford, Great Ocean, Route 68) | 3 | Hack the panel (hacking device, 50 % break) → drill 4 deposit boxes (drill) | $1.5k–3.5k marked bills per box |
+| **Fleeca** ×6 (Legion, Hawick, Del Perro, Rockford, Great Ocean, Route 68) | 3 | Hack the panel (hacking device, 50 % break): the vault door swings open → walk in and drill each of the 8 lockboxes inside (drill, one box at a time) | $750–1.75k marked bills per box |
 | **Paleto bank** | 5 | Thermite the vault door → hack → drill 6 boxes | $3.5k–7k per box |
 | **Vangelico** | 2 | Smash 12 display cases with a weapon drawn | Watches, chains, rings |
 

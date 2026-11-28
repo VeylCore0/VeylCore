@@ -11,7 +11,7 @@ Veyl.Startup({ 'veyl_core', 'veyl_inventory' }, function() return true end)
 
 local locations = {}
 for _, b in ipairs(C.Fleeca.banks) do
-    locations[b.id] = { id = b.id, kind = 'fleeca', label = b.label, panel = b.panel, cfg = C.Fleeca }
+    locations[b.id] = { id = b.id, kind = 'fleeca', label = b.label, panel = b.panel, cfg = C.Fleeca, boxes = b.boxes }
 end
 locations[C.Paleto.id] = { id = C.Paleto.id, kind = 'paleto', label = C.Paleto.label, panel = C.Paleto.panel, door = C.Paleto.door, cfg = C.Paleto }
 locations[C.Jewelry.id] = { id = C.Jewelry.id, kind = 'jewelry', label = C.Jewelry.label, panel = C.Jewelry.center, cfg = C.Jewelry }
@@ -54,7 +54,7 @@ local function bankBusy(exceptId)
 end
 
 --- What this player can do at a location right now: 'thermite', 'hack', 'loot', 'smash' or nil, err.
-local function nextStep(src, id)
+local function nextStep(src, id, box)
     local loc = locations[id]
     if not loc then return nil, Veyl.Err('NOT_FOUND', 'Unknown place') end
     local s = st(id)
@@ -79,16 +79,28 @@ local function nextStep(src, id)
         return 'hack', cfg.hackSeconds
     end
     if s.loots >= cfg.loots then return nil, Veyl.Err('INVALID_STATE', 'The deposit boxes are empty') end
+    if loc.boxes then
+        if not box then return nil, Veyl.Err('INVALID_STATE', 'The vault is open. Walk in and drill the lockboxes.') end
+        if not loc.boxes[box] then return nil, Veyl.Err('INVALID_INPUT', 'No such lockbox') end
+        if s.drilled and s.drilled[box] then return nil, Veyl.Err('INVALID_STATE', 'That lockbox is already empty') end
+    end
     if count(src, cfg.drillItem) < 1 then return nil, Veyl.Err('NO_ITEM', 'You need a drill') end
     return 'loot', cfg.lootSeconds
 end
 
-Veyl.RegisterCallback('start', function(src, _, id)
+Veyl.RegisterCallback('start', function(src, _, id, box)
     local loc = locations[id]
-    local step, seconds = nextStep(src, id)
+    box = tonumber(box)
+    if box and box == math.floor(box) then box = math.floor(box) else box = nil end
+    local step, seconds = nextStep(src, id, box)
     if not step then return seconds end
     local point = (step == 'thermite') and loc.door or loc.panel
+    if step == 'loot' and loc.boxes then point = loc.boxes[box] end
     if not near(src, point, loc.kind == 'jewelry' and loc.cfg.radius or 3.0) then return Veyl.Err('TOO_FAR', 'Move closer') end
+    -- Someone else drilling that very box right now?
+    if step == 'loot' and loc.boxes then
+        for other, act in pairs(actions) do if other ~= src and act.id == id and act.box == box and GetGameTimer() - act.at < act.seconds * 1000 + 5000 then return Veyl.Err('UNAVAILABLE', 'Someone is already drilling that one') end end
+    end
     local s = st(id)
     if s.stage == 'idle' then
         -- The alarm goes off with the first action; the cooldown starts now.
@@ -98,7 +110,7 @@ Veyl.RegisterCallback('start', function(src, _, id)
         alarm(loc, loc.kind == 'jewelry' and 'Jewelry store robbery' or 'Bank robbery')
     end
     local token = Veyl.NewId()
-    actions[src] = { id = id, step = step, at = GetGameTimer(), token = token, seconds = seconds }
+    actions[src] = { id = id, step = step, at = GetGameTimer(), token = token, seconds = seconds, box = step == 'loot' and box or nil }
     Veyl.Audit(src, 'heist_step', { place = id, step = step })
     return Veyl.Ok({ token = token, seconds = seconds, step = step })
 end, { cooldown = 1500 })
@@ -111,6 +123,7 @@ Veyl.RegisterCallback('finish', function(src, citizenid, token)
     local cfg = loc.cfg
     if GetGameTimer() - a.at < a.seconds * 1000 - 600 then return Veyl.Err('TOO_FAST', 'You stopped too early') end
     local point = (a.step == 'thermite') and loc.door or loc.panel
+    if a.step == 'loot' and a.box and loc.boxes then point = loc.boxes[a.box] end
     if not near(src, point, loc.kind == 'jewelry' and cfg.radius + 1.0 or 3.5) then return Veyl.Err('TOO_FAR', 'You walked away') end
     s.lastActive = os.time()
     if a.step == 'thermite' then
@@ -126,10 +139,15 @@ Veyl.RegisterCallback('finish', function(src, citizenid, token)
         return Veyl.Ok(nil, ('Vault open. %d deposit boxes to drill.'):format(cfg.loots))
     elseif a.step == 'loot' then
         if s.loots >= cfg.loots then return Veyl.Err('INVALID_STATE', 'Empty') end
+        if a.box then
+            s.drilled = s.drilled or {}
+            if s.drilled[a.box] then return Veyl.Err('INVALID_STATE', 'That lockbox is already empty') end
+            s.drilled[a.box] = true
+        end
         s.loots = s.loots + 1
         local amount = math.random(cfg.reward[1], cfg.reward[2])
         local r = Veyl.Await('veyl_inventory', 'GiveItem', 15000, citizenid, 'marked_bills', amount, nil, 'heist:' .. token)
-        if not r.ok then s.loots = s.loots - 1 return Veyl.Err('INVENTORY_FULL', 'No room for the cash') end
+        if not r.ok then s.loots = s.loots - 1 if a.box then s.drilled[a.box] = nil end return Veyl.Err('INVENTORY_FULL', 'No room for the cash') end
         return Veyl.Ok(nil, ('$%d in marked bills (%d/%d boxes)'):format(amount, s.loots, cfg.loots))
     else -- smash
         if s.loots >= cfg.loots then return Veyl.Err('INVALID_STATE', 'Empty') end
@@ -150,7 +168,10 @@ Veyl.RegisterCallback('cancel', function(src) actions[src] = nil return Veyl.Ok(
 
 Veyl.RegisterCallback('states', function()
     local out = {}
-    for id in pairs(locations) do out[id] = st(id).stage end
+    for id in pairs(locations) do
+        local s = st(id)
+        out[id] = s.stage
+    end
     return Veyl.Ok(out)
 end, { cooldown = 2000 })
 
